@@ -75,18 +75,34 @@ def read_my_orders(
     """
     statement = select(Order).where(Order.user_id == current_user.id).order_by(Order.created_at.desc())
     orders = session.exec(statement).all()
+
+    if not orders:
+        return []
+
+    order_ids = [o.id for o in orders]
+
+    # Batch fetch transactions
+    tx_statement = select(Transaction).where(
+        Transaction.order_id.in_(order_ids),
+        Transaction.type == "order"
+    )
+    transactions = session.exec(tx_statement).all()
+    tx_map = {tx.order_id: tx for tx in transactions}
+
+    # Batch fetch order items
+    items_statement = select(OrderItem).where(OrderItem.order_id.in_(order_ids))
+    all_items = session.exec(items_statement).all()
+
+    items_map = {}
+    for item in all_items:
+        if item.order_id not in items_map:
+            items_map[item.order_id] = []
+        items_map[item.order_id].append(item)
     
     res = []
     for o in orders:
-        # Strict logic: Find transaction by Order ID
-        tx = session.exec(select(Transaction).where(
-            Transaction.order_id == o.id,
-            Transaction.type == "order"
-        )).first()
-        
-        # Fallback: if no order_id link (legacy data), try flexible time match (removed for now to enforce strictness)
-        
-        items = session.exec(select(OrderItem).where(OrderItem.order_id == o.id)).all()
+        tx = tx_map.get(o.id)
+        items = items_map.get(o.id, [])
         res.append(map_order_to_response(o, tx, items))
     return res
 
@@ -292,11 +308,35 @@ def sync_orders(
         ).order_by(Order.created_at)
         
     orders = session.exec(statement).all()
+
+    if not orders:
+        return []
+
+    order_ids = [o.id for o in orders]
+
+    # Batch fetch transactions
+    # Note: Optimization here also fixes a potential bug where it was querying by user_id instead of order_id
+    tx_statement = select(Transaction).where(
+        Transaction.order_id.in_(order_ids),
+        Transaction.type == "order"
+    )
+    transactions = session.exec(tx_statement).all()
+    tx_map = {tx.order_id: tx for tx in transactions}
+
+    # Batch fetch order items
+    items_statement = select(OrderItem).where(OrderItem.order_id.in_(order_ids))
+    all_items = session.exec(items_statement).all()
+
+    items_map = {}
+    for item in all_items:
+        if item.order_id not in items_map:
+            items_map[item.order_id] = []
+        items_map[item.order_id].append(item)
     
     res = []
     for o in orders:
-        tx = session.exec(select(Transaction).where(Transaction.type=="order", Transaction.user_id==o.user_id)).first()
-        items = session.exec(select(OrderItem).where(OrderItem.order_id == o.id)).all()
+        tx = tx_map.get(o.id)
+        items = items_map.get(o.id, [])
         res.append(map_order_to_response(o, tx, items))
     return res
 
