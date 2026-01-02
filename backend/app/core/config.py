@@ -1,4 +1,8 @@
-from pydantic_settings import BaseSettings
+import secrets
+import os
+import warnings
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """
@@ -12,8 +16,8 @@ class Settings(BaseSettings):
     
     # 密钥 (Security Key)
     # 警告：在生产环境中，必须保持此密钥的机密性！建议通过环境变量 SECRET_KEY 注入。
-    # 这里为了开发方便硬编码了一个哈希值。
-    SECRET_KEY: str = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
+    # Sentinel Fix: Removed hardcoded secret. Now generates a random key if not provided.
+    SECRET_KEY: str = Field(default_factory=lambda: secrets.token_urlsafe(32))
     
     # 加密算法
     ALGORITHM: str = "HS256"
@@ -21,8 +25,21 @@ class Settings(BaseSettings):
     # Access Token 过期时间 (分钟) - 默认 7 天
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
 
-    class Config:
-        # 区分大小写
-        case_sensitive = True
+    # Pydantic V2 Configuration
+    model_config = SettingsConfigDict(
+        case_sensitive=True,
+        env_file=".env",
+        extra="ignore"
+    )
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Check if SECRET_KEY was loaded from environment
+        if not os.getenv("SECRET_KEY"):
+            warnings.warn(
+                "SECRET_KEY not set in environment. Using generated temporary key. "
+                "Sessions will not persist across restarts.",
+                UserWarning
+            )
 
 settings = Settings()
