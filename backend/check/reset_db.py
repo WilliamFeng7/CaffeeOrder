@@ -101,6 +101,17 @@ def reset_database():
         )
         session.add(user_1)
 
+        # 4.4 咖啡师 (Barista)
+        barista_user = User(
+            username="barista",
+            password=get_password_hash("123456"),
+            uuid=str(uuid.uuid4()),
+            role=UserRole.BARISTA,
+            name="Barista Staff",
+            balance=0
+        )
+        session.add(barista_user)
+
         # 4.4 基础商品 (Base Products)
         session.add(MenuItem(name="1", name_cn="拿铁", price=12500, category="coffee", description="Classic Latte", inventory_count=100, is_active=True))
         session.add(MenuItem(name="2", name_cn="意式浓缩", price=1000, category="coffee", description="Strong", inventory_count=100, is_active=True))

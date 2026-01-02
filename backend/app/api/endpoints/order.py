@@ -267,11 +267,10 @@ async def create_order(
 def complete_order(
     order_id: int,
     session: Session = Depends(get_session),
-    # current_user: User = Depends(deps.get_current_user_barista) # TODO: 限制为咖啡师/管理员
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
-    标记订单为已完成 (Mark Order as Completed)
-    供后台或咖啡师使用
+    Mark Order as Completed
     """
     order = session.get(Order, order_id)
     if not order:
@@ -290,26 +289,26 @@ def complete_order(
     return map_order_to_response(order, tx, items)
 
 
-# --- 为咖啡师/管理员提供的端点 (Endpoints for Barista/Admin) ---
+# --- Endpoints for Barista/Admin ---
 
 @router.get("/sync", response_model=List[OrderResponse])
 def sync_orders(
     since: float = 0.0,
     session: Session = Depends(get_session),
-    # current_user: User = Depends(deps.get_current_active_superuser) # TODO: 限制权限
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
-    增量同步订单 (Incremental Order Sync)
+    Incremental Order Sync
     
-    用于前端轮询。如果提供 `since` 时间戳，则返回该时间之后更新的订单。
-    如果 `since` 为 0，则返回所有活跃订单 (Created/Processing/Ready)。
+    Fetches orders updated after 'since' timestamp.
+    If since=0, returns all active orders.
     """
-    # 将 float 时间戳转换为 datetime
+    # Convert float timestamp to datetime
     if since > 0:
         dt = datetime.datetime.fromtimestamp(since)
         statement = select(Order).where(Order.updated_at > dt).order_by(Order.created_at)
     else:
-        # 如果是 0，返回所有未完成/活跃的订单
+        # If 0, return all active/incomplete orders
         statement = select(Order).where(
             Order.status.in_([OrderStatus.CREATED, OrderStatus.PROCESSING, OrderStatus.READY])
         ).order_by(Order.created_at)
@@ -322,7 +321,6 @@ def sync_orders(
     order_ids = [o.id for o in orders]
 
     # Batch fetch transactions
-    # Note: Optimization here also fixes a potential bug where it was querying by user_id instead of order_id
     tx_statement = select(Transaction).where(
         Transaction.order_id.in_(order_ids),
         Transaction.type == "order"
@@ -355,17 +353,18 @@ def update_order_status(
     order_id: int,
     status_update: OrderStatusUpdate,
     session: Session = Depends(get_session),
+    current_user: User = Depends(deps.get_current_user)
 ):
     """
-    更新订单状态 (Update Order Status)
-    例如：Created -> Processing -> Ready
+    Update Order Status
+    e.g. Created -> Processing -> Ready
     """
     order = session.get(Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
     order.status = status_update.status
-    order.updated_at = timezone.now_cst() # 更新时间戳，以便 Sync 接口捕获
+    order.updated_at = timezone.now_cst() # Update timestamp for Sync to pick up
     session.add(order)
     session.commit()
     session.refresh(order)
