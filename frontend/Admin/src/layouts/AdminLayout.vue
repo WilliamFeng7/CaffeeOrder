@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from 'vue-router';
+import { auth } from '@shared/auth';
 
 const router = useRouter();
 const route = useRoute();
@@ -15,7 +16,7 @@ const menuItems = [
 ];
 
 const handleLogout = () => {
-    sessionStorage.removeItem('admin_token');
+    auth.clearToken();
     router.push('/login');
 };
 </script>

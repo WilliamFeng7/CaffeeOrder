@@ -132,7 +132,7 @@ class Transaction(SQLModel, table=True):
     external_transaction_id: str = Field(unique=True, index=True, description="外部支付系统交易单号")
     amount: int = Field(description="变动金额 (负数=消费, 正数=退款/充值)")
     balance_after: int = Field(default=0, description="变动后余额快照")
-    type: str = Field(description="类型: order (消费), refund (退款), deposit (充值)")
+    type: str = Field(index=True, description="类型: order (消费), refund (退款), deposit (充值)")
     payment_method: str = Field(default="balance", description="支付方式: balance, wechat, alipay")
     description: Optional[str] = Field(default=None, description="交易描述")
     created_at: datetime = Field(default_factory=timezone.now_cst)

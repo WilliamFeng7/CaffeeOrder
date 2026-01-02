@@ -8,6 +8,7 @@ from app.database import get_session
 from app.models import User, Order, MenuItem, UserRole, OrderStatus, Transaction
 from app.schemas import UserOut, UserUpdate, ProductCreate, ProductUpdate, OrderResponse, UserCreate
 from app.core import timezone
+from app.crud.user import user as user_crud
 
 router = APIRouter()
 
@@ -207,42 +208,9 @@ def create_user(
     """
     Create a new user.
     """
-    # Check if user with same username already exists
-    existing_user = session.exec(select(User).where(User.username == user_in.username)).first()
-    if existing_user:
-        raise HTTPException(
-            status_code=400,
-            detail="The user with this username already exists in the system.",
-        )
-    
-    # Validate Role
-    valid_roles = ["student", "barista", "admin"]
-    if user_in.role not in valid_roles:
-        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of {valid_roles}")
-        
-    # Validate Balance
-    if user_in.balance < 0:
-        raise HTTPException(status_code=400, detail="Balance cannot be negative")
-    
-    # Create new user
-    user = User(
-        username=user_in.username,
-        role=user_in.role,
-        balance=user_in.balance,
-        name=user_in.name,
-        phone=user_in.phone,
-        email=user_in.email,
-        uuid=str(uuid.uuid4())
-    )
-    
-    # Handle password hashing
-    from app.core import security
-    user.password = security.get_password_hash(user_in.password)
-    
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    return user
+    if user_crud.get_by_username(session, username=user_in.username):
+        raise HTTPException(status_code=400, detail="The user with this username already exists in the system.")
+    return user_crud.create(session, obj_in=user_in)
 
 
 @router.put("/users/{user_id}", response_model=UserOut)
@@ -256,21 +224,10 @@ def update_user(
     """
     Update a user.
     """
-    user = session.get(User, user_id)
-    if not user:
+    db_obj = session.get(User, user_id)
+    if not db_obj:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    user_data = user_in.model_dump(exclude_unset=True)
-    if user_in.password:
-        from app.core import security
-        user_data["password"] = security.get_password_hash(user_in.password)
-        
-    user.sqlmodel_update(user_data)
-    # Ensure balance and role are applied if present (model_dump covers it)
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    return user
+    return user_crud.update(session, db_obj=db_obj, obj_in=user_in)
 
 # --- Product Management ---
 @router.get("/products", response_model=List[MenuItem])

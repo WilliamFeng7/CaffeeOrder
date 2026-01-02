@@ -5,15 +5,15 @@
  */
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import HomeView from '../../components/HomeView.vue';
-import MenuView from '../../components/MenuView.vue';
-import ProductModal from '../../components/ProductModal.vue';
-import CheckoutView from '../../components/CheckoutView.vue';
-import PickupView from '../../components/PickupView.vue';
-import SettingsView from '../../components/SettingsView.vue';
-import { api } from '../../api';
-import { PRODUCTS, TRANSLATIONS } from '../../data';
-import { type CartItem, type Product, type Order, type Language, type TabState, type Toast, type UserProfile } from '../../types';
+import HomeView from '../views/HomeView.vue';
+import MenuView from '../views/MenuView.vue';
+import ProductModal from '../components/ProductModal.vue';
+import CheckoutView from '../views/CheckoutView.vue';
+import PickupView from '../views/PickupView.vue';
+import SettingsView from '../views/SettingsView.vue';
+import { api } from '../api';
+import { PRODUCTS, TRANSLATIONS } from '../data';
+import { type CartItem, type Product, type Order, type Language, type TabState, type Toast, type UserProfile } from '../types';
 
 const router = useRouter();
 

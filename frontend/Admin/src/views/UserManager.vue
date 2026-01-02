@@ -12,7 +12,12 @@ const toast = useToastStore();
 const fetchUsers = async () => {
     loading.value = true;
     try {
-        users.value = await api.getUsers();
+        const data = await api.getUsers();
+        // Convert balance from Cents to Yuan for display
+        users.value = data.map((u: any) => ({
+            ...u,
+            balance: u.balance / 100
+        }));
     } catch (e: any) {
         console.error(e);
         toast.error('加载用户失败: ' + (e.response?.data?.detail || e.message));
@@ -98,10 +103,16 @@ const handleDepositSubmit = async () => {
         }
         
         try {
+            // Prepare payload with balance converted to Cents (integers)
+            const payload = {
+                ...u,
+                balance: Math.round(u.balance * 100)
+            };
+
             if (u.id) {
-                await api.updateUser(u.id, u);
+                await api.updateUser(u.id, payload);
             } else {
-                await api.createUser(u);
+                await api.createUser(payload);
             }
             showModal.value = false;
             fetchUsers();

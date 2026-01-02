@@ -1,21 +1,4 @@
-import axios from 'axios';
-
-const API_BASE = 'http://localhost:8000/api/v1'; // Direct to backend or via proxy
-
-const apiClient = axios.create({
-    baseURL: API_BASE,
-    headers: {
-        'Content-Type': 'application/x-www-form-urlencoded', // Default for login, but we override for JSON
-    },
-});
-
-apiClient.interceptors.request.use((config) => {
-    const token = sessionStorage.getItem('admin_token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-});
+import apiClient from '@shared/api-client';
 
 export interface DashboardStats {
     overview: {
@@ -44,6 +27,40 @@ export interface DashboardStats {
     };
 }
 
+export interface User {
+    id: number;
+    username: string;
+    uuid: string;
+    name?: string;
+    phone?: string;
+    email?: string;
+    role: string;
+    balance: number;
+    password?: string;
+}
+
+export interface Product {
+    id: number;
+    name: string;
+    name_cn?: string;
+    description?: string;
+    price: number;
+    category: string;
+    image: string;
+    is_active: boolean;
+    is_recommend: boolean;
+    inventory_count: number;
+}
+
+export interface Order {
+    id: number;
+    user: number;
+    total: number;
+    status: string;
+    created_at: string;
+    items: any[];
+}
+
 export const api = {
     // --- Auth ---
     async login(username: string, password: string) {
@@ -62,44 +79,37 @@ export const api = {
     },
 
     // --- Users ---
-    async getUsers() {
+    async getUsers(): Promise<User[]> {
         const res = await apiClient.get('/admin/users');
-        return res.data.map((u: any) => ({
-            ...u,
-            balance: u.balance / 100 // Convert cents to Yuan
-        }));
+        return res.data;
     },
 
-    async createUser(data: any) {
-        const payload = {
-            ...data,
-            balance: Math.round(data.balance * 100) // Convert Yuan to Cents
-        };
-        const res = await apiClient.post('/admin/users', payload, {
+    async createUser(data: Partial<User>): Promise<User> {
+        const res = await apiClient.post('/admin/users', data, {
             headers: { 'Content-Type': 'application/json' }
         });
         return res.data;
     },
 
-    async updateUser(id: number, data: any) {
+    async updateUser(id: number, data: Partial<User>): Promise<User> {
         const res = await apiClient.put(`/admin/users/${id}`, data, {
             headers: { 'Content-Type': 'application/json' }
         });
         return res.data;
     },
 
-    async deleteUser(id: number) {
+    async deleteUser(id: number): Promise<{ ok: boolean }> {
         const res = await apiClient.delete(`/admin/users/${id}`);
         return res.data;
     },
 
-    async deposit(userId: number, amount: number) {
+    async deposit(userId: number, amount: number): Promise<User> {
         const res = await apiClient.post(`/users/${userId}/deposit?amount=${amount}`);
         return res.data;
     },
 
     // --- Products ---
-    async getProducts() {
+    async getProducts(): Promise<Product[]> {
         const res = await apiClient.get('/admin/products');
         return res.data.map((p: any) => ({
             ...p,
@@ -108,60 +118,42 @@ export const api = {
         }));
     },
 
-    async createProduct(data: any) {
+    async createProduct(data: Partial<Product>) {
         const payload = {
             ...data,
-            price: Math.round(data.price * 100), // Yen to Cents
+            price: Math.round((data.price || 0) * 100), // Yen to Cents
             image_path: data.image // Map frontend field to backend field
         };
-        delete payload.image; // Remove frontend-only field
+        delete (payload as any).image; // Remove frontend-only field
         const res = await apiClient.post('/admin/products', payload, {
             headers: { 'Content-Type': 'application/json' }
         });
         return res.data;
     },
 
-    async updateProduct(id: number, product: any) {
-        const token = sessionStorage.getItem('admin_token');
-
+    async updateProduct(id: number, product: Partial<Product>) {
         // Prepare payload: map frontend 'image' to backend 'image_path'
         const payload = {
             ...product,
             image_path: product.image,
-            price: Math.round(product.price * 100) // Ensure price is in cents
+            price: Math.round((product.price || 0) * 100) // Ensure price is in cents
         };
-        delete payload.image; // Remove frontend-only field
+        delete (payload as any).image; // Remove frontend-only field
 
-        const response = await fetch(`${API_BASE}/admin/products/${id}`, {
-            method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
+        const res = await apiClient.put(`/admin/products/${id}`, payload, {
+            headers: { 'Content-Type': 'application/json' }
         });
-        return await response.json();
+        return res.data;
     },
 
     async uploadImage(file: File): Promise<string> {
-        const token = sessionStorage.getItem('admin_token'); // Changed from adminToken to admin_token to match interceptor
         const formData = new FormData();
         formData.append('file', file);
 
-        const response = await fetch(`${API_BASE}/upload`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
-            body: formData
+        const res = await apiClient.post('/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
         });
-
-        if (!response.ok) {
-            throw new Error('Upload failed');
-        }
-
-        const data = await response.json();
-        return data.url;
+        return res.data.url;
     },
 
     async deleteProduct(id: number) {
@@ -170,7 +162,7 @@ export const api = {
     },
 
     // --- Orders ---
-    async getAllOrders() {
+    async getAllOrders(): Promise<Order[]> {
         const res = await apiClient.get('/admin/orders');
         return res.data.map((o: any) => ({
             id: o.id,
@@ -182,7 +174,7 @@ export const api = {
         }));
     },
 
-    async updateOrderStatus(id: number, status: string) {
+    async updateOrderStatus(id: number, status: string): Promise<Order> {
         const res = await apiClient.put(`/admin/orders/${id}/status?status=${status}`);
         return res.data;
     },

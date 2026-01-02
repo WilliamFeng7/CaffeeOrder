@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import StudentLayout from '../layouts/StudentLayout.vue';
-import LoginView from '../../components/LoginView.vue';
+import LoginView from '../views/LoginView.vue';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),

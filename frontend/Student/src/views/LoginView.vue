@@ -11,19 +11,19 @@
  * 4. 界面交互: 加载状态动画，平滑过渡效果。
  */
 
-import { ref, computed } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api';
-import { useToastStore } from '../src/stores/toast';
+import { useToastStore } from '../stores/toast';
 import { TRANSLATIONS } from '../data';
 import type { Language } from '../types';
-import { watch, onMounted } from 'vue';
+import { auth } from '@shared/auth';
 
 const router = useRouter();
 
 onMounted(() => {
-    // 每次进入登录页，清除 Token (Force logout on visiting login page)
-    sessionStorage.removeItem('token');
+    // 每次进入登录页，清除 Token
+    auth.clearToken();
 });
 
 // 定义 Props (Props Definition)
@@ -121,7 +121,7 @@ const handleLogin = async () => {
     const data = await api.login(username.value, password.value);
     
     // 存储 Token 到本地
-    sessionStorage.setItem('token', data.access_token);
+    auth.setToken(data.access_token);
     
     // 检查角色 (Check Role)
     if (data.role === 'admin') {

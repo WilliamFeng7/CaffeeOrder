@@ -89,7 +89,6 @@ class UserOut(BaseModel):
     lockout_until: Optional[datetime] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
-    password: Optional[str] = None # Added for Admin view (Plain Text)
 
 class UserCreate(BaseModel):
     """
@@ -98,10 +97,21 @@ class UserCreate(BaseModel):
     username: str
     password: str
     role: str = "student"
-    balance: int
+    balance: float
     name: str
     phone: Optional[str] = None
     email: Optional[str] = None
+
+    @field_validator('balance', mode='before')
+    @classmethod
+    def convert_balance_to_cents(cls, v: Any) -> int:
+        if v is None:
+            return 0
+        try:
+            val = float(v)
+            return int(round(val * 100))
+        except (ValueError, TypeError):
+            return 0
 
     @field_validator('phone')
     @classmethod
@@ -144,7 +154,18 @@ class UserUpdate(BaseModel):
     email: Optional[str] = None
     role: Optional[str] = None # Admin can update role
     password: Optional[str] = None # Admin can reset password
-    balance: Optional[int] = None # Admin can update balance
+    balance: Optional[float] = None # Admin can update balance (Yuan or Cents)
+
+    @field_validator('balance', mode='before')
+    @classmethod
+    def convert_balance_to_cents(cls, v: Any) -> Optional[int]:
+        if v is None:
+            return None
+        try:
+            val = float(v)
+            return int(round(val * 100))
+        except (ValueError, TypeError):
+            return None
 
     @field_validator('phone')
     @classmethod

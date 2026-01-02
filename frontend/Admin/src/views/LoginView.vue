@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api';
 import { useToastStore } from '../stores/toast';
+import { auth } from '@shared/auth';
 
 const router = useRouter();
 const toast = useToastStore();
@@ -46,7 +47,7 @@ const handleLogin = async () => {
 
     try {
         const res = await api.login(username.value, password.value);
-        sessionStorage.setItem('admin_token', res.access_token);
+        auth.setToken(res.access_token);
         router.push('/');
     } catch (e: any) {
         // 检查是否有详细的结构化错误信息
