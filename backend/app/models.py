@@ -94,7 +94,7 @@ class Order(SQLModel, table=True):
     is_completed: bool = Field(default=False, description="是否已归档")
     
     created_at: datetime = Field(default_factory=timezone.now_cst, description="下单时间")
-    updated_at: datetime = Field(default_factory=timezone.now_cst, description="最后更新时间 (用于轮询)")
+    updated_at: datetime = Field(default_factory=timezone.now_cst, description="最后更新时间 (用于轮询)", index=True)
     
     # --- 关系 ---
     user: Optional[User] = Relationship(back_populates="orders")
