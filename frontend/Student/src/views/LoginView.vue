@@ -134,9 +134,8 @@ const handleLogin = async () => {
     
   } catch (e: any) {
     // 错误处理逻辑 (Error Handling)
-    
-    // 检查是否有详细的结构化错误信息
-    const detail = e.body?.detail || e.response?.data?.detail;
+    const status = e.response?.status;
+    const detail = e.response?.data?.detail;
 
     if (detail && typeof detail === 'object') {
         // 处理结构化错误 (Structured Error)
@@ -173,9 +172,9 @@ const handleLogin = async () => {
     
     } else {
         // 传统字符串错误处理 (Legacy String Error Handling)
-        if (e.status === 403 || (e.message && e.message.includes('403'))) {
-            toast.error(e.detail || (props.lang === 'cn' ? '账号已锁定，请稍后重试' : 'Account locked. Please try again later.'));
-        } else if (e.status === 429) {
+        if (status === 403 || (e.message && e.message.includes('403'))) {
+            toast.error(detail || (props.lang === 'cn' ? '账号已锁定，请稍后重试' : 'Account locked. Please try again later.'));
+        } else if (status === 429) {
             toast.error(props.lang === 'cn' ? '请求过于频繁，请稍后' : 'Too many attempts. Please wait.'); 
         } else {
             toast.error(props.lang === 'cn' ? '账号或密码错误' : 'Invalid username or password');
