@@ -114,11 +114,18 @@ async def create_order(
 ):
     """
     Create New Order (Atomic Flow)
+    
+    Important: Sold-out status is controlled manually by admin.
+    - Inventory is NOT automatically deducted when placing orders
+    - Admin sets `inventory_count = 0` in Product Manager to mark item as sold out
+    - Orders are rejected if trying to purchase a sold-out item (inventory_count <= 0)
+    
+    Flow:
     1. Lock User Row (Concurrency Control)
-    2. Validate Items & Inventory
+    2. Validate Items (check if active and not sold-out)
     3. Calculate Total
     4. Check Balance
-    5. Deduct Inventory & Balance
+    5. Deduct Balance (NOT inventory)
     6. Generate Records & Commit
     """
     try:
@@ -133,20 +140,21 @@ async def create_order(
         db_items = []
         
         for item_data in order_in.items:
-            # Lock MenuItem row to safely check/update inventory
+            # Get MenuItem (no need for row lock since we're not updating inventory)
             m_item = session.exec(
-                select(MenuItem).where(MenuItem.id == item_data.menu_item_id).with_for_update()
+                select(MenuItem).where(MenuItem.id == item_data.menu_item_id)
             ).one_or_none()
             
             if not m_item or not m_item.is_active:
                 raise HTTPException(status_code=400, detail=f"Item {item_data.menu_item_id} not available")
             
-            # Check Inventory
-            quantity = 1 # Current logic assumes 1 per item_data entry, but if we support qty in future, update here
-            if m_item.inventory_count < quantity:
-                raise HTTPException(status_code=400, detail=f"Item {m_item.name} is out of stock")
+            # Check if item is marked as sold out (inventory_count <= 0 means sold out)
+            # This check respects the manually set sold-out status in admin panel
+            if m_item.inventory_count <= 0:
+                raise HTTPException(status_code=400, detail=f"Item {m_item.name_cn or m_item.name} is sold out")
             
             # Price is strictly from the menu item
+            quantity = 1
             item_price = m_item.price
             total_amount += item_price
             
@@ -161,9 +169,8 @@ async def create_order(
             )
             db_items.append(oi)
             
-            # Deduct Inventory (Pending Commit)
-            m_item.inventory_count -= quantity
-            session.add(m_item)
+            # Note: Inventory is NOT automatically deducted.
+            # Sold-out status is controlled manually by admin via setting inventory_count to 0.
             
         if total_amount <= 0:
             raise HTTPException(status_code=400, detail="Order cannot be empty")

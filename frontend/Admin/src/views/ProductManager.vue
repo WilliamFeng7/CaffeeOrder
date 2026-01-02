@@ -38,7 +38,9 @@ const handleCreate = () => {
         category: 'coffee', 
         description: '',
         image: '', // URL
-        is_recommend: false
+        is_recommend: false,
+        inventory_count: 999, // Default stock, 0 means sold out
+        is_active: true
     };
     showModal.value = true;
 };
@@ -132,21 +134,30 @@ onMounted(fetchProducts);
 
      <!-- Grid Layout for Products -->
      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-         <div v-for="prod in filteredProducts" :key="prod.id" class="bg-white p-5 rounded-[32px] border border-gray-100 shadow-sm flex gap-4 group hover:shadow-md transition-all duration-300">
+         <div v-for="prod in filteredProducts" :key="prod.id" class="bg-white p-5 rounded-[32px] border border-gray-100 shadow-sm flex gap-4 group hover:shadow-md transition-all duration-300 relative" :class="{ 'opacity-60': prod.inventory_count <= 0 }">
+             <!-- Sold Out Badge -->
+             <div v-if="prod.inventory_count <= 0" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg z-10">售罄</div>
+             
              <!-- Image -->
-             <div class="size-24 rounded-2xl bg-gray-100 bg-cover bg-center shrink-0" :style="{ backgroundImage: `url(${prod.image || '/coffee-cup.png'})` }"></div>
+             <div class="size-24 rounded-2xl bg-gray-100 bg-cover bg-center shrink-0" :class="{ 'grayscale': prod.inventory_count <= 0 }" :style="{ backgroundImage: `url(${prod.image || '/coffee-cup.png'})` }"></div>
              
              <div class="flex-1 min-w-0 flex flex-col justify-between py-1">
                  <div>
-                     <div class="flex justify-between items-start">
-                         <h3 class="font-bold text-gray-900 truncate pr-2">{{ prod.name }}</h3>
-                         <span class="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-md text-[10px] font-black uppercase">{{ prod.category }}</span>
+                     <div class="flex justify-between items-start gap-2">
+                         <h3 class="font-bold text-gray-900 truncate">{{ prod.name }}</h3>
+                         <div class="flex gap-1 shrink-0">
+                             <span v-if="prod.inventory_count <= 0" class="px-2 py-0.5 bg-red-100 text-red-600 rounded-md text-[10px] font-black">售罄</span>
+                             <span class="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-md text-[10px] font-black uppercase">{{ prod.category }}</span>
+                         </div>
                      </div>
                      <p class="text-xs text-gray-400 mt-1 line-clamp-2">{{ prod.description }}</p>
                  </div>
                  
                  <div class="flex justify-between items-end mt-2">
-                     <span class="font-black text-xl text-primary">¥{{ prod.price.toFixed(2) }}</span>
+                     <div class="flex items-baseline gap-2">
+                         <span class="font-black text-xl text-primary">¥{{ prod.price.toFixed(2) }}</span>
+                         <span class="text-[10px] font-bold text-gray-400">库存: {{ prod.inventory_count }}</span>
+                     </div>
                      
                      <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                          <button @click="handleEdit(prod)" class="size-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100">
@@ -227,8 +238,29 @@ onMounted(fetchProducts);
                            :class="editingProduct.is_recommend ? 'bg-yellow-500 border-yellow-500' : 'border-gray-300 bg-white'">
                           <span v-if="editingProduct.is_recommend" class="material-symbols-rounded text-white text-sm">check</span>
                       </div>
-                      <span class="font-bold text-gray-700 text-sm">设为店长推荐 (Store Manager Recommend)</span>
-                  </div>
+                       <span class="font-bold text-gray-700 text-sm">设为店长推荐 (Store Manager Recommend)</span>
+                   </div>
+
+                   <!-- Inventory Control -->
+                   <div>
+                       <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">库存数量 (设为 0 表示售罄)</label>
+                       <div class="flex items-center gap-4">
+                           <input v-model.number="editingProduct.inventory_count" type="number" min="0" 
+                               class="flex-1 h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20" 
+                               placeholder="999" />
+                           <button type="button" @click="editingProduct.inventory_count = 0" 
+                               class="h-12 px-4 bg-red-50 text-red-600 rounded-xl font-bold text-sm hover:bg-red-100 transition-colors flex items-center gap-2">
+                               <span class="material-symbols-rounded text-lg">block</span>
+                               设为售罄
+                           </button>
+                           <button type="button" @click="editingProduct.inventory_count = 999" 
+                               class="h-12 px-4 bg-green-50 text-green-600 rounded-xl font-bold text-sm hover:bg-green-100 transition-colors flex items-center gap-2">
+                               <span class="material-symbols-rounded text-lg">inventory_2</span>
+                               恢复库存
+                           </button>
+                       </div>
+                       <p class="text-[10px] text-gray-400 mt-2 ml-2">提示: 库存为 0 时商品将显示为售罄状态，学生无法下单购买</p>
+                   </div>
                  
                  <div class="pt-4 flex gap-3">
                      <button @click="handleSave" class="flex-1 h-14 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform">保存商品</button>

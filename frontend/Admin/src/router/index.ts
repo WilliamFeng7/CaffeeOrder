@@ -18,6 +18,12 @@ const router = createRouter({
             component: LoginView
         },
         {
+            path: '/kds',
+            name: 'kds',
+            component: () => import('../views/KDSView.vue'),
+            meta: { requiresAuth: true }
+        },
+        {
             path: '/',
             component: AdminLayout,
             meta: { requiresAuth: true },

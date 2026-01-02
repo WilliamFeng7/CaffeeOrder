@@ -1,76 +1,61 @@
-# 项目实施计划与排期 (Implementation Plan)
+# 项目实施计划与进度 (Project Implementation Plan)
 
-本计划按开发逻辑顺序排列，旨在快速构建 MVP (Minimum Viable Product)。
+本文档记录了项目的实施路线图及当前完成状态。
 
-## Phase 1: 基础设施与数据层 (Infrastructure & Data)
-**目标**: 建立项目骨架，完成数据库模型设计。
+## 4.1 阶段目标与里程碑 (Milestones)
 
-- [ ] **Task 1.1: 项目初始化**
-    - [ ] 确认 Python 环境 (3.10+)。
-    - [ ] 安装依赖: `fastapi`, `uvicorn`, `sqlmodel`, `httpx` (API请求), `pydantic-settings`。
-    - [ ] 建立目录结构: `app/models`, `app/api`, `app/core`, `static`。
-- [ ] **Task 1.2: 数据库模型 (Models)**
-    - [ ] 定义 `User` 表 (无余额)。
-    - [ ] 定义 `MenuItem` 表。
-    - [ ] 定义 `Order` 和 `OrderItem` 表。
-    - [ ] 定义 `Transaction` 表 (含 `external_id`)。
-    - [ ] 编写 `create_db.py` 脚本初始化 SQLite 数据库 (开启 WAL 模式)。
+### Phase 1: 基础设施构建 (Infrastructure) - ✅ Completed
+*   **目标**: 建立项目骨架，完成数据库模型设计。
+*   **完成情况**:
+    *   [x] FastAPI 后端脚手架搭建 (`backend/app`).
+    *   [x] 数据库模型定义 (`User`, `Order`, `Product`, `Transaction`).
+    *   [x] Docker 环境配置 (`Dockerfile`, `docker-compose.yml`).
 
-## Phase 2: 核心后端逻辑 (Backend Core)
-**目标**: 完成鉴权、支付 Mock 和订单接口。
+### Phase 2: 核心后端逻辑 (Backend Core) - ✅ Completed
+*   **目标**: 实现业务逻辑闭环，包括 Auth, 订单流, 支付 Mock。
+*   **完成情况**:
+    *   [x] **JWT 认证**: 实现登录 (`/token`) 与权限控制 (`get_current_active_user`).
+    *   [x] **订单系统**: 实现原子化下单流程 (扣库存 -> 扣余额 -> 生成订单).
+    *   [x] **支付网关**: 模拟了校内支付接口，支持余额扣减.
+    *   [x] **接口文档**: Swagger UI (`/docs`) 自动生成.
 
-- [ ] **Task 2.1: 模拟外部 API (External Mock)**
-    - [ ] 创建 `app/services/external_payment.py`。
-    - [ ] 实现 `MockPaymentService`：模拟用户余额查询、扣款成功/失败、退款。
-- [ ] **Task 2.2: 认证模块 (Auth)**
-    - [ ] 实现 JWT Token 签发 (`/token`)。
-    - [ ] 实现 `get_current_user` 依赖注入。
-    - [ ] (Seed Data) 初始化测试用的学生账号和咖啡师账号。
-- [ ] **Task 2.3: 菜单接口 (Menu)**
-    - [ ] `GET /menu`: 获取可用菜单列表。
-    - [ ] `POST /menu` (Admin): 上架新咖啡。
-- [ ] **Task 2.4: 订单交易流 (Order Flow)**
-    - [ ] `POST /orders`:
-        1. 接收购物车数据。
-        2. 调用 `MockPaymentService.deduct()`。
-        3. 成功后写入 DB。
-        4. 失败则返回 400。
-    - [ ] `POST /orders/{id}/refund` (Barista): 退款逻辑。
+### Phase 3: B端管理系统开发 (Admin Dashboard) - ✅ Completed
+*   **目标**: 提供给咖啡师和管理员使用的 Web 端。
+*   **核心功能实现**:
+    *   [x] **Dashboard**: 实时轮询数据，实现漏斗图、趋势图、Top3 热销榜。
+    *   [x] **Order Manager**: 订单列表筛选、状态流转、详情查看。
+    *   [x] **Product CMS**: 商品 CRUD、图片上传、库存一键管理 (售罄/恢复)。
+    *   [x] **User Finance**: 用户充值、余额管理、财务报表导出 CSV。
 
-## Phase 3: 管理端与轮询 (Admin & Polling)
-**目标**: 让咖啡师能看到订单。
+### Phase 4: C端学生应用开发 (Student App) - ✅ Completed
+*   **目标**: 提供给学生使用的 iPad/Mobile 端。
+*   **核心功能实现**:
+    *   [x] **点单交互**: 响应式菜单布局，适配触摸屏。
+    *   [x] **规格选择**: 支持 SKU 级别的规格定制。
+    *   [x] **支付流程**: 集成余额校验与扣款反馈。
 
-- [ ] **Task 3.1: 订单查询接口**
-    - [ ] `GET /orders/sync`: 支持 `?since_ts=xxx` 参数，返回增量数据。
-    - [ ] `PATCH /orders/{id}/status`: 修改状态 (Making -> Ready -> Completed)。
-
-## Phase 4: 前端开发 (Frontend - Vue3)
-**目标**: 简单的 iPad 交互界面。
-
-- [ ] **Task 4.1: 学生端 UI**
-    - [ ] 登录页。
-    - [ ] 菜单列表 (大图)。
-    - [ ] 购物车与结算页。
-    - [ ] 订单状态追踪页。
-- [ ] **Task 4.2: 咖啡师看板 UI**
-    - [ ] 实现 `setInterval` 每秒轮询 `/orders/sync`。
-    - [ ] 订单卡片列表展示。
-    - [ ] 制作完成/退款交互按钮。
-
-## Phase 5: 测试与交付 (Testing & Delivery)
-**目标**: 确保系统稳定。
-
-- [ ] **Task 5.1: 集成测试**
-    - [ ] 编写 test case 模拟 10 人并发下单，验证 `Mock` 扣款准确性。
-    - [ ] 验证 SQLite WAL 模式下无锁死现象。
-- [ ] **Task 5.2: 部署准备**
-    - [ ] 编写 `Dockerfile`。
-    - [ ] 准备 `start.sh` 启动脚本。
+### Phase 5: 测试与交付 (Testing & Delivery) - 🔄 In Progress
+*   **当前重点**:
+    *   [ ] **并发测试**: 模拟课间 50 人并发下单，验证数据库 WAL 模式稳定性。
+    *   [ ] **UI 细节优化**: 统一 Toast 提示样式，优化 Loading 动画体验。
+    *   [ ] **生产环境部署**: 配置 Nginx Gzip 压缩，优化静态资源加载速度。
 
 ---
 
-## 建议排期 (Estimated Timeline)
-*   **Day 1**: Phase 1 & 2 (Mock API, Models, Auth) - *后端核心跑通*
-*   **Day 2**: Phase 2 & 3 (Order Logic, Polling API) - *业务逻辑闭环*
-*   **Day 3**: Phase 4 (Student Frontend) - *学生能点单*
-*   **Day 4**: Phase 4 (Barista Frontend) & Phase 5 - *整体联调*
+## 4.2 历史实施记录 (Change Log)
+
+*   **2026-01-02**: 
+    *   完成 Admin 端 **财务分析 (FinanceView)** 模块，支持流水导出。
+    *   优化 **Dashboard** 实时性，增加库存预警功能。
+    *   重构文档结构，输出《技术产品白皮书》。
+*   **2026-01-01**: 
+    *   完成基础下单流程联调。
+    *   初始化 Docker 容器化部署方案。
+
+---
+
+## 4.3 后续规划 (Future Roadmap)
+
+*   **v1.1**: 引入 WebSocket 替换轮询，进一步降低服务器负载。
+*   **v1.2**: 增加 "限时秒杀" 活动功能。
+*   **v1.3**: 对接学校真实一卡通支付接口 (需等待学校信息中心 API 开放)。

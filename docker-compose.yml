@@ -23,8 +23,8 @@ services:
 
   admin:
     build:
-      context: frontend/Admin
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Admin/Dockerfile
     container_name: coffee_admin
     ports:
       - "8080:80"
