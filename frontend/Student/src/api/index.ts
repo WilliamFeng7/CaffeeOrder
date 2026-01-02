@@ -158,7 +158,8 @@ export const api = {
 
                 return {
                     id: o.id.toString(),
-                    uuid: o.uuid,
+                    uuid: o.order_no, // Backend uses order_no as unique public id
+                    order_no: o.order_no,
                     date: o.created_at,
                     items: Array.from(itemMap.values()),
                     total: o.total_amount / 100,

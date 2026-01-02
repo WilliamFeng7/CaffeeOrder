@@ -74,6 +74,7 @@ export interface Order {
   // 订单唯一标识 (数据库主键)
   id: string;
   // 订单 UUID (用于从外部系统查询或展示)
+  uuid: string;
   order_no: string;
   // 下单时间 (ISO 8601 字符串)
   date: string;

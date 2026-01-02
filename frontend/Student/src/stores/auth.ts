@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-// import axios from 'axios'
+import { auth } from '@shared/auth'
 
 interface UserLink {
     username: string
@@ -10,7 +10,7 @@ interface UserLink {
 
 export const useAuthStore = defineStore('auth', {
     state: () => ({
-        token: sessionStorage.getItem('token') || '',
+        token: auth.getToken() || '',
         user: null as UserLink | null
     }),
 
@@ -22,7 +22,7 @@ export const useAuthStore = defineStore('auth', {
     actions: {
         setToken(token: string) {
             this.token = token
-            sessionStorage.setItem('token', token)
+            auth.setToken(token)
         },
 
         setUser(user: UserLink) {
@@ -32,7 +32,7 @@ export const useAuthStore = defineStore('auth', {
         logout() {
             this.token = ''
             this.user = null
-            sessionStorage.removeItem('token')
+            auth.clearToken()
         }
     }
 })

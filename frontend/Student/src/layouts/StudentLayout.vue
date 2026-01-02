@@ -14,6 +14,7 @@ import SettingsView from '../views/SettingsView.vue';
 import { api } from '../api';
 import { PRODUCTS, TRANSLATIONS } from '../data';
 import { type CartItem, type Product, type Order, type Language, type TabState, type Toast, type UserProfile } from '../types';
+import { auth } from '@shared/auth';
 
 const router = useRouter();
 
@@ -43,8 +44,7 @@ onMounted(() => {
   if (storedProfile) userProfile.value = JSON.parse(storedProfile);
 
   // Check Auth
-  const token = sessionStorage.getItem('token');
-  if (!token) {
+  if (!auth.isLoggedIn()) {
     router.push('/login');
     return;
   }
@@ -88,7 +88,7 @@ const loadMenuData = async () => {
 };
 
 const handleSignOut = () => {
-  sessionStorage.removeItem('token');
+  auth.clearToken();
   currentTab.value = 'home';
   addToast('Signed out successfully');
   router.push('/login');

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import StudentLayout from '../layouts/StudentLayout.vue';
 import LoginView from '../views/LoginView.vue';
+import { auth } from '@shared/auth';
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
@@ -20,7 +21,7 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from, next) => {
-    const token = sessionStorage.getItem('token');
+    const isLoggedIn = auth.isLoggedIn();
 
     // If going to login and already logged in? 
     // Maybe redirect to home. But user wanted "Login every time" maybe?
@@ -31,7 +32,7 @@ router.beforeEach((to, from, next) => {
     // But standard usage is: token persists.
     // I will check for token.
 
-    if (to.meta.requiresAuth && !token) {
+    if (to.meta.requiresAuth && !isLoggedIn) {
         next('/login');
         return;
     }

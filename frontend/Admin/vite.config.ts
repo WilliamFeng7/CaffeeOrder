@@ -27,5 +27,11 @@ export default defineConfig({
                 changeOrigin: true,
             },
         },
+    },
+    fs: {
+        allow: [
+            '.',
+            '../shared'
+        ]
     }
 })

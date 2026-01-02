@@ -39,6 +39,12 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         },
       },
+      fs: {
+        allow: [
+          '.',
+          '../shared'
+        ]
+      }
     },
     // 基础路径: 生产环境使用 /static/ 前缀，开发环境使用 /
     base: mode === 'production' ? '/' : '/',

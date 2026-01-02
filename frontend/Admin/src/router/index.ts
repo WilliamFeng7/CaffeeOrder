@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import LoginView from '../views/LoginView.vue'
 import AdminLayout from '../layouts/AdminLayout.vue'
+import { auth } from '@shared/auth'
 
 // Lazy load views
 const DashboardView = () => import('../views/DashboardView.vue')
@@ -58,8 +59,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-    const token = sessionStorage.getItem('admin_token')
-    if (to.meta.requiresAuth && !token) {
+    if (to.meta.requiresAuth && !auth.isLoggedIn()) {
         next('/login')
     } else {
         next()
