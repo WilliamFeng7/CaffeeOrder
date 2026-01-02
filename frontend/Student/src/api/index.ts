@@ -56,7 +56,7 @@ export const api = {
             name: data.name || data.username,
             phone: data.phone || '',
             email: data.email || '',
-            balance: data.balance,
+            balance: data.balance / 100, // Cents to Yuan
             username: data.username,
             uuid: data.uuid || 'N/A'
         };
@@ -99,7 +99,7 @@ export const api = {
             email: data.email || '',
             uuid: data.uuid || 'N/A',
             avatar: profile.avatar,
-            balance: data.balance,
+            balance: data.balance / 100, // Cents to Yuan
             username: data.username
         };
     },
@@ -148,6 +148,7 @@ export const api = {
                             name: backendItem.item_name,
                             nameCN: backendItem.item_name,
                             price: backendItem.price_snap / 100,
+                            image: backendItem.image_url, // Added mapping for image
                             quantity: 1,
                             size: backendItem.spec.size,
                             temperature: backendItem.spec.temp,

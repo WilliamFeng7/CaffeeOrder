@@ -11,13 +11,11 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            '@shared': path.resolve(__dirname, '../shared/src'),
         },
     },
     server: {
         port: 8080,
-<<<<<<< Updated upstream
-        host: '0.0.0.0'
-=======
         host: '0.0.0.0',
         proxy: {
             '/api/v1': {
@@ -35,6 +33,5 @@ export default defineConfig({
                 '../shared'
             ]
         }
->>>>>>> Stashed changes
     }
 })

@@ -147,7 +147,7 @@ const handleLogout = () => {
               <div class="relative z-10 mt-8 flex items-end justify-between border-t border-white/10 pt-6">
                   <div>
                       <p class="text-[#DCCA98] text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-2">{{ t.balance }}</p>
-                      <span class="font-sans text-6xl font-black tracking-tighter text-white drop-shadow-lg">¥{{ ((userProfile.balance || 0) / 100).toFixed(2) }}</span>
+                      <span class="font-sans text-6xl font-black tracking-tighter text-white drop-shadow-lg">¥{{ (userProfile.balance || 0).toFixed(2) }}</span>
                   </div>
                   <div class="flex flex-col items-end">
                     <p class="text-[#DCCA98] text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-2">USER ID</p>
