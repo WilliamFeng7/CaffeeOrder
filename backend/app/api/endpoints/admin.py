@@ -27,10 +27,9 @@ def read_dashboard_stats(
 ) -> Any:
     today_start_cst = timezone.now_cst().replace(hour=0, minute=0, second=0, microsecond=0)
     yesterday_start_cst = today_start_cst - timedelta(days=1)
-    # Convert to naive UTC for database comparison (DB stores naive UTC)
-    from datetime import timezone as tz_module
-    today_start = today_start_cst.astimezone(tz_module.utc).replace(tzinfo=None)
-    yesterday_start = yesterday_start_cst.astimezone(tz_module.utc).replace(tzinfo=None)
+    # Use naive CST for database comparison (DB stores naive CST)
+    today_start = today_start_cst.replace(tzinfo=None)
+    yesterday_start = yesterday_start_cst.replace(tzinfo=None)
     
     # --- 1. Overview Metrics ---
     # Use Transaction for Revenue (Cash Flow Truth)
@@ -90,12 +89,13 @@ def read_dashboard_stats(
     # Align to current hour
     current_hour_dt = now_cst.replace(minute=0, second=0, microsecond=0)
     start_24h_ago_cst = current_hour_dt - timedelta(hours=23)  # Include current hour as the 24th
-    # Convert to naive UTC for database query
-    start_24h_ago = start_24h_ago_cst.astimezone(tz_module.utc).replace(tzinfo=None)
+    # Use naive CST for database query
+    start_24h_ago = start_24h_ago_cst.replace(tzinfo=None)
     
     # Initialize map with hours in the 24h window
     trend_map = {}
     for i in range(24):
+        # Calculate key based on naive CST
         h_dt = start_24h_ago + timedelta(hours=i)
         # Key by tuple (year, month, day, hour)
         key = (h_dt.year, h_dt.month, h_dt.day, h_dt.hour)
@@ -106,7 +106,8 @@ def read_dashboard_stats(
     orders_24h_list = session.exec(select(Order).where(Order.created_at >= start_24h_ago)).all()
     
     for o in orders_24h_list:
-        created_at_cst = timezone.utc_to_cst(o.created_at)
+        # DB stores naive CST, so use it directly
+        created_at_cst = o.created_at
         key = (created_at_cst.year, created_at_cst.month, created_at_cst.day, created_at_cst.hour)
         if key in trend_map:
             trend_map[key]["orders"] += 1

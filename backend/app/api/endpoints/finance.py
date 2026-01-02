@@ -23,9 +23,8 @@ def get_finance_stats(
     current_user: User = Depends(get_current_admin),
 ) -> Any:
     today_start_cst = timezone.now_cst().replace(hour=0, minute=0, second=0, microsecond=0)
-    # Convert to naive UTC for database comparison (DB stores naive UTC)
-    from datetime import timezone as tz_module
-    today_start = today_start_cst.astimezone(tz_module.utc).replace(tzinfo=None)
+    # Use naive CST for database comparison (DB stores naive CST)
+    today_start = today_start_cst.replace(tzinfo=None)
     
     # 1. Total Liability (Sum of all student balances)
     # Note: Using python sum if DB sum is tricky with strict typing, but SQL func.sum is better
@@ -71,24 +70,25 @@ def get_finance_chart(
         now_cst = timezone.now_cst()
         current_minute_dt = now_cst.replace(second=0, microsecond=0)
         start_date_cst = current_minute_dt - timedelta(hours=24)
-        # Convert to naive UTC for database query
-        start_date = start_date_cst.astimezone(tz_module.utc).replace(tzinfo=None)
+        # Use naive CST for database query
+        start_date = start_date_cst.replace(tzinfo=None)
         
         # Initialize map with minutes
         data_map = {}
         total_minutes = 24 * 60
         
         for i in range(total_minutes):
-            m_dt = start_date_cst + timedelta(minutes=i)  # Use CST for display labels
+            m_dt = start_date + timedelta(minutes=i)  # Use CST Naive for generation
             key = (m_dt.year, m_dt.month, m_dt.day, m_dt.hour, m_dt.minute)
             label = m_dt.strftime("%H:%M")
             data_map[key] = {"deposit": 0, "spending": 0, "label": label}
             
-        # Fetch transactions (using naive UTC for query)
+        # Fetch transactions (using naive CST for query)
         txs = session.exec(select(Transaction).where(Transaction.created_at >= start_date)).all()
         
         for tx in txs:
-            created_at_cst = timezone.utc_to_cst(tx.created_at)
+            # DB stores Naive CST, use directly
+            created_at_cst = tx.created_at
             key = (created_at_cst.year, created_at_cst.month, created_at_cst.day, created_at_cst.hour, created_at_cst.minute)
             if key in data_map:
                 if tx.type == "deposit":
@@ -99,7 +99,7 @@ def get_finance_chart(
         # Convert to list
         line_chart = []
         for i in range(total_minutes):
-            m_dt = start_date_cst + timedelta(minutes=i)  # Use CST for labels
+            m_dt = start_date + timedelta(minutes=i)  # Use CST Naive for retrieval
             key = (m_dt.year, m_dt.month, m_dt.day, m_dt.hour, m_dt.minute)
             data = data_map[key]
             line_chart.append({
@@ -115,8 +115,8 @@ def get_finance_chart(
         # We want `days` points ending today. So start is today - (days - 1)
         start_date_cst = (end_date_cst - timedelta(days=days - 1)).replace(hour=0, minute=0, second=0, microsecond=0)
         
-        # Convert to naive UTC for database query
-        start_date = start_date_cst.astimezone(tz_module.utc).replace(tzinfo=None)
+        # Use naive CST for database query
+        start_date = start_date_cst.replace(tzinfo=None)
         
         # Fetch all transactions in range
         txs = session.exec(select(Transaction).where(Transaction.created_at >= start_date)).all()
@@ -124,12 +124,12 @@ def get_finance_chart(
         # Group by date
         data_map = {}
         for i in range(days):
-            d = (start_date_cst + timedelta(days=i)).strftime("%Y-%m-%d")
+            d = (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
             data_map[d] = {"deposit": 0, "spending": 0}
             
         for tx in txs:
-            # Convert to CST string for matching
-            d = timezone.utc_to_cst(tx.created_at).strftime("%Y-%m-%d")
+            # DB stores Naive CST, use directly
+            d = tx.created_at.strftime("%Y-%m-%d")
             if d in data_map:
                 if tx.type == "deposit":
                     data_map[d]["deposit"] += tx.amount
