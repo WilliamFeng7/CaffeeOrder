@@ -1,7 +1,10 @@
 import pytest
 
 import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'backend'))
+# Fix: Ensure sys.path points to backend correctly.
+# Assuming this test runs from repo root or backend/tests/
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from app.core import security
 
 def test_common_password_rejection():
