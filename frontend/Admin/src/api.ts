@@ -82,7 +82,13 @@ export const api = {
     },
 
     async updateUser(id: number, data: any) {
-        const res = await apiClient.put(`/admin/users/${id}`, data, {
+        // If balance is present, convert Yuan to Cents
+        const payload = { ...data };
+        if (payload.balance !== undefined) {
+            payload.balance = Math.round(payload.balance * 100);
+        }
+
+        const res = await apiClient.put(`/admin/users/${id}`, payload, {
             headers: { 'Content-Type': 'application/json' }
         });
         return res.data;
@@ -94,7 +100,9 @@ export const api = {
     },
 
     async deposit(userId: number, amount: number) {
-        const res = await apiClient.post(`/users/${userId}/deposit?amount=${amount}`);
+        // Convert Yuan to Cents
+        const amountInCents = Math.round(amount * 100);
+        const res = await apiClient.post(`/users/${userId}/deposit?amount=${amountInCents}`);
         return res.data;
     },
 

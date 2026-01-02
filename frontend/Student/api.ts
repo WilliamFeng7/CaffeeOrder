@@ -108,7 +108,7 @@ export const api = {
             name: data.name || data.username,
             phone: data.phone || '',
             email: data.email || '',
-            balance: data.balance,
+            balance: data.balance / 100, // Convert Cents to Yuan
             username: data.username,
             uuid: data.uuid || 'N/A'
         };
