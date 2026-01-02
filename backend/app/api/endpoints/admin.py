@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, func
 from app.api import deps
 from app.database import get_session
-from app.models import User, Order, MenuItem, UserRole, OrderStatus, Transaction
+from app.models import User, Order, MenuItem, UserRole, OrderStatus, Transaction, OrderItem
 from app.schemas import UserOut, UserUpdate, ProductCreate, ProductUpdate, OrderResponse, UserCreate
 from app.core import timezone
 from app.crud.user import user as user_crud
@@ -127,18 +127,19 @@ def read_dashboard_stats(
 
     # --- 3. Product & Inventory ---
     # Top Selling (Today) - Determine based on order items
-    orders_today_list = session.exec(select(Order).where(Order.created_at >= today_start)).all()
-    completed_today = [o for o in orders_today_list if o.status == OrderStatus.COMPLETED]
-    item_sales = {}
-    for o in completed_today:
-        for item in o.items:
-            item_sales[item.item_name] = item_sales.get(item.item_name, 0) + item.quantity
-            
-    top_selling = sorted(
-        [{"name": k, "sales": v} for k, v in item_sales.items()],
-        key=lambda x: x["sales"],
-        reverse=True
-    )[:3]
+    # Optimization: Use SQL aggregation instead of Python loop + N+1 queries
+    stmt = (
+        select(OrderItem.item_name, func.sum(OrderItem.quantity).label("sales"))
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(Order.created_at >= today_start)
+        .where(Order.status == OrderStatus.COMPLETED)
+        .group_by(OrderItem.item_name)
+        .order_by(func.sum(OrderItem.quantity).desc())
+        .limit(3)
+    )
+
+    results = session.exec(stmt).all()
+    top_selling = [{"name": r[0], "sales": r[1]} for r in results]
     
     # Sold Out Items
     sold_out_items = session.exec(select(MenuItem).where(MenuItem.inventory_count <= 0)).all()
