@@ -1,0 +1,33 @@
+services:
+  backend:
+    build: ./backend
+    container_name: coffee_backend
+    ports:
+      - "8000:80"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=sqlite:///./coffee.db
+    restart: always
+
+  student:
+    build:
+      context: .
+      dockerfile: frontend/Student/Dockerfile
+    container_name: coffee_student
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+  admin:
+    build:
+      context: frontend/Admin
+      dockerfile: Dockerfile
+    container_name: coffee_admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: always
