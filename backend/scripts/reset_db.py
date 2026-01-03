@@ -8,7 +8,7 @@ from sqlmodel import Session, SQLModel
 import subprocess
 
 # --- 1. 环境准备 (Environment Setup) ---
-# 获取项目根目录 (Assuming this script is in backend/check/)
+# 获取项目根目录 (This script is in backend/scripts/)
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(os.path.dirname(current_dir))
 backend_dir = os.path.join(project_root, "backend")

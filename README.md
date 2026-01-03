@@ -113,7 +113,7 @@ cd frontend/Admin
 npm install
 npm run dev
 ```
-> 请查看终端输出的端口号 (通常是 `http://localhost:5174` 或类似)
+> 默认访问地址: `http://localhost:5174`
 
 #### ☕ 启动咖啡师端 (Barista)
 打开一个新的终端窗口：
@@ -122,7 +122,7 @@ cd frontend/Barista
 npm install
 npm run dev
 ```
-> 请查看终端输出的端口号
+> 默认访问地址: `http://localhost:5175`
 
 ---
 
