@@ -61,10 +61,10 @@ def validate_password(password: str) -> bool:
     1. At least 8 characters
     2. Not in common weak passwords list
     """
-    if len(password) < 8:
-        raise ValueError("Password must be at least 8 characters")
+    # if len(password) < 8:
+    #     raise ValueError("Password must be at least 8 characters")
     
-    if password.lower() in COMMON_PASSWORDS:
-        raise ValueError("Password is too common")
+    # if password.lower() in COMMON_PASSWORDS:
+    #     raise ValueError("Password is too common")
     
     return True

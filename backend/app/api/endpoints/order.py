@@ -6,7 +6,8 @@ import logging
 from datetime import timedelta
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select, func
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select, func
 from pydantic import BaseModel
 
 # Setup logger for payment operations
@@ -65,8 +66,8 @@ def map_order_to_response(order: Order, tx: Transaction, items: List[OrderItem])
 
 
 @router.get("/me", response_model=List[OrderResponse])
-def read_my_orders(
-    session: Session = Depends(get_session),
+async def read_my_orders(
+    session: AsyncSession = Depends(get_session),
     current_user: User = Depends(deps.get_current_user)
 ):
     """
@@ -74,7 +75,8 @@ def read_my_orders(
     按创建时间倒序排列
     """
     statement = select(Order).where(Order.user_id == current_user.id).order_by(Order.created_at.desc())
-    orders = session.exec(statement).all()
+    result = await session.exec(statement)
+    orders = result.all()
 
     if not orders:
         return []
@@ -86,12 +88,14 @@ def read_my_orders(
         Transaction.order_id.in_(order_ids),
         Transaction.type == "order"
     )
-    transactions = session.exec(tx_statement).all()
+    result = await session.exec(tx_statement)
+    transactions = result.all()
     tx_map = {tx.order_id: tx for tx in transactions}
 
     # Batch fetch order items
     items_statement = select(OrderItem).where(OrderItem.order_id.in_(order_ids))
-    all_items = session.exec(items_statement).all()
+    result = await session.exec(items_statement)
+    all_items = result.all()
 
     items_map = {}
     for item in all_items:
@@ -109,52 +113,53 @@ def read_my_orders(
 @router.post("/", response_model=OrderResponse)
 async def create_order(
     order_in: OrderCreate,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     current_user: User = Depends(deps.get_current_user)
 ):
     """
     Create New Order (Atomic Flow)
     
-    Important: Sold-out status is controlled manually by admin.
-    - Inventory is NOT automatically deducted when placing orders
-    - Admin sets `inventory_count = 0` in Product Manager to mark item as sold out
-    - Orders are rejected if trying to purchase a sold-out item (inventory_count <= 0)
-    
-    Flow:
     1. Lock User Row (Concurrency Control)
-    2. Validate Items (check if active and not sold-out)
-    3. Calculate Total
-    4. Check Balance
-    5. Deduct Balance (NOT inventory)
-    6. Generate Records & Commit
+    2. Batch Fetch Items & Validate Inventory
+    3. Calculate Total & Deduct Balance
+    4. Deduct Inventory (New!)
+    5. Generate Records & Commit
     """
     try:
         # 1. Lock User Row for Concurrency Control
-        # This prevents race conditions where multiple requests could spend the same balance
-        user_in_db = session.exec(
+        result = await session.exec(
             select(User).where(User.id == current_user.id).with_for_update()
-        ).one()
+        )
+        user_in_db = result.one()
         
-        # 2. Validate Items, Inventory & Calculate Total
+        # 2. Batch Fetch Items & Validate
+        item_ids = [item.menu_item_id for item in order_in.items]
+        # Use with_for_update inside the fetch if we want strict inventory locking, 
+        # but pure optimistic check is often okay. Let's use lock for safety.
+        # Note: SQLite locks the whole DB often, but this is safe.
+        stmt = select(MenuItem).where(MenuItem.id.in_(item_ids)).with_for_update()
+        result = await session.exec(stmt)
+        menu_items = result.all()
+        menu_item_map = {m.id: m for m in menu_items}
+        
         total_amount = 0
         db_items = []
         
         for item_data in order_in.items:
-            # Get MenuItem (no need for row lock since we're not updating inventory)
-            m_item = session.exec(
-                select(MenuItem).where(MenuItem.id == item_data.menu_item_id)
-            ).one_or_none()
+            m_item = menu_item_map.get(item_data.menu_item_id)
             
             if not m_item or not m_item.is_active:
                 raise HTTPException(status_code=400, detail=f"Item {item_data.menu_item_id} not available")
             
-            # Check if item is marked as sold out (inventory_count <= 0 means sold out)
-            # This check respects the manually set sold-out status in admin panel
+            # Check Inventory
             if m_item.inventory_count <= 0:
                 raise HTTPException(status_code=400, detail=f"Item {m_item.name_cn or m_item.name} is sold out")
             
-            # Price is strictly from the menu item
-            quantity = 1
+            # Logic: Deduct Inventory
+            m_item.inventory_count -= 1
+            session.add(m_item)
+            
+            # Price Calculation
             item_price = m_item.price
             total_amount += item_price
             
@@ -165,12 +170,9 @@ async def create_order(
                 price_snap=item_price,
                 image_url=m_item.image_path,
                 spec=json.dumps(item_data.spec),
-                quantity=quantity
+                quantity=1 # Always 1 per item logic in this loop
             )
             db_items.append(oi)
-            
-            # Note: Inventory is NOT automatically deducted.
-            # Sold-out status is controlled manually by admin via setting inventory_count to 0.
             
         if total_amount <= 0:
             raise HTTPException(status_code=400, detail="Order cannot be empty")
@@ -192,18 +194,17 @@ async def create_order(
         time_prefix = now.strftime("%Y%m%d%H%M%S")
         
         statement = select(func.max(Order.order_no)).where(Order.order_no.like(f"{time_prefix}%"))
-        max_order_no = session.exec(statement).one()
+        result = await session.exec(statement)
+        max_order_no = result.one()
         
-        if max_order_no:
-            seq = int(max_order_no[-4:]) + 1
-        else:
-            seq = 1
+        seq = int(max_order_no[-4:]) + 1 if max_order_no else 1
         order_no = f"{time_prefix}{seq:04d}"
         
         # Daily Pickup Number
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         max_stmt = select(func.max(Order.pickup_number)).where(Order.created_at >= today_start)
-        max_val = session.exec(max_stmt).one()
+        result = await session.exec(max_stmt)
+        max_val = result.one()
         next_pickup_num = (max_val or 0) + 1
         
         # 6. Create Order & Transaction
@@ -219,8 +220,8 @@ async def create_order(
             updated_at=now
         )
         session.add(order)
-        session.flush() # Flush to get order.id
-        session.refresh(order)
+        await session.flush()
+        await session.refresh(order)
         
         for item in db_items:
             item.order_id = order.id
@@ -240,39 +241,106 @@ async def create_order(
         session.add(tx)
         
         # 7. Final Commit
-        session.commit()
-        session.refresh(order)
+        await session.commit()
+        await session.refresh(order)
         
-        # Reload items
-        saved_items = session.exec(select(OrderItem).where(OrderItem.order_id == order.id)).all()
+        # Reload items for response
+        result = await session.exec(select(OrderItem).where(OrderItem.order_id == order.id))
+        saved_items = result.all()
         
         return map_order_to_response(order, tx, saved_items)
         
     except HTTPException:
         raise
     except ValueError as ve:
-        # Validation errors or balance issues
-        session.rollback()
-        logger.error(f"Order validation failed for user {current_user.username}: {str(ve)}")
+        await session.rollback()
+        logger.error(f"Order validation failed: {str(ve)}")
         raise HTTPException(status_code=400, detail=f"Order validation failed: {str(ve)}")
     except Exception as e:
-        # Unexpected system errors
-        session.rollback()
-        logger.error(f"Order creation failed for user {current_user.username}: {str(e)}")
+        await session.rollback()
+        logger.error(f"Order creation failed: {str(e)}")
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"System Error: Unable to process order")
 
-@router.post("/{order_id}/complete", response_model=OrderResponse)
-def complete_order(
+@router.post("/{order_id}/cancel", response_model=OrderResponse)
+async def cancel_order(
     order_id: int,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     current_user: User = Depends(deps.get_current_user)
 ):
     """
-    Mark Order as Completed
+    Cancel Order & Restore Inventory
     """
-    order = session.get(Order, order_id)
+    # Use with_for_update to prevent race conditions
+    result = await session.exec(select(Order).where(Order.id == order_id).with_for_update())
+    order = result.one_or_none()
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+        
+    if order.user_id != current_user.id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="Not authorized to cancel this order")
+        
+    if order.status != OrderStatus.CREATED:
+        raise HTTPException(status_code=400, detail="Cannot cancel order that is already processing or completed")
+        
+    # --- Refund & Inventory Restoration Logic ---
+    user = await session.get(User, order.user_id)
+    if user:
+        user.balance += order.total_amount
+        session.add(user)
+        
+        tx = Transaction(
+            user_id=user.id,
+            order_id=order.id,
+            external_transaction_id=f"REF-{uuid.uuid4().hex[:8].upper()}",
+            amount=order.total_amount,
+            balance_after=user.balance,
+            type="refund",
+            payment_method="balance",
+            description=f"Refund for Order #{order.pickup_code}",
+            created_at=timezone.now_cst()
+        )
+        session.add(tx)
+        
+    # Restore Inventory
+    # Fetch Order Items
+    res = await session.exec(select(OrderItem).where(OrderItem.order_id == order.id))
+    items = res.all()
+    
+    for item in items:
+        # Optimistic: Just add back to the menu item
+        menu_item = await session.get(MenuItem, item.menu_item_id)
+        if menu_item:
+            menu_item.inventory_count += item.quantity
+            session.add(menu_item)
+        
+    # Update Order
+    order.status = OrderStatus.REFUNDED
+    order.updated_at = timezone.now_cst()
+    session.add(order)
+    
+    await session.commit()
+    await session.refresh(order)
+    
+    # Reload items for response (though we have them)
+    return map_order_to_response(order, tx, items)
+
+
+@router.post("/{order_id}/complete", response_model=OrderResponse)
+async def complete_order(
+    order_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(deps.get_current_user)
+):
+    """
+    Mark Order as Completed. (Barista/Admin Only)
+    """
+    if current_user.role not in [UserRole.ADMIN, UserRole.BARISTA]:
+        raise HTTPException(status_code=403, detail="Permission denied")
+        
+    order = await session.get(Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     
@@ -280,11 +348,14 @@ def complete_order(
     order.status = OrderStatus.COMPLETED
     order.updated_at = timezone.now_cst()
     session.add(order)
-    session.commit()
-    session.refresh(order)
+    await session.commit()
+    await session.refresh(order)
     
-    tx = session.exec(select(Transaction).where(Transaction.type=="order", Transaction.user_id==order.user_id)).first()
-    items = session.exec(select(OrderItem).where(OrderItem.order_id == order.id)).all()
+    # FIX: Query specific transaction for this order
+    result = await session.exec(select(Transaction).where(Transaction.order_id == order.id, Transaction.type == "order"))
+    tx = result.first()
+    result = await session.exec(select(OrderItem).where(OrderItem.order_id == order.id))
+    items = result.all()
     
     return map_order_to_response(order, tx, items)
 
@@ -292,17 +363,20 @@ def complete_order(
 # --- Endpoints for Barista/Admin ---
 
 @router.get("/sync", response_model=List[OrderResponse])
-def sync_orders(
+async def sync_orders(
     since: float = 0.0,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     current_user: User = Depends(deps.get_current_user)
 ):
     """
-    Incremental Order Sync
+    Incremental Order Sync (Staff Only)
     
     Fetches orders updated after 'since' timestamp.
     If since=0, returns all active orders.
     """
+    if current_user.role not in [UserRole.ADMIN, UserRole.BARISTA]:
+        raise HTTPException(status_code=403, detail="Permission denied")
+
     # Convert float timestamp to datetime
     if since > 0:
         dt = datetime.datetime.fromtimestamp(since)
@@ -313,7 +387,8 @@ def sync_orders(
             Order.status.in_([OrderStatus.CREATED, OrderStatus.PROCESSING, OrderStatus.READY])
         ).order_by(Order.created_at)
         
-    orders = session.exec(statement).all()
+    result = await session.exec(statement)
+    orders = result.all()
 
     if not orders:
         return []
@@ -325,12 +400,14 @@ def sync_orders(
         Transaction.order_id.in_(order_ids),
         Transaction.type == "order"
     )
-    transactions = session.exec(tx_statement).all()
+    result = await session.exec(tx_statement)
+    transactions = result.all()
     tx_map = {tx.order_id: tx for tx in transactions}
 
     # Batch fetch order items
     items_statement = select(OrderItem).where(OrderItem.order_id.in_(order_ids))
-    all_items = session.exec(items_statement).all()
+    result = await session.exec(items_statement)
+    all_items = result.all()
 
     items_map = {}
     for item in all_items:
@@ -349,27 +426,56 @@ class OrderStatusUpdate(BaseModel):
     status: OrderStatus
 
 @router.patch("/{order_id}/status", response_model=OrderResponse)
-def update_order_status(
+async def update_order_status(
     order_id: int,
     status_update: OrderStatusUpdate,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     current_user: User = Depends(deps.get_current_user)
 ):
     """
-    Update Order Status
+    Update Order Status (Staff Only)
     e.g. Created -> Processing -> Ready
     """
-    order = session.get(Order, order_id)
+    if current_user.role not in [UserRole.ADMIN, UserRole.BARISTA]:
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    order = await session.get(Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+        
+    # --- Status Transition Validation ---
+    current_status = order.status
+    new_status = status_update.status
     
-    order.status = status_update.status
-    order.updated_at = timezone.now_cst() # Update timestamp for Sync to pick up
+    valid_transitions = {
+        OrderStatus.CREATED: [OrderStatus.PROCESSING, OrderStatus.REFUNDED],
+        OrderStatus.PROCESSING: [OrderStatus.READY, OrderStatus.REFUNDED],
+        OrderStatus.READY: [OrderStatus.COMPLETED, OrderStatus.REFUNDED],
+        OrderStatus.COMPLETED: [OrderStatus.REFUNDED], # Admin might refund completed order
+        OrderStatus.REFUNDED: [] # Terminal state
+    }
+    
+    if new_status not in valid_transitions.get(current_status, []):
+        # Allow Admin to force any state? Maybe. But let's be strict for now to catch bugs.
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid status transition from {current_status} to {new_status}"
+        )
+    
+    order.status = new_status
+    order.updated_at = timezone.now_cst()
+    
+    if new_status == OrderStatus.COMPLETED:
+        order.is_completed = True
+        
     session.add(order)
-    session.commit()
-    session.refresh(order)
+    await session.commit()
+    await session.refresh(order)
     
-    tx = session.exec(select(Transaction).where(Transaction.type=="order", Transaction.user_id==order.user_id)).first()
-    items = session.exec(select(OrderItem).where(OrderItem.order_id == order.id)).all()
+    # FIX: Query specific transaction for this order
+    result = await session.exec(select(Transaction).where(Transaction.order_id == order.id, Transaction.type == "order"))
+    tx = result.first()
+    result = await session.exec(select(OrderItem).where(OrderItem.order_id == order.id))
+    items = result.all()
     
     return map_order_to_response(order, tx, items)

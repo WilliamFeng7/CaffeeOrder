@@ -78,22 +78,32 @@ class MenuItem(SQLModel, table=True):
     inventory_count: int = Field(default=999, description="库存数量")
 
 
+from sqlalchemy import Index
+
 class Order(SQLModel, table=True):
     """
     订单表 (Order Table)
     """
+    __table_args__ = (
+        # Composite index for querying orders by status and time range (common operational query)
+        Index("ix_order_status_created_at", "status", "created_at"),
+        # Composite index for user's order history sorted by time
+        Index("ix_order_user_created_at", "user_id", "created_at"),
+    )
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)
     order_no: str = Field(index=True, unique=True, description="订单编号 (YYYYMMDDHHMMSS + 4位自增)")
     
     status: OrderStatus = Field(default=OrderStatus.CREATED, index=True)
+    # Adding index to created_at for range queries
+    created_at: datetime = Field(default_factory=timezone.now_cst, description="下单时间", index=True) 
+    
     total_amount: int = Field(description="订单总金额 (分)")
     
     pickup_code: str = Field(description="取餐码 (例如 A101)")
     pickup_number: int = Field(description="每日流水号 (每日重置)")
     is_completed: bool = Field(default=False, description="是否已归档")
     
-    created_at: datetime = Field(default_factory=timezone.now_cst, description="下单时间")
     updated_at: datetime = Field(default_factory=timezone.now_cst, description="最后更新时间 (用于轮询)", index=True)
     
     # --- 关系 ---
@@ -126,6 +136,10 @@ class Transaction(SQLModel, table=True):
     交易记录表 (Transaction Table)
     记录与学校一卡通系统的对接流水。
     """
+    __table_args__ = (
+        # Composite index for filtering transactions by type and time (Finance Charts)
+        Index("ix_transaction_type_created_at", "type", "created_at"),
+    )
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)
     order_id: Optional[int] = Field(default=None, index=True, description="关联订单ID")
