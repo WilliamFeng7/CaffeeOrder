@@ -1,7 +1,7 @@
 from typing import Any
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api import deps
 from app.database import get_session
@@ -22,8 +22,8 @@ def get_current_admin(
     return current_user
 
 @router.get("/me", response_model=UserOut)
-def read_user_me(
-    session: Session = Depends(get_session),
+async def read_user_me(
+    session: AsyncSession = Depends(get_session),
     current_user: User = Depends(deps.get_current_user)
 ) -> Any:
     """
@@ -44,7 +44,7 @@ def read_user_me(
     }
 
 @router.put("/me", response_model=UserOut)
-def update_user_me(
+async def update_user_me(
     *,
     session: Session = Depends(get_session),
     user_in: UserSelfUpdate,
@@ -61,8 +61,8 @@ def update_user_me(
         setattr(current_user, field, value)
     
     session.add(current_user)
-    session.commit()
-    session.refresh(current_user)
+    await session.commit()
+    await session.refresh(current_user)
     
     # 直接返回数据库余额（分）
     return {
@@ -77,9 +77,9 @@ def update_user_me(
     }
 
 @router.put("/me/password", response_model=Any)
-def update_password_me(
+async def update_password_me(
     *,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     password_in: schemas.UserPasswordUpdate,
     current_user: User = Depends(deps.get_current_user)
 ) -> Any:
@@ -101,14 +101,14 @@ def update_password_me(
     current_user.password = new_password
     
     session.add(current_user)
-    session.commit()
+    await session.commit()
     
     return {"message": "密码修改成功 (Password updated successfully)"}
 
 @router.post("/{user_id}/deposit", response_model=UserOut)
-def deposit_user_balance(
+async def deposit_user_balance(
     *,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     user_id: int,
     amount: int, # Expected in cents
     current_user: User = Depends(get_current_admin), # Admin only
@@ -119,7 +119,7 @@ def deposit_user_balance(
     """
     from app.models import Transaction
     
-    user = session.get(User, user_id)
+    user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
         
@@ -145,7 +145,7 @@ def deposit_user_balance(
     )
     session.add(tx)
     
-    session.commit()
-    session.refresh(user)
+    await session.commit()
+    await session.refresh(user)
     
     return user

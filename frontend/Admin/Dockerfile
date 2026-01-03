@@ -4,8 +4,8 @@ WORKDIR /app
 COPY frontend/Admin /app/frontend/Admin
 COPY frontend/shared /app/frontend/shared
 WORKDIR /app/frontend/Admin
-RUN npm install
-RUN npm run build
+RUN npm install && ln -s /app/frontend/Admin/node_modules /app/frontend/node_modules
+RUN npx vite build
 
 # Production stage
 FROM nginx:stable-alpine as production-stage
