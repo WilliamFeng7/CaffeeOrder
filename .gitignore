@@ -17,6 +17,7 @@ htmlcov/
 # Database
 backend/data/*.db
 backend/data/*.sqlite3
+backend/coffee.db*
 
 # Environment variables
 .env
@@ -32,10 +33,23 @@ backend.log
 # Build artifacts
 frontend/Student/dist/
 frontend/Admin/dist/
+frontend/Barista/dist/
 backend/static/assets/
-backend/coffee.db
-backend/coffee.db
-backend/coffee.db
-backend/coffee.db
-backend/coffee.db*
-backend/coffee.db*
+
+# TypeScript build info
+*.tsbuildinfo
+vite.config.d.ts
+vite.config.js
+
+# IDE
+.idea/
+.vscode/
+
+# Temp files
+*.tmp
+*.temp
+*~
+*.swp
+
+# npm
+.npm
