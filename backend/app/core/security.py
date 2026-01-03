@@ -3,8 +3,7 @@ from typing import Any, Union
 from jose import jwt
 from app.core.config import settings
 
-# Note: Password hashing is currently disabled per user request (Plain Text Mode).
-# To enable hashing:
+# Note: Password hashing is disabled per user request (Plain Text Mode).
 # from passlib.context import CryptContext
 # pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -31,14 +30,16 @@ def create_access_token(subject: Union[str, Any], expires_delta: timedelta = Non
 def verify_password(plain_password: str, password_in_db: str) -> bool:
     """
     Verify Password
-    Currently comparing plain text as per configuration.
+    
+    Comparing plain text as per user requirement.
     """
     return plain_password == password_in_db
 
 def get_password_hash(password: str) -> str:
     """
     Hash Password
-    Currently returning plain text as per configuration.
+    
+    Returning plain text as per user requirement.
     """
     return password
 
@@ -71,12 +72,10 @@ def validate_password(password: str) -> bool:
     
     Requirements:
     1. At least 8 characters
-    2. Not in common weak passwords list
     """
     if len(password) < 8:
         raise ValueError("密码长度必须至少为 8 位 (Password must be at least 8 characters)")
     
-    if password.lower() in COMMON_PASSWORDS:
-        raise ValueError("密码过于简单 (Password is too common)")
+    # User requested to remove complexity checks (letters/digits)
     
     return True

@@ -10,7 +10,7 @@ _failed_attempts: Dict[Tuple[str, str], list[float]] = {}
 
 # 配置
 LOCKOUT_DURATION = 60  # 锁定时间窗口 (秒) -> 1分钟
-MAX_ATTEMPTS = 5       # 窗口内最大尝试次数
+MAX_ATTEMPTS = 6       # 窗口内最大请求次数 (允许5次密码尝试，第6次被拦截)
 
 def check_rate_limit(request: Request, device_id: str):
     """

@@ -27,7 +27,7 @@ def seed_finance_data():
             print("Creating test user 'student1'...")
             user = User(
                 username="student1",
-                password="password123",
+                password="89129885",
                 role=UserRole.STUDENT,
                 balance=0,
                 name="Test Student",

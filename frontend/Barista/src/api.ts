@@ -21,7 +21,14 @@ export const api = {
         const params = new URLSearchParams();
         params.append('username', username);
         params.append('password', password);
-        const res = await apiClient.post('/login/access-token', params);
+        params.append('grant_type', 'password');
+
+        // Explicitly override Content-Type to x-www-form-urlencoded
+        const res = await apiClient.post('/login/access-token', params, {
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        });
         return res.data;
     },
 

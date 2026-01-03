@@ -34,7 +34,7 @@ origins = [
     "http://localhost:3001",
     "http://localhost",      # Production Login
     "http://localhost:8081", # Production Admin
-    "http://localhost:8082", # Production Student
+    "http://localhost:8081", # Production Barista
     "http://localhost:8080", # New Admin Port
     "http://127.0.0.1"
 ]

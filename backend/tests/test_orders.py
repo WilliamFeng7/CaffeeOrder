@@ -13,7 +13,7 @@ async def create_test_user(session: AsyncSession, username: str, role: UserRole,
         uuid=uuid.uuid4().hex,  # Generate UUID
         role=role,
         balance=balance,
-        password=security.get_password_hash("password123"),  # Correct field name
+        password=security.get_password_hash("89129885"),  # Correct field name
         is_active=True
     )
     session.add(user)

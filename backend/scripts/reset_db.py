@@ -3,8 +3,11 @@ import sys
 import uuid
 import random
 import datetime
+import asyncio
 from datetime import timedelta
-from sqlmodel import Session, SQLModel
+from sqlmodel import select, SQLModel
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import sessionmaker
 import subprocess
 
 # --- 1. 环境准备 (Environment Setup) ---
@@ -20,7 +23,7 @@ from app.database import engine
 from app.models import User, UserRole, MenuItem, Order, OrderItem, Transaction, OrderStatus
 from app.core.security import get_password_hash
 
-def reset_database():
+async def reset_database():
     """
     一键重置数据库：物理清理文件 + 逻辑初始化结构 + 基础数据填充
     """
@@ -62,12 +65,19 @@ def reset_database():
     # --- 3. 逻辑初始化 (Logical Initialization) ---
     # 类似“重新安装系统”：重建表结构并添加初始化数据
     print("\n[Step 2/3] 正在初始化数据库结构...")
-    SQLModel.metadata.create_all(engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(SQLModel.metadata.create_all)
     print("   ✅ 数据库表已重新创建。")
 
     # --- 4. 基础数据填充 (Base Data Seeding) ---
     print("\n[Step 3/3] 正在填充基础演示数据...")
-    with Session(engine) as session:
+    
+    # Create Local Async Session Factory
+    async_session = sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
+
+    async with async_session() as session:
         # 4.1 管理员 (Admin)
         admin_user = User(
             username="admin",
@@ -104,7 +114,7 @@ def reset_database():
         # 4.4 咖啡师 (Barista)
         barista_user = User(
             username="barista",
-            password=get_password_hash("CoffeeBar!sta2024"),
+            password=get_password_hash("89129885"),
             uuid=str(uuid.uuid4()),
             role=UserRole.BARISTA,
             name="Barista Staff",
@@ -117,17 +127,22 @@ def reset_database():
         session.add(MenuItem(name="2", name_cn="意式浓缩", price=1000, category="coffee", description="Strong", inventory_count=100, is_active=True))
         session.add(MenuItem(name="3", name_cn="绿茶", price=1200, category="fruit", description="Fresh", inventory_count=50, is_active=True))
 
-        session.commit()
-        session.refresh(student_user)
-        session.refresh(user_1)
+        await session.commit()
+        await session.refresh(student_user)
+        # 4.3 user was user_1, refresh it
+        await session.refresh(user_1)
 
     # --- 5. 财务数据填充 (Finance Data Seeding) ---
     print("\n[Step 4/4] 正在填充财务演示数据...")
-    with Session(engine) as session:
+    async with async_session() as session:
         # 获取用户和商品
-        from sqlmodel import select
-        student = session.exec(select(User).where(User.username == "student")).first()
-        items = session.exec(select(MenuItem)).all()
+        stmt_student = select(User).where(User.username == "student")
+        result_student = await session.exec(stmt_student)
+        student = result_student.first()
+        
+        stmt_items = select(MenuItem)
+        result_items = await session.exec(stmt_items)
+        items = result_items.all()
         
         if student and items:
             start_date = datetime.datetime.now() - timedelta(days=7)
@@ -153,7 +168,7 @@ def reset_database():
                     )
                     session.add(tx)
             
-            session.commit()
+            await session.commit()
             
             # 5.2 订单消费记录 (Orders for past 7 days)
             print("   📤 创建消费记录...")
@@ -185,7 +200,7 @@ def reset_database():
                         updated_at=order_time + timedelta(minutes=5)
                     )
                     session.add(order)
-                    session.flush()
+                    await session.flush()
                     
                     oi = OrderItem(
                         order_id=order.id,
@@ -213,7 +228,7 @@ def reset_database():
                     session.add(tx)
             
             session.add(student)
-            session.commit()
+            await session.commit()
             print("   ✅ 财务数据创建完成！")
         else:
             print("   ⚠️ 未找到用户或商品，跳过财务数据")
@@ -223,8 +238,8 @@ def reset_database():
     print("🔑 管理员: admin / 89129885")
     print("🔑 学生端: student / 89129885")
     print("🔑 开发者: 1 / 89129885")
-    print("🔑 咖啡师: barista / CoffeeBar!sta2024")
+    print("🔑 咖啡师: barista / 89129885")
     print("--------------------------------")
 
 if __name__ == "__main__":
-    reset_database()
+    asyncio.run(reset_database())

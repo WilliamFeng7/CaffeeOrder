@@ -96,15 +96,15 @@ async def login_access_token(
             
             lock_duration = 0
             
-            # Progressive Lockout Rules
-            if user.failed_login_attempts in [2, 3]:
-                lock_duration = 1
-            elif 5 <= user.failed_login_attempts < 10:
-                lock_duration = 5
+            # Progressive Lockout Rules (5次后开始锁定)
+            if 5 <= user.failed_login_attempts < 10:
+                lock_duration = 1  # 5-9次: 锁定1分钟
             elif 10 <= user.failed_login_attempts < 15:
-                lock_duration = 30
-            elif user.failed_login_attempts >= 15:
-                lock_duration = 1440
+                lock_duration = 5  # 10-14次: 锁定5分钟
+            elif 15 <= user.failed_login_attempts < 20:
+                lock_duration = 30  # 15-19次: 锁定30分钟
+            elif user.failed_login_attempts >= 20:
+                lock_duration = 1440  # 20+次: 锁定24小时
             
             if lock_duration > 0:
                 user.lockout_until = timezone.now_cst() + timedelta(minutes=lock_duration)
@@ -134,12 +134,14 @@ async def login_access_token(
         attempts_left = 5  # Default assumption
         
         if user:
-            if user.failed_login_attempts < 2:
-                 attempts_left = 2 - user.failed_login_attempts
-            elif user.failed_login_attempts < 5:
-                 attempts_left = 5 - user.failed_login_attempts
+            if user.failed_login_attempts < 5:
+                 attempts_left = 5 - user.failed_login_attempts  # 前5次
             elif user.failed_login_attempts < 10:
-                 attempts_left = 10 - user.failed_login_attempts
+                 attempts_left = 10 - user.failed_login_attempts  # 5-9次
+            elif user.failed_login_attempts < 15:
+                 attempts_left = 15 - user.failed_login_attempts  # 10-14次
+            elif user.failed_login_attempts < 20:
+                 attempts_left = 20 - user.failed_login_attempts  # 15-19次
             else:
                  attempts_left = 0
         

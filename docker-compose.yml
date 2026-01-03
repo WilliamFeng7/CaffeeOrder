@@ -38,7 +38,7 @@ services:
       dockerfile: frontend/Barista/Dockerfile
     container_name: coffee_barista
     ports:
-      - "8082:80"
+      - "8081:80"
     depends_on:
       - backend
     restart: always
