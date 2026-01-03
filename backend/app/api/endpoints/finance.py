@@ -1,8 +1,7 @@
 from datetime import datetime, timedelta
 from typing import List, Any
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select, func
+from sqlmodel import Session, select, func
 from app.api import deps
 from app.database import get_session
 from app.models import User, Transaction, UserRole
@@ -19,8 +18,8 @@ def get_current_admin(
     return current_user
 
 @router.get("/stats")
-async def get_finance_stats(
-    session: AsyncSession = Depends(get_session),
+def get_finance_stats(
+    session: Session = Depends(get_session),
     current_user: User = Depends(get_current_admin),
 ) -> Any:
     today_start_cst = timezone.now_cst().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -29,26 +28,23 @@ async def get_finance_stats(
     
     # 1. Total Liability (Sum of all student balances)
     # Note: Using python sum if DB sum is tricky with strict typing, but SQL func.sum is better
-    result = await session.exec(select(func.sum(User.balance)).where(User.role == UserRole.STUDENT))
-    total_liability = result.one() or 0
+    total_liability = session.exec(select(func.sum(User.balance)).where(User.role == UserRole.STUDENT)).one() or 0
     
     # 2. Today's Sales (Consumption)
     # Transactions where type='order' and created_at >= today
-    result = await session.exec(select(func.sum(Transaction.amount)).where(
+    today_sales = session.exec(select(func.sum(Transaction.amount)).where(
         Transaction.type == "order", 
         Transaction.created_at >= today_start
-    ))
-    today_sales = result.one() or 0
+    )).one() or 0
     # Amount is negative for spending, take abs
     today_sales = abs(today_sales)
 
     # 3. Today's Deposits
     # Transactions where type='deposit' and created_at >= today
-    result = await session.exec(select(func.sum(Transaction.amount)).where(
+    today_deposits = session.exec(select(func.sum(Transaction.amount)).where(
         Transaction.type == "deposit", 
         Transaction.created_at >= today_start
-    ))
-    today_deposits = result.one() or 0
+    )).one() or 0
     
     # 4. Consumption Rate (Balance Payment %)
     # Currently 100% as stated by requirement
@@ -62,9 +58,9 @@ async def get_finance_stats(
     }
 
 @router.get("/chart")
-async def get_finance_chart(
+def get_finance_chart(
     days: int = 7,
-    session: AsyncSession = Depends(get_session),
+    session: Session = Depends(get_session),
     current_user: User = Depends(get_current_admin),
 ) -> Any:
     from datetime import timezone as tz_module
@@ -88,8 +84,7 @@ async def get_finance_chart(
             data_map[key] = {"deposit": 0, "spending": 0, "label": label}
             
         # Fetch transactions (using naive CST for query)
-        result = await session.exec(select(Transaction).where(Transaction.created_at >= start_date))
-        txs = result.all()
+        txs = session.exec(select(Transaction).where(Transaction.created_at >= start_date)).all()
         
         for tx in txs:
             # DB stores Naive CST, use directly
@@ -123,49 +118,32 @@ async def get_finance_chart(
         # Use naive CST for database query
         start_date = start_date_cst.replace(tzinfo=None)
         
-        # SQL Aggregation for Daily Data
-        # SQLite strftime('%Y-%m-%d', created_at)
+        # Fetch all transactions in range
+        txs = session.exec(select(Transaction).where(Transaction.created_at >= start_date)).all()
         
-        # 1. Fetch Spending (Order)
-        spending_stmt = select(
-            func.strftime('%Y-%m-%d', Transaction.created_at).label('date'),
-            func.sum(Transaction.amount).label('total')
-        ).where(
-            Transaction.type == "order",
-            Transaction.created_at >= start_date
-        ).group_by(func.strftime('%Y-%m-%d', Transaction.created_at))
-        
-        result = await session.exec(spending_stmt)
-        spending_res = result.all()
-        spending_map = {row.date: abs(row.total) for row in spending_res} # row has .date and .total
-
-        # 2. Fetch Deposits
-        deposit_stmt = select(
-            func.strftime('%Y-%m-%d', Transaction.created_at).label('date'),
-            func.sum(Transaction.amount).label('total')
-        ).where(
-            Transaction.type == "deposit",
-            Transaction.created_at >= start_date
-        ).group_by(func.strftime('%Y-%m-%d', Transaction.created_at))
-        
-        result = await session.exec(deposit_stmt)
-        deposit_res = result.all()
-        deposit_map = {row.date: row.total for row in deposit_res}
-
-        # Initialize full date range (filling gaps)
-        line_chart = []
+        # Group by date
+        data_map = {}
         for i in range(days):
-            d_str = (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
-            line_chart.append({
-                "date": d_str,
-                "deposit": deposit_map.get(d_str, 0) / 100,
-                "spending": spending_map.get(d_str, 0) / 100
-            })
+            d = (start_date + timedelta(days=i)).strftime("%Y-%m-%d")
+            data_map[d] = {"deposit": 0, "spending": 0}
+
+        for tx in txs:
+            # DB stores Naive CST, use directly
+            d = tx.created_at.strftime("%Y-%m-%d")
+            if d in data_map:
+                if tx.type == "deposit":
+                    data_map[d]["deposit"] += tx.amount
+                elif tx.type == "order":
+                    data_map[d]["spending"] += abs(tx.amount)
+
+        line_chart = [
+            {"date": k, "deposit": v["deposit"] / 100, "spending": v["spending"] / 100}
+            for k, v in data_map.items()
+        ]
     
     # Pie Chart - Real Data
     # Group deposits by amount bucket
-    result = await session.exec(select(Transaction).where(Transaction.type == "deposit", Transaction.created_at >= start_date))
-    deposit_txs = result.all()
+    deposit_txs = session.exec(select(Transaction).where(Transaction.type == "deposit", Transaction.created_at >= start_date)).all()
     
     pie_data = {}
     for tx in deposit_txs:
@@ -186,23 +164,21 @@ async def get_finance_chart(
     }
 
 @router.get("/transactions")
-async def get_transactions(
+def get_transactions(
     skip: int = 0,
     limit: int = 20,
     type: str = "order", # order or deposit
-    session: AsyncSession = Depends(get_session),
+    session: Session = Depends(get_session),
     current_user: User = Depends(get_current_admin),
 ) -> Any:
-    # Join with User to avoid N+1 problem
-    query = select(Transaction, User).join(User, isouter=True).where(Transaction.type == type).order_by(Transaction.created_at.desc())
+    query = select(Transaction).where(Transaction.type == type).order_by(Transaction.created_at.desc())
     query = query.offset(skip).limit(limit)
-    result = await session.exec(query)
-    # Result is a list of (Transaction, User) tuples
-    rows = result.all()
+    txs = session.exec(query).all()
     
     # Enrich with User info
     res = []
-    for tx, u in rows:
+    for tx in txs:
+        u = session.get(User, tx.user_id)
         res.append({
             "id": tx.external_transaction_id or str(tx.id),
             "order_id": tx.order_id,

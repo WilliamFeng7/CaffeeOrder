@@ -5,7 +5,7 @@ WORKDIR /app
 COPY frontend/Student /app/frontend/Student
 COPY frontend/shared /app/frontend/shared
 WORKDIR /app/frontend/Student
-RUN npm install && ln -s /app/frontend/Student/node_modules /app/frontend/node_modules
+RUN npm install
 # Override build config to output to dist and use root base
 RUN npm run build -- --outDir dist
 

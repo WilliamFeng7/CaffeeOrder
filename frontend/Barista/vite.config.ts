@@ -38,8 +38,8 @@ export default defineConfig(({ mode }) => {
         plugins: [vue()],
         resolve: {
             alias: {
-                '@': resolve(__dirname, './src'),
-                '@shared': resolve(__dirname, '../shared/src'),
+                '@': fileURLToPath(new URL('./src', import.meta.url)),
+                '@shared': fileURLToPath(new URL('../shared/src', import.meta.url)),
             },
         },
     };

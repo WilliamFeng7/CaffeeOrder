@@ -3,8 +3,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 from pydantic import BaseModel
-from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlmodel import select
+from sqlmodel import Session
 
 from app.database import get_session
 from app.models import User
@@ -21,8 +20,8 @@ class TokenPayload(BaseModel):
     """
     sub: Optional[str] = None
 
-async def get_current_user(
-    session: AsyncSession = Depends(get_session),
+def get_current_user(
+    session: Session = Depends(get_session),
     token: str = Depends(oauth2_scheme)
 ) -> User:
     """
@@ -45,13 +44,13 @@ async def get_current_user(
         )
     
     # 从数据库查找用户
-    user = await session.get(User, int(token_data.sub))
+    user = session.get(User, int(token_data.sub))
     if not user:
         raise HTTPException(status_code=404, detail="用户不存在 (User not found)")
     return user
 
 
-async def get_current_active_superuser(
+def get_current_active_superuser(
     current_user: User = Depends(get_current_user),
 ) -> User:
     """
