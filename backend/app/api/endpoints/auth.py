@@ -33,10 +33,14 @@ async def login_access_token(
     """
     
     # 1. Check Rate Limit
-    check_rate_limit(request, device_id or 'unknown')
+    # Sentinel Fix: Use consistent rate limit key to prevent bypass by clients without cookies
+    rate_limit_key = device_id or 'unknown'
+    ip_attempts_left = check_rate_limit(request, rate_limit_key)
     
-    if not device_id:
-        device_id = str(uuid.uuid4())
+    # Generate new device ID if missing, but AFTER rate limit check
+    new_device_id = device_id
+    if not new_device_id:
+        new_device_id = str(uuid.uuid4())
     
     ip_addr = request.client.host
     user_agent = request.headers.get("user-agent")
@@ -85,10 +89,28 @@ async def login_access_token(
             await session.commit()
 
     # 4. Verify Password
-    if not user or not security.verify_password(form_data.password, user.password):
+    # Sentinel Fix: Always call verify_password (even with dummy data) to equalize timing?
+    # Actually, verify_password is now constant time, but DB lookup time dominates.
+    # The main fix here is correct logic handling.
+
+    password_valid = False
+    if user:
+        password_valid = security.verify_password(form_data.password, user.password)
+    else:
+        # Dummy verification to simulate work (though minimal impact compared to DB)
+        security.verify_password(form_data.password, "dummy_password_hash")
+
+    if not user or not password_valid:
         # --- Handle Login Failure ---
         
-        record_failed_attempt(request, device_id or 'unknown')
+        # Sentinel Fix: Use the SAME key as check_rate_limit
+        record_failed_attempt(request, rate_limit_key)
+
+        # Calculate attempts left
+        # We decrement ip_attempts_left because we just failed once more
+        current_ip_attempts_left = max(0, ip_attempts_left - 1)
+
+        user_attempts_left = None
         
         if user:
             user.failed_login_attempts += 1
@@ -123,30 +145,38 @@ async def login_access_token(
             ))
             await session.commit()
 
+            # Calculate user-specific attempts left
+            if user.failed_login_attempts < 2:
+                 user_attempts_left = 2 - user.failed_login_attempts
+            elif user.failed_login_attempts < 5:
+                 user_attempts_left = 5 - user.failed_login_attempts
+            elif user.failed_login_attempts < 10:
+                 user_attempts_left = 10 - user.failed_login_attempts
+            else:
+                 user_attempts_left = 0
+
         else:
             session.add(LoginLog(
                 user_id=None, username_attempt=form_data.username,
                 ip_address=ip_addr, user_agent=user_agent, status="failed_unknown"
             ))
             await session.commit()
-            
-        # Calculate attempts left for feedback
-        attempts_left = 5  # Default assumption
         
-        if user:
-            if user.failed_login_attempts < 2:
-                 attempts_left = 2 - user.failed_login_attempts
-            elif user.failed_login_attempts < 5:
-                 attempts_left = 5 - user.failed_login_attempts
-            elif user.failed_login_attempts < 10:
-                 attempts_left = 10 - user.failed_login_attempts
-            else:
-                 attempts_left = 0
+        # Sentinel Fix: Prevent User Enumeration
+        # If user exists, use their specific counter.
+        # If user does NOT exist, use the IP-based counter to mimic a valid user.
+        # This prevents attackers from distinguishing "User Found" vs "User Not Found" via attempts_left.
         
+        final_attempts_left = user_attempts_left if user else current_ip_attempts_left
+
+        # Ensure we don't return negative
+        if final_attempts_left is not None and final_attempts_left < 0:
+            final_attempts_left = 0
+
         detail_data = {
             "code": "failed",
             "message": "Invalid username or password",
-            "attempts_left": attempts_left if user else None
+            "attempts_left": final_attempts_left
         }
         
         raise HTTPException(status_code=400, detail=detail_data)
@@ -168,7 +198,7 @@ async def login_access_token(
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    response.set_cookie(key="device_id", value=device_id, httponly=True, max_age=31536000)
+    response.set_cookie(key="device_id", value=new_device_id, httponly=True, max_age=31536000)
 
     return {
         "access_token": security.create_access_token(
