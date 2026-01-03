@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import Any, Union
 from jose import jwt
 from app.core.config import settings
+import secrets
 
 # Note: Password hashing is disabled per user request (Plain Text Mode).
 # from passlib.context import CryptContext
