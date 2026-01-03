@@ -77,40 +77,43 @@ async def get_finance_chart(
         # Use naive CST for database query
         start_date = start_date_cst.replace(tzinfo=None)
         
-        # Initialize map with minutes
-        data_map = {}
-        total_minutes = 24 * 60
+        # SQL Aggregation for Minute Data
+        # 1. Fetch Spending (Order)
+        spending_stmt = select(
+            func.strftime('%Y-%m-%d %H:%M', Transaction.created_at).label('minute'),
+            func.sum(Transaction.amount).label('total')
+        ).where(
+            Transaction.type == "order",
+            Transaction.created_at >= start_date
+        ).group_by(func.strftime('%Y-%m-%d %H:%M', Transaction.created_at))
         
-        for i in range(total_minutes):
-            m_dt = start_date + timedelta(minutes=i)  # Use CST Naive for generation
-            key = (m_dt.year, m_dt.month, m_dt.day, m_dt.hour, m_dt.minute)
-            label = m_dt.strftime("%H:%M")
-            data_map[key] = {"deposit": 0, "spending": 0, "label": label}
-            
-        # Fetch transactions (using naive CST for query)
-        result = await session.exec(select(Transaction).where(Transaction.created_at >= start_date))
-        txs = result.all()
-        
-        for tx in txs:
-            # DB stores Naive CST, use directly
-            created_at_cst = tx.created_at
-            key = (created_at_cst.year, created_at_cst.month, created_at_cst.day, created_at_cst.hour, created_at_cst.minute)
-            if key in data_map:
-                if tx.type == "deposit":
-                    data_map[key]["deposit"] += tx.amount
-                elif tx.type == "order":
-                    data_map[key]["spending"] += abs(tx.amount)
+        spending_res = await session.exec(spending_stmt)
+        spending_map = {row.minute: abs(row.total) for row in spending_res.all()}
 
-        # Convert to list
+        # 2. Fetch Deposits
+        deposit_stmt = select(
+            func.strftime('%Y-%m-%d %H:%M', Transaction.created_at).label('minute'),
+            func.sum(Transaction.amount).label('total')
+        ).where(
+            Transaction.type == "deposit",
+            Transaction.created_at >= start_date
+        ).group_by(func.strftime('%Y-%m-%d %H:%M', Transaction.created_at))
+        
+        deposit_res = await session.exec(deposit_stmt)
+        deposit_map = {row.minute: row.total for row in deposit_res.all()}
+
+        # Construct result filling gaps
         line_chart = []
+        total_minutes = 24 * 60
         for i in range(total_minutes):
-            m_dt = start_date + timedelta(minutes=i)  # Use CST Naive for retrieval
-            key = (m_dt.year, m_dt.month, m_dt.day, m_dt.hour, m_dt.minute)
-            data = data_map[key]
+            m_dt = start_date + timedelta(minutes=i)
+            key_str = m_dt.strftime('%Y-%m-%d %H:%M')
+            label = m_dt.strftime("%H:%M")
+
             line_chart.append({
-                "date": data["label"],
-                "deposit": data["deposit"] / 100,
-                "spending": data["spending"] / 100
+                "date": label,
+                "deposit": deposit_map.get(key_str, 0) / 100,
+                "spending": spending_map.get(key_str, 0) / 100
             })
             
             
@@ -163,17 +166,24 @@ async def get_finance_chart(
             })
     
     # Pie Chart - Real Data
-    # Group deposits by amount bucket
-    result = await session.exec(select(Transaction).where(Transaction.type == "deposit", Transaction.created_at >= start_date))
-    deposit_txs = result.all()
+    # Group deposits by amount bucket using SQL aggregation
+    pie_stmt = select(
+        Transaction.amount,
+        func.count(Transaction.id)
+    ).where(
+        Transaction.type == "deposit",
+        Transaction.created_at >= start_date
+    ).group_by(Transaction.amount)
+
+    result = await session.exec(pie_stmt)
+    rows = result.all()
     
     pie_data = {}
-    for tx in deposit_txs:
-        # Bucket by amount (e.g. "¥100", "¥200", "Other")
-        amt_yuan = int(tx.amount / 100)
+    for amount, count in rows:
+        amt_yuan = int(amount / 100)
         label = f"¥{amt_yuan}"
-        pie_data[label] = pie_data.get(label, 0) + 1
-        
+        pie_data[label] = pie_data.get(label, 0) + count
+
     pie_chart = [{"name": k, "value": v} for k, v in pie_data.items()]
     
     if not pie_chart:
