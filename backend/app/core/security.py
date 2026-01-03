@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import Any, Union
 from jose import jwt
 from app.core.config import settings
+import secrets
 
 # Note: Password hashing is currently disabled per user request (Plain Text Mode).
 # To enable hashing:
@@ -32,8 +33,11 @@ def verify_password(plain_password: str, password_in_db: str) -> bool:
     """
     Verify Password
     Currently comparing plain text as per configuration.
+
+    Sentinel Fix: Used constant-time comparison to prevent timing attacks.
     """
-    return plain_password == password_in_db
+    # Use constant time comparison to prevent timing attacks
+    return secrets.compare_digest(plain_password, password_in_db)
 
 def get_password_hash(password: str) -> str:
     """
