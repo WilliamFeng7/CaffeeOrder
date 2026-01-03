@@ -44,12 +44,24 @@ def get_password_hash(password: str) -> str:
 
 # --- Common Weak Passwords ---
 def _load_common_passwords():
-    import os
-    file_path = os.path.join(os.path.dirname(__file__), "common_passwords.txt")
-    if not os.path.exists(file_path):
-        return {"123456", "password", "admin"}
-    with open(file_path, "r") as f:
-        return {line.strip().lower() for line in f if line.strip()}
+    """
+    Load common passwords from file, falling back to a hardcoded set if file is missing.
+    """
+    default_weak = {"123456", "password", "admin", "12345678", "qwerty", "system"}
+
+    try:
+        import os
+        # Assuming the file is in the same directory as this module
+        file_path = os.path.join(os.path.dirname(__file__), "common_passwords.txt")
+        if os.path.exists(file_path):
+            with open(file_path, "r", encoding="utf-8") as f:
+                file_passwords = {line.strip().lower() for line in f if line.strip()}
+                return default_weak.union(file_passwords)
+    except Exception:
+        # Log error or silently fail back to defaults
+        pass
+
+    return default_weak
 
 COMMON_PASSWORDS = _load_common_passwords()
 
@@ -62,9 +74,9 @@ def validate_password(password: str) -> bool:
     2. Not in common weak passwords list
     """
     if len(password) < 8:
-        raise ValueError("Password must be at least 8 characters")
+        raise ValueError("密码长度必须至少为 8 位 (Password must be at least 8 characters)")
     
     if password.lower() in COMMON_PASSWORDS:
-        raise ValueError("Password is too common")
+        raise ValueError("密码过于简单 (Password is too common)")
     
     return True

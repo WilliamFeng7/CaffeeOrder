@@ -1,5 +1,8 @@
 import os
-from sqlmodel import SQLModel, create_engine, Session
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import sessionmaker
+from sqlmodel import SQLModel, text
 
 # --- 数据库配置 (Database Configuration) ---
 
@@ -8,40 +11,63 @@ from sqlmodel import SQLModel, create_engine, Session
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # 从环境变量获取数据库 URL，默认为本地 SQLite 文件
-sqlite_url = os.getenv("DATABASE_URL")
-if not sqlite_url:
+# Get Database URL from environment or default to local SQLite
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
     sqlite_file_name = os.path.join(BASE_DIR, "coffee.db")
-    sqlite_url = f"sqlite:///{sqlite_file_name}"
+    # 注意: aiosqlite 需要 sqlite+aiosqlite:// 前缀
+    DATABASE_URL = f"sqlite+aiosqlite:///{sqlite_file_name}"
 
-# check_same_thread=False 允许 SQLite 在 FastAPI 的多线程环境中使用
-# check_same_thread=False is needed for SQLite with FastAPI (multithreading)
+# check_same_thread=False 允许 SQLite 在 FastAPI 的多线程/协程环境中使用
+# check_same_thread=False is needed for SQLite with FastAPI
 connect_args = {"check_same_thread": False}
 
-# 创建数据库引擎
-engine = create_engine(sqlite_url, connect_args=connect_args)
+# 创建异步数据库引擎
+# Create Async Engine
+engine = create_async_engine(
+    DATABASE_URL,
+    echo=False, # Set to True to see SQL queries in logs
+    connect_args=connect_args,
+)
 
-def init_db():
+# 对 SQLite 启用 WAL 模式 (Write-Ahead Logging) 以支持更好的并发
+# Enable WAL mode for better concurrency
+async def init_db_wal():
+    async with engine.begin() as conn:
+        await conn.execute(text("PRAGMA journal_mode=WAL;"))
+        await conn.execute(text("PRAGMA synchronous=NORMAL;")) # Optional: distinct performance boost
+
+async def init_db():
     """
     初始化数据库 (Initialize Database)
     
     主要功能:
-    1. 启用 WAL (Write-Ahead Logging) 模式: 显著提高 SQLite 的并发写入性能。
-    2. 创建所有定义的表结构。
+    1. 创建所有定义的表结构 (如果使用 Alembic，这一步可能不再必要，但保留用于开发环境)
     """
-    # 在创建表之前执行 PRAGMA 命令
-    with engine.connect() as connection:
-        # WAL 模式允许读写分离，减少锁竞争
-        connection.exec_driver_sql("PRAGMA journal_mode=WAL;")
+    # WAL mode configuration is handled via event listener or explicit call if needed,
+    # but for simple aiosqlite execution:
+    # Note: aiosqlite engine usually handles connection pooling.
     
-    # 根据模型元数据创建表
-    SQLModel.metadata.create_all(engine)
+    async with engine.begin() as conn:
+        # await conn.run_sync(SQLModel.metadata.drop_all) # Uncomment to reset
+        await conn.run_sync(SQLModel.metadata.create_all)
 
-def get_session():
+# 创建异步 Session 工厂
+# Create Async Session Factory
+async_session_factory = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
+)
+
+async def get_session() -> AsyncSession:
     """
-    FastAPI 依赖注入的 Session 提供者 (Session Provider)
+    FastAPI 依赖注入的 Session 提供者 (Async Session Provider)
     
     用法:
-    def endpoint(session: Session = Depends(get_session)): ...
+    async def endpoint(session: AsyncSession = Depends(get_session)): ...
     """
-    with Session(engine) as session:
+    async with async_session_factory() as session:
         yield session

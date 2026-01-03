@@ -57,9 +57,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    error_msg = f"Global Exception: {str(exc)}\n{traceback.format_exc()}"
+    print(error_msg) # Print to stdout for Docker logs
     return JSONResponse(
         status_code=500,
-        content={"detail": str(exc), "message": "Internal Server Error"},
+        content={"detail": "Internal Server Error", "message": str(exc)}, # Dev mode: exposing error
     )
 
 @app.get("/")

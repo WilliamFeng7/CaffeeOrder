@@ -2,13 +2,16 @@ from datetime import datetime, timedelta
 import uuid  # Added uuid import
 from typing import List, Any
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select, func
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select, func
+from sqlalchemy.orm import selectinload
 from app.api import deps
 from app.database import get_session
 from app.models import User, Order, MenuItem, UserRole, OrderStatus, Transaction, OrderItem
 from app.schemas import UserOut, UserUpdate, ProductCreate, ProductUpdate, OrderResponse, UserCreate
 from app.core import timezone
 from app.crud.user import user as user_crud
+
 
 router = APIRouter()
 
@@ -20,9 +23,17 @@ def get_current_admin(
         raise HTTPException(status_code=403, detail="The user doesn't have enough privileges")
     return current_user
 
+# --- Dependency: Check for Admin OR Barista Role ---
+def get_current_admin_or_barista(
+    current_user: User = Depends(deps.get_current_user),
+) -> User:
+    if current_user.role not in [UserRole.ADMIN, UserRole.BARISTA]:
+        raise HTTPException(status_code=403, detail="The user doesn't have enough privileges")
+    return current_user
+
 @router.get("/stats")
-def read_dashboard_stats(
-    session: Session = Depends(get_session),
+async def read_dashboard_stats(
+    session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_admin),
 ) -> Any:
     today_start_cst = timezone.now_cst().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -34,30 +45,36 @@ def read_dashboard_stats(
     # --- 1. Overview Metrics ---
     # Use Transaction for Revenue (Cash Flow Truth)
     # Revenue Today
-    revenue_today_tx_val = session.exec(select(func.sum(Transaction.amount)).where(
+    result = await session.exec(select(func.sum(Transaction.amount)).where(
         Transaction.type == "order",
         Transaction.created_at >= today_start
-    )).one() or 0
+    ))
+    revenue_today_tx_val = result.one() or 0
     revenue_today = abs(revenue_today_tx_val)
 
     # Revenue Yesterday
-    revenue_yesterday_tx_val = session.exec(select(func.sum(Transaction.amount)).where(
+    result = await session.exec(select(func.sum(Transaction.amount)).where(
         Transaction.type == "order",
         Transaction.created_at >= yesterday_start,
         Transaction.created_at < today_start
-    )).one() or 0
+    ))
+    revenue_yesterday_tx_val = result.one() or 0
     revenue_yesterday = abs(revenue_yesterday_tx_val)
 
     # Orders Count
-    count_today = session.exec(select(func.count(Order.id)).where(Order.created_at >= today_start)).one() or 0
-    count_yesterday = session.exec(select(func.count(Order.id)).where(Order.created_at >= yesterday_start, Order.created_at < today_start)).one() or 0
+    result = await session.exec(select(func.count(Order.id)).where(Order.created_at >= today_start))
+    count_today = result.one() or 0
+    
+    result = await session.exec(select(func.count(Order.id)).where(Order.created_at >= yesterday_start, Order.created_at < today_start))
+    count_yesterday = result.one() or 0
     
     # New Users (Students Registered Today)
     # Now that User model has created_at field, we can properly track new registrations
-    new_users_today_count = session.exec(select(func.count(User.id)).where(
+    result = await session.exec(select(func.count(User.id)).where(
         User.role == UserRole.STUDENT,
         User.created_at >= today_start
-    )).one() or 0 
+    ))
+    new_users_today_count = result.one() or 0 
     
     # Growth Calculations
     revenue_growth = ((revenue_today - revenue_yesterday) / revenue_yesterday * 100) if revenue_yesterday > 0 else 0
@@ -68,16 +85,30 @@ def read_dashboard_stats(
     
     # Pending Count (Processing or Ready)
     active_statuses = [OrderStatus.CREATED, OrderStatus.PROCESSING, OrderStatus.READY]
-    pending_orders_count = session.exec(select(func.count(Order.id)).where(Order.status.in_(active_statuses))).one()
+    result = await session.exec(select(func.count(Order.id)).where(Order.status.in_(active_statuses)))
+    pending_orders_count = result.one()
     
     # --- 2. Real-time Operations ---
     # Funnel
+    # Optimize: Parallelize these queries with asyncio.gather
+    import asyncio
+    
+    async def get_count(clause):
+        r = await session.exec(select(func.count(Order.id)).where(clause))
+        return r.one()
+
+    funnel_pending = await get_count(Order.status == OrderStatus.CREATED)
+    funnel_processing = await get_count(Order.status == OrderStatus.PROCESSING)
+    funnel_ready = await get_count(Order.status == OrderStatus.READY)
+    funnel_completed = await get_count((Order.status == OrderStatus.COMPLETED) & (Order.created_at >= today_start))
+    funnel_cancelled = await get_count((Order.status == OrderStatus.REFUNDED) & (Order.created_at >= today_start))
+
     funnel = {
-        "pending": session.exec(select(func.count(Order.id)).where(Order.status == OrderStatus.CREATED)).one(),
-        "processing": session.exec(select(func.count(Order.id)).where(Order.status == OrderStatus.PROCESSING)).one(),
-        "ready": session.exec(select(func.count(Order.id)).where(Order.status == OrderStatus.READY)).one(),
-        "completed": session.exec(select(func.count(Order.id)).where(Order.status == OrderStatus.COMPLETED, Order.created_at >= today_start)).one(), # Completed TODAY
-        "cancelled": session.exec(select(func.count(Order.id)).where(Order.status == OrderStatus.REFUNDED, Order.created_at >= today_start)).one()
+        "pending": funnel_pending,
+        "processing": funnel_processing,
+        "ready": funnel_ready,
+        "completed": funnel_completed,
+        "cancelled": funnel_cancelled
     }
     
     # Estimated Wait Time (3 mins per active order)
@@ -92,35 +123,28 @@ def read_dashboard_stats(
     # Use naive CST for database query
     start_24h_ago = start_24h_ago_cst.replace(tzinfo=None)
     
-    # Initialize map with hours in the 24h window
-    trend_map = {}
-    for i in range(24):
-        # Calculate key based on naive CST
-        h_dt = start_24h_ago + timedelta(hours=i)
-        # Key by tuple (year, month, day, hour)
-        key = (h_dt.year, h_dt.month, h_dt.day, h_dt.hour)
-        # Label format HH:00
-        trend_map[key] = {"orders": 0, "revenue": 0, "label": h_dt.strftime("%H:00")}
-
-    # Fetch orders from the last 24h
-    orders_24h_list = session.exec(select(Order).where(Order.created_at >= start_24h_ago)).all()
+    # Optimize: Use SQL Group By (strftime '%Y-%m-%d %H') to get hourly stats
+    trend_stmt = select(
+        func.strftime('%Y-%m-%d %H', Order.created_at).label('hour_key'),
+        func.count(Order.id).label('count'),
+        func.sum(Order.total_amount).label('revenue')
+    ).where(
+        Order.created_at >= start_24h_ago
+    ).group_by(func.strftime('%Y-%m-%d %H', Order.created_at))
     
-    for o in orders_24h_list:
-        # DB stores naive CST, so use it directly
-        created_at_cst = o.created_at
-        key = (created_at_cst.year, created_at_cst.month, created_at_cst.day, created_at_cst.hour)
-        if key in trend_map:
-            trend_map[key]["orders"] += 1
-            trend_map[key]["revenue"] += o.total_amount
+    result = await session.exec(trend_stmt)
+    trend_res = result.all()
+    trend_map = {row.hour_key: {"orders": row.count, "revenue": row.revenue} for row in trend_res}
 
-    # Convert to sorted list
+    # Generate final list seamlessly
     trend_list = []
     for i in range(24):
         h_dt = start_24h_ago + timedelta(hours=i)
-        key = (h_dt.year, h_dt.month, h_dt.day, h_dt.hour)
-        data = trend_map[key]
+        key = h_dt.strftime("%Y-%m-%d %H") # Matches SQL output format
+        data = trend_map.get(key, {"orders": 0, "revenue": 0})
+        
         trend_list.append({
-            "hour": data["label"],
+            "hour": h_dt.strftime("%H:00"),
             "orders": data["orders"],
             "revenue": data["revenue"] / 100
         })
@@ -142,7 +166,8 @@ def read_dashboard_stats(
     top_selling = [{"name": r[0], "sales": r[1]} for r in results]
     
     # Sold Out Items
-    sold_out_items = session.exec(select(MenuItem).where(MenuItem.inventory_count <= 0)).all()
+    result = await session.exec(select(MenuItem).where(MenuItem.inventory_count <= 0))
+    sold_out_items = result.all()
     sold_out_list = [{"name": i.name_cn or i.name, "category": i.category} for i in sold_out_items]
 
     return {
@@ -168,16 +193,16 @@ def read_dashboard_stats(
 
 # --- User Management ---
 @router.delete("/users/{user_id}")
-def delete_user(
+async def delete_user(
     *,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     user_id: int,
     current_user: User = Depends(get_current_admin),
 ) -> Any:
     """
     Delete a user.
     """
-    user = session.get(User, user_id)
+    user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -185,40 +210,42 @@ def delete_user(
         raise HTTPException(status_code=403, detail="Cannot delete an admin user")
         
     session.delete(user)
-    session.commit()
+    await session.commit()
     return {"ok": True}
+
 @router.get("/users", response_model=List[UserOut])
-def read_users(
+async def read_users(
     skip: int = 0,
     limit: int = 100,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_admin),
 ) -> Any:
     """
     Retrieve users.
     """
-    users = session.exec(select(User).offset(skip).limit(limit)).all()
+    result = await session.exec(select(User).offset(skip).limit(limit))
+    users = result.all()
     return users
 
 @router.post("/users", response_model=UserOut)
-def create_user(
+async def create_user(
     *,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     user_in: UserCreate,
     current_user: User = Depends(get_current_admin),
 ) -> Any:
     """
     Create a new user.
     """
-    if user_crud.get_by_username(session, username=user_in.username):
+    if await user_crud.get_by_username(session, username=user_in.username):
         raise HTTPException(status_code=400, detail="The user with this username already exists in the system.")
-    return user_crud.create(session, obj_in=user_in)
+    return await user_crud.create(session, obj_in=user_in)
 
 
 @router.put("/users/{user_id}", response_model=UserOut)
-def update_user(
+async def update_user(
     *,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     user_id: int,
     user_in: UserUpdate,
     current_user: User = Depends(get_current_admin),
@@ -226,27 +253,28 @@ def update_user(
     """
     Update a user.
     """
-    db_obj = session.get(User, user_id)
+    db_obj = await session.get(User, user_id)
     if not db_obj:
         raise HTTPException(status_code=404, detail="User not found")
-    return user_crud.update(session, db_obj=db_obj, obj_in=user_in)
+    return await user_crud.update(session, db_obj=db_obj, obj_in=user_in)
 
 # --- Product Management ---
 @router.get("/products", response_model=List[MenuItem])
-def read_products(
-    session: Session = Depends(get_session),
+async def read_products(
+    session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_admin),
 ) -> Any:
     """
     Get all products (including inactive ones) for Admin.
     """
-    products = session.exec(select(MenuItem)).all()
+    result = await session.exec(select(MenuItem))
+    products = result.all()
     return products
 
 @router.post("/products", response_model=MenuItem)
-def create_product(
+async def create_product(
     *,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     product_in: ProductCreate,
     current_user: User = Depends(get_current_admin),
 ) -> Any:
@@ -255,14 +283,14 @@ def create_product(
     """
     product = MenuItem.model_validate(product_in)
     session.add(product)
-    session.commit()
-    session.refresh(product)
+    await session.commit()
+    await session.refresh(product)
     return product
 
 @router.put("/products/{product_id}", response_model=MenuItem)
-def update_product(
+async def update_product(
     *,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     product_id: int,
     product_in: ProductUpdate,
     current_user: User = Depends(get_current_admin),
@@ -270,42 +298,42 @@ def update_product(
     """
     Update product.
     """
-    product = session.get(MenuItem, product_id)
+    product = await session.get(MenuItem, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
         
     product_data = product_in.model_dump(exclude_unset=True)
     product.sqlmodel_update(product_data)
     session.add(product)
-    session.commit()
-    session.refresh(product)
+    await session.commit()
+    await session.refresh(product)
     return product
 
 @router.delete("/products/{product_id}")
-def delete_product(
+async def delete_product(
     *,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     product_id: int,
     current_user: User = Depends(get_current_admin),
 ) -> Any:
     """
     Delete product.
     """
-    product = session.get(MenuItem, product_id)
+    product = await session.get(MenuItem, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     session.delete(product)
-    session.commit()
+    await session.commit()
     return {"ok": True}
 
 # --- Order Management ---
 @router.get("/orders", response_model=List[OrderResponse])
-def read_orders(
+async def read_orders(
     skip: int = 0,
     limit: int = 100,
     status: str = None,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_admin_or_barista),
 ) -> Any:
     """
     Retrieve all orders.
@@ -314,22 +342,23 @@ def read_orders(
     if status:
         query = query.where(Order.status == status)
     
-    query = query.order_by(Order.created_at.desc()).offset(skip).limit(limit)
-    orders = session.exec(query).all()
+    query = query.order_by(Order.created_at.desc()).offset(skip).limit(limit).options(selectinload(Order.items))
+    result = await session.exec(query)
+    orders = result.all()
     return orders
 
 @router.put("/orders/{order_id}/status")
-def update_order_status(
+async def update_order_status(
     *,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
     order_id: int,
     status: OrderStatus,
-    current_user: User = Depends(get_current_admin),
+    current_user: User = Depends(get_current_admin_or_barista),
 ) -> Any:
     """
     Update order status.
     """
-    order = session.get(Order, order_id)
+    order = await session.get(Order, order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
         
@@ -338,6 +367,6 @@ def update_order_status(
         order.is_completed = True
         
     session.add(order)
-    session.commit()
-    session.refresh(order)
+    await session.commit()
+    await session.refresh(order)
     return order

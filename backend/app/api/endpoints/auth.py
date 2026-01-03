@@ -2,7 +2,8 @@ from datetime import timedelta
 from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlmodel import Session, select, or_
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select, or_
 import uuid
 
 from app.api import deps
@@ -15,11 +16,11 @@ from app.core.rate_limiter import check_rate_limit, record_failed_attempt
 router = APIRouter()
 
 @router.post("/login/access-token")
-def login_access_token(
+async def login_access_token(
     response: Response,
     request: Request,
     device_id: Optional[str] = Cookie(default=None),
-    session: Session = Depends(get_session), 
+    session: AsyncSession = Depends(get_session), 
     form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Any:
     """
@@ -48,7 +49,8 @@ def login_access_token(
             User.email == form_data.username
         )
     )
-    user = session.exec(statement).first()
+    result = await session.exec(statement)
+    user = result.first()
     
     # 3. Check Lockout Status
     if user and user.lockout_until:
@@ -62,7 +64,7 @@ def login_access_token(
                 user_id=user.id, username_attempt=form_data.username,
                 ip_address=ip_addr, user_agent=user_agent, status="locked_attempt"
             ))
-            session.commit()
+            await session.commit()
             
             wait_time = int((lock_until - timezone.now_cst()).total_seconds() / 60) + 1
             if wait_time < 1: wait_time = 1
@@ -80,7 +82,7 @@ def login_access_token(
             # Lock expired, reset
             user.lockout_until = None
             session.add(user)
-            session.commit()
+            await session.commit()
 
     # 4. Verify Password
     if not user or not security.verify_password(form_data.password, user.password):
@@ -119,14 +121,14 @@ def login_access_token(
                 user_id=user.id, username_attempt=form_data.username,
                 ip_address=ip_addr, user_agent=user_agent, status="failed"
             ))
-            session.commit()
+            await session.commit()
 
         else:
             session.add(LoginLog(
                 user_id=None, username_attempt=form_data.username,
                 ip_address=ip_addr, user_agent=user_agent, status="failed_unknown"
             ))
-            session.commit()
+            await session.commit()
             
         # Calculate attempts left for feedback
         attempts_left = 5  # Default assumption
@@ -162,7 +164,7 @@ def login_access_token(
         user_id=user.id, username_attempt=form_data.username,
         ip_address=ip_addr, user_agent=user_agent, status="success"
     ))
-    session.commit()
+    await session.commit()
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     
