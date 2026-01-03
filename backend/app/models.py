@@ -4,6 +4,7 @@ import json
 from sqlmodel import Field, SQLModel, Relationship
 from app.core import timezone
 from enum import Enum
+from sqlalchemy import Index
 
 # --- 枚举定义 (Enums) ---
 
@@ -77,8 +78,6 @@ class MenuItem(SQLModel, table=True):
     is_recommend: bool = Field(default=False, description="是否店长推荐")
     inventory_count: int = Field(default=999, description="库存数量")
 
-
-from sqlalchemy import Index
 
 class Order(SQLModel, table=True):
     """
@@ -168,9 +167,6 @@ class LoginLog(SQLModel, table=True):
     status: str = Field(description="状态: success, failed, locked, soft_locked...")
     
     created_at: datetime = Field(default_factory=timezone.now_cst)
-
-
-
 
 
 class SystemSetting(SQLModel, table=True):

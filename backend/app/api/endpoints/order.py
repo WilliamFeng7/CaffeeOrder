@@ -286,7 +286,10 @@ async def cancel_order(
         raise HTTPException(status_code=400, detail="Cannot cancel order that is already processing or completed")
         
     # --- Refund & Inventory Restoration Logic ---
-    user = await session.get(User, order.user_id)
+    # Lock User Row to prevent race condition during refund (e.g. simultaneous top-up or spending)
+    user_res = await session.exec(select(User).where(User.id == order.user_id).with_for_update())
+    user = user_res.one_or_none()
+
     if user:
         user.balance += order.total_amount
         session.add(user)
