@@ -2,6 +2,7 @@ from typing import Any
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import Session
 
 from app.api import deps
 from app.database import get_session

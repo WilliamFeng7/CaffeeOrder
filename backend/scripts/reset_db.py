@@ -104,7 +104,7 @@ def reset_database():
         # 4.4 咖啡师 (Barista)
         barista_user = User(
             username="barista",
-            password=get_password_hash("123456"),
+            password=get_password_hash("CoffeeBar!sta2024"),
             uuid=str(uuid.uuid4()),
             role=UserRole.BARISTA,
             name="Barista Staff",
@@ -223,6 +223,7 @@ def reset_database():
     print("🔑 管理员: admin / 89129885")
     print("🔑 学生端: student / 89129885")
     print("🔑 开发者: 1 / 89129885")
+    print("🔑 咖啡师: barista / CoffeeBar!sta2024")
     print("--------------------------------")
 
 if __name__ == "__main__":

@@ -13,20 +13,21 @@ app = FastAPI(title=settings.PROJECT_NAME)
 
 # --- 静态文件服务 (Static Files) ---
 # 用于提供图片资源 (e.g. /static/coffee.jpg)
-# 自动创建 static 目录如果不存在
+# Serve static files (e.g. product images). Automatically create directory if missing.
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 if not os.path.exists(static_dir):
     os.makedirs(static_dir)
 
-# 挂载 /static 路径
+# 挂载 /static 路径 (Mount /static path)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # --- 注册 API 路由 (Register Routes) ---
 # 将所有 API 端点挂载到 /api/v1 下
+# Mount all API endpoints under /api/v1 prefix
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # --- CORS 跨域配置 (CORS Configuration) ---
-# 允许前端应用访问后端 API
+# 允许前端应用访问后端 API (Allow frontend apps to access API)
 origins = [
     "http://localhost:3000",
     "http://localhost:5173", # Vite Dev Server
@@ -43,8 +44,8 @@ app.add_middleware(
     allow_origins=origins,
     allow_origin_regex="https?://.*",
     allow_credentials=True,
-    allow_methods=["*"], # 允许所有 HTTP 方法 (GET, POST, etc.)
-    allow_headers=["*"], # 允许所有 Headers
+    allow_methods=["*"], # 允许所有 HTTP 方法 (Allow all HTTP methods: GET, POST, etc.)
+    allow_headers=["*"], # 允许所有 Headers (Allow all Headers)
 )
 
 @app.exception_handler(RequestValidationError)

@@ -18,7 +18,7 @@ from app.core import timezone
 from app.database import get_session
 from app.models import User, Order, OrderItem, MenuItem, Transaction, OrderStatus
 from app.schemas import OrderCreate, OrderResponse, OrderItemResponse
-# from app.services.payment import payment_service # Payment service (Currently Bypassed)
+
 
 router = APIRouter()
 
@@ -119,11 +119,17 @@ async def create_order(
     """
     Create New Order (Atomic Flow)
     
-    1. Lock User Row (Concurrency Control)
-    2. Batch Fetch Items & Validate Inventory
-    3. Calculate Total & Deduct Balance
-    4. Deduct Inventory (New!)
-    5. Generate Records & Commit
+    This function handles the complex process of creating an order safely.
+    It uses database locks to prevent race conditions (e.g., double spending, overselling).
+    
+    Steps:
+    1. Lock User Row: Ensures balance checks are accurate and prevents simultaneous spending.
+    2. Batch Fetch Items & Validate Inventory: Checks if items exist and are in stock.
+       - Uses `with_for_update()` to lock inventory rows.
+    3. Calculate Total & Deduct Balance: Computes total and ensures user has enough funds.
+    4. Deduct Inventory: Decrements the stock count for each item.
+    5. Generate Records: Creates unique Order No, Pickup Code, and Transaction ID.
+    6. Commit: Saves everything to the database effectively or rolls back on error.
     """
     try:
         # 1. Lock User Row for Concurrency Control
@@ -271,6 +277,14 @@ async def cancel_order(
 ):
     """
     Cancel Order & Restore Inventory
+    
+    This function handles order cancellation, including:
+    - Verifying the order status (must be CREATED).
+    - Refunding the user's balance.
+    - Restoring the inventory count for all items in the order.
+    - Creating a 'refund' transaction record.
+    
+    The operation is atomic; if any part fails, the entire transaction is rolled back.
     """
     # Use with_for_update to prevent race conditions
     result = await session.exec(select(Order).where(Order.id == order_id).with_for_update())
@@ -459,7 +473,9 @@ async def update_order_status(
     }
     
     if new_status not in valid_transitions.get(current_status, []):
-        # Allow Admin to force any state? Maybe. But let's be strict for now to catch bugs.
+        # Strict validation ensures orders follow the correct lifecycle:
+        # Created -> Processing -> Ready -> Completed
+        # Any state can go to Refunded (except Refunded itself)
         raise HTTPException(
             status_code=400, 
             detail=f"Invalid status transition from {current_status} to {new_status}"
