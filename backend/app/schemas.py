@@ -145,27 +145,13 @@ class UserPasswordUpdate(BaseModel):
         validate_password(v)
         return v
 
-class UserUpdate(BaseModel):
+class UserBaseUpdate(BaseModel):
     """
-    更新用户信息请求 (允许部分更新)
+    Base class for user update schemas containing common validators.
     """
     name: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
-    role: Optional[str] = None # Admin can update role
-    password: Optional[str] = None # Admin can reset password
-    balance: Optional[float] = None # Admin can update balance (Yuan or Cents)
-
-    @field_validator('balance', mode='before')
-    @classmethod
-    def convert_balance_to_cents(cls, v: Any) -> Optional[int]:
-        if v is None:
-            return None
-        try:
-            val = float(v)
-            return int(round(val * 100))
-        except (ValueError, TypeError):
-            return None
 
     @field_validator('phone')
     @classmethod
@@ -182,6 +168,34 @@ class UserUpdate(BaseModel):
         if v and not re.match(r"[^@]+@[^@]+\.[^@]+", v):
             raise ValueError('无效的邮箱格式 (Invalid email format)')
         return v
+
+class UserUpdate(UserBaseUpdate):
+    """
+    管理员更新用户信息请求 (允许部分更新)
+    """
+    role: Optional[str] = None # Admin can update role
+    password: Optional[str] = None # Admin can reset password
+    balance: Optional[float] = None # Admin can update balance (Yuan or Cents)
+
+    @field_validator('balance', mode='before')
+    @classmethod
+    def convert_balance_to_cents(cls, v: Any) -> Optional[int]:
+        if v is None:
+            return None
+        try:
+            val = float(v)
+            return int(round(val * 100))
+        except (ValueError, TypeError):
+            return None
+
+class UserSelfUpdate(UserBaseUpdate):
+    """
+    用户自我更新信息请求 (受限字段)
+    仅允许更新非敏感个人信息。
+    """
+    # 显式禁止 update role/balance/password
+    # Explicitly exclude role, balance, password
+    pass
 
 # --- Admin Product Schemas ---
 class ProductCreate(BaseModel):

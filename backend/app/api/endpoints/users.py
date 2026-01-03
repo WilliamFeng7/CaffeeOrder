@@ -6,7 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.api import deps
 from app.database import get_session
 from app.models import User
-from app.schemas import UserOut, UserUpdate
+from app.schemas import UserOut, UserUpdate, UserSelfUpdate
 from app import schemas
 
 from app.models import User, UserRole
@@ -46,14 +46,15 @@ async def read_user_me(
 @router.put("/me", response_model=UserOut)
 async def update_user_me(
     *,
-    session: AsyncSession = Depends(get_session),
-    user_in: UserUpdate,
+    session: Session = Depends(get_session),
+    user_in: UserSelfUpdate,
     current_user: User = Depends(deps.get_current_user)
 ) -> Any:
     """
     更新个人资料 (Update Profile)
     
-    仅更新非空字段。
+    仅更新非空字段。不允许更新敏感字段 (Role, Balance).
+    Only allows updating non-sensitive fields. Role/Balance updates are strictly forbidden.
     """
     user_data = user_in.model_dump(exclude_unset=True)
     for field, value in user_data.items():
