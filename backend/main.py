@@ -30,13 +30,13 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 # 允许前端应用访问后端 API (Allow frontend apps to access API)
 origins = [
     "http://localhost:3000",
-    "http://localhost:5173", # Vite Dev Server
+    "http://localhost:5173",  # Vite Dev Server
     "http://localhost:3001",
-    "http://localhost",      # Production Login
-    "http://localhost:8081", # Production Admin
-    "http://localhost:8081", # Production Barista
-    "http://localhost:8080", # New Admin Port
-    "http://127.0.0.1"
+    "http://localhost",  # Production Login
+    "http://localhost:8081",  # Production Admin
+    "http://localhost:8081",  # Production Barista
+    "http://localhost:8080",  # New Admin Port
+    "http://127.0.0.1",
 ]
 
 app.add_middleware(
@@ -44,27 +44,37 @@ app.add_middleware(
     allow_origins=origins,
     allow_origin_regex="https?://.*",
     allow_credentials=True,
-    allow_methods=["*"], # 允许所有 HTTP 方法 (Allow all HTTP methods: GET, POST, etc.)
-    allow_headers=["*"], # 允许所有 Headers (Allow all Headers)
+    allow_methods=["*"],  # 允许所有 HTTP 方法 (Allow all HTTP methods: GET, POST, etc.)
+    allow_headers=["*"],  # 允许所有 Headers (Allow all Headers)
 )
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     from fastapi.encoders import jsonable_encoder
+
     return JSONResponse(
         status_code=422,
-        content=jsonable_encoder({"detail": exc.errors(), "message": "Changes validation failed"}),
+        content=jsonable_encoder(
+            {"detail": exc.errors(), "message": "Changes validation failed"}
+        ),
     )
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     import traceback
+
     error_msg = f"Global Exception: {str(exc)}\n{traceback.format_exc()}"
-    print(error_msg) # Print to stdout for Docker logs
+    print(error_msg)  # Print to stdout for Docker logs
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal Server Error", "message": str(exc)}, # Dev mode: exposing error
+        content={
+            "detail": "Internal Server Error",
+            "message": str(exc),
+        },  # Dev mode: exposing error
     )
+
 
 @app.get("/")
 async def root():
@@ -73,8 +83,10 @@ async def root():
     """
     return {"message": "Welcome to School Coffee System API"}
 
+
 if __name__ == "__main__":
     import uvicorn
+
     # 本地调试启动入口
     # Local debug entry point
     uvicorn.run(app, host="0.0.0.0", port=8000)

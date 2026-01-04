@@ -1,4 +1,3 @@
-
 import pytest
 import datetime
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -8,11 +7,13 @@ from sqlmodel import SQLModel
 
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.models import Transaction, User, UserRole
 from app.api.endpoints.finance import get_finance_chart
 from app.core import timezone
+
 
 @pytest.mark.asyncio
 async def test_finance_chart_optimization():
@@ -46,7 +47,7 @@ async def test_finance_chart_optimization():
             external_transaction_id="ORD-1",
             amount=-1500,
             type="order",
-            created_at=t1
+            created_at=t1,
         )
 
         # Order 2: 20 mins ago, 20 yuan
@@ -56,7 +57,7 @@ async def test_finance_chart_optimization():
             external_transaction_id="ORD-2",
             amount=-2000,
             type="order",
-            created_at=t2
+            created_at=t2,
         )
 
         # Deposit 1: 30 mins ago, 100 yuan
@@ -66,7 +67,7 @@ async def test_finance_chart_optimization():
             external_transaction_id="DEP-1",
             amount=10000,
             type="deposit",
-            created_at=t3
+            created_at=t3,
         )
 
         # Deposit 2: Same time as t3, 100 yuan (to test grouping)
@@ -75,7 +76,7 @@ async def test_finance_chart_optimization():
             external_transaction_id="DEP-2",
             amount=10000,
             type="deposit",
-            created_at=t3
+            created_at=t3,
         )
 
         session.add_all([tx1, tx2, tx3, tx4])
@@ -105,7 +106,7 @@ async def test_finance_chart_optimization():
 
         p1 = find_point(l1)
         assert p1 is not None
-        assert p1["spending"] == 15.0 # 1500 / 100
+        assert p1["spending"] == 15.0  # 1500 / 100
         assert p1["deposit"] == 0
 
         p2 = find_point(l2)
@@ -114,7 +115,7 @@ async def test_finance_chart_optimization():
 
         p3 = find_point(l3)
         assert p3 is not None
-        assert p3["deposit"] == 200.0 # 2 deposits of 10000
+        assert p3["deposit"] == 200.0  # 2 deposits of 10000
 
         # 4. Verify Pie Chart
         # Should have 1 entry: "¥100" with value 2

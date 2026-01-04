@@ -5,14 +5,16 @@ from datetime import datetime, timedelta, timezone
 # 北京/上海时间 (UTC+8)
 CST = timezone(timedelta(hours=8))
 
+
 def now_cst() -> datetime:
     """
     获取当前北京时间 (Get Current Beijing Time)
-    
+
     Returns:
         datetime: 带有时区信息的当前时间对象
     """
     return datetime.now(CST)
+
 
 def utc_to_cst(dt: datetime) -> datetime:
     """

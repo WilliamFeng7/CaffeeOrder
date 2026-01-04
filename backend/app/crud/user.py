@@ -1,13 +1,16 @@
 import uuid
 from typing import Optional
-from sqlmodel import Session, select
+from sqlmodel import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models import User, UserRole
+from app.models import User
 from app.schemas import UserCreate, UserUpdate
 from app.core import security
 
+
 class CRUDUser:
-    async def get_by_username(self, db: AsyncSession, *, username: str) -> Optional[User]:
+    async def get_by_username(
+        self, db: AsyncSession, *, username: str
+    ) -> Optional[User]:
         statement = select(User).where(User.username == username)
         result = await db.exec(statement)
         return result.first()
@@ -21,25 +24,28 @@ class CRUDUser:
             email=obj_in.email,
             role=obj_in.role,
             balance=obj_in.balance,
-            uuid=str(uuid.uuid4())
+            uuid=str(uuid.uuid4()),
         )
         db.add(db_obj)
         await db.commit()
         await db.refresh(db_obj)
         return db_obj
 
-    async def update(self, db: AsyncSession, *, db_obj: User, obj_in: UserUpdate) -> User:
+    async def update(
+        self, db: AsyncSession, *, db_obj: User, obj_in: UserUpdate
+    ) -> User:
         obj_data = obj_in.model_dump(exclude_unset=True)
         if "password" in obj_data and obj_data["password"]:
             obj_data["password"] = security.get_password_hash(obj_data["password"])
-        
+
         for field in obj_data:
             if hasattr(db_obj, field):
                 setattr(db_obj, field, obj_data[field])
-        
+
         db.add(db_obj)
         await db.commit()
         await db.refresh(db_obj)
         return db_obj
+
 
 user = CRUDUser()
