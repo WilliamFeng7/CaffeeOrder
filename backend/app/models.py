@@ -99,8 +99,7 @@ class Order(SQLModel, table=True):
     
     total_amount: int = Field(description="订单总金额 (分)")
     
-    pickup_code: str = Field(description="取餐码 (例如 A101)")
-    pickup_number: int = Field(description="每日流水号 (每日重置)")
+    pickup_number: int = Field(description="每日流水号/取餐号 (每日重置, 从1开始)")
     is_completed: bool = Field(default=False, description="是否已归档")
     
     updated_at: datetime = Field(default_factory=timezone.now_cst, description="最后更新时间 (用于轮询)", index=True)

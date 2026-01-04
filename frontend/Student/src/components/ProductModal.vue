@@ -118,7 +118,7 @@ const handleContentClick = (e: MouseEvent) => {
      <!-- 弹窗主体面板 -->
      <div 
        @click="handleContentClick"
-       class="bg-background-light w-full h-[85%] md:h-[80%] md:max-w-2xl md:rounded-t-[40px] md:mx-auto md:mb-8 md:rounded-b-[40px] rounded-t-[36px] overflow-hidden flex flex-col shadow-2xl relative z-10 transform-gpu transition-all duration-700 ease-luxury"
+       class="bg-background-light w-full h-[75%] md:h-[80%] md:max-w-2xl md:rounded-t-[40px] md:mx-auto md:mb-8 md:rounded-b-[40px] rounded-t-[36px] overflow-hidden flex flex-col shadow-2xl relative z-10 transform-gpu transition-all duration-700 ease-luxury"
        :class="isClosing ? 'translate-y-[110%] opacity-0' : 'translate-y-0 animate-slide-up-modal'"
      >
         <!-- Swipe Indicator (Mobile) -->
@@ -135,7 +135,7 @@ const handleContentClick = (e: MouseEvent) => {
         <!-- Scrollable Content Area -->
         <div class="flex-1 overflow-y-auto no-scrollbar scroll-smooth-touch pb-4">
            <!-- Product Image Header -->
-           <div class="relative h-[240px] md:h-[300px] w-full shrink-0 overflow-hidden">
+           <div class="relative h-[180px] md:h-[260px] w-full shrink-0 overflow-hidden">
               <img :src="product.image" class="w-full h-full object-cover animate-blur-in origin-bottom" style="animation-duration: 0.8s" />
               <!-- Gradient Overlay for text readability -->
               <div class="absolute inset-0 bg-gradient-to-t from-background-light via-background-light/20 to-transparent"></div>
@@ -152,7 +152,7 @@ const handleContentClick = (e: MouseEvent) => {
            </div>
 
            <!-- Options Selection Section -->
-           <div class="p-6 md:p-10 space-y-10">
+           <div class="p-5 md:p-10 space-y-6 md:space-y-10">
                <!-- Size Selection Removed -->
                
                <!-- 2. Sugar Level Selection -->
@@ -176,7 +176,7 @@ const handleContentClick = (e: MouseEvent) => {
         </div>
 
         <!-- Sticky Footer: Total & Add Button -->
-        <div class="flex-none p-6 md:p-8 pt-4 bg-white border-t border-gray-50 pb-[env(safe-area-inset-bottom,24px)] shadow-[0_-10px_60px_rgba(0,0,0,0.04)] z-20">
+        <div class="flex-none p-4 md:p-8 pt-3 bg-white border-t border-gray-50 pb-[env(safe-area-inset-bottom,16px)] shadow-[0_-10px_60px_rgba(0,0,0,0.04)] z-20">
            <div class="flex items-center gap-6 animate-slide-up-content" style="animation-delay: 500ms">
               
               <!-- Total Price Display -->
@@ -192,7 +192,7 @@ const handleContentClick = (e: MouseEvent) => {
                  data-testid="add-to-cart-btn"
                  @click="handleAddToCartClick"
                  :disabled="isSuccess"
-                 class="flex-1 h-[72px] rounded-[36px] font-sans font-black text-xl flex items-center justify-center gap-3 shadow-[0_20px_50px_-10px_rgba(16,62,50,0.4)] transition-all duration-500 ease-luxury outline-none relative overflow-hidden active:scale-[0.96]"
+                 class="flex-1 h-[56px] md:h-[72px] rounded-[28px] md:rounded-[36px] font-sans font-black text-lg md:text-xl flex items-center justify-center gap-3 shadow-[0_20px_50px_-10px_rgba(16,62,50,0.4)] transition-all duration-500 ease-luxury outline-none relative overflow-hidden active:scale-[0.96]"
                  :class="isSuccess 
                    ? 'bg-green-600 text-white scale-100' 
                    : isJelly ? 'animate-jelly bg-[#103E32] text-white' : 'bg-[#103E32] text-white'

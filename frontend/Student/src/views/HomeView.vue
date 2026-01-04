@@ -70,7 +70,7 @@ const displayName = computed(() => props.userName ? props.userName : 'Otiaer');
 
 <template>
   <div class="flex-1 h-full bg-background-light overflow-y-auto scroll-smooth-touch no-scrollbar pb-40">
-    <div class="p-8 md:p-12 space-y-8 pt-20 max-w-5xl mx-auto">
+    <div class="p-6 md:p-12 space-y-6 pt-12 md:pt-20 max-w-5xl mx-auto">
       
       <!-- Logo & Header Section -->
       <div class="flex flex-col gap-1">
@@ -101,7 +101,7 @@ const displayName = computed(() => props.userName ? props.userName : 'Otiaer');
 
       <!-- Featured Product Card -->
       <div 
-         class="relative h-[440px] rounded-[48px] overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.2)] animate-slide-up-content active:scale-[0.98] transition-all duration-700 ease-luxury transform-gpu group cursor-pointer"
+         class="relative h-[280px] md:h-[380px] lg:h-[440px] rounded-[36px] md:rounded-[48px] overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.2)] animate-slide-up-content active:scale-[0.98] transition-all duration-700 ease-luxury transform-gpu group cursor-pointer"
          style="animation-delay: 600ms"
          @click="featuredProduct.inventoryCount !== 0 && emit('quick-add', featuredProduct)"
       >
@@ -125,15 +125,15 @@ const displayName = computed(() => props.userName ? props.userName : 'Otiaer');
          <div class="absolute inset-0 bg-gradient-to-b from-[#0A2921]/10 to-transparent"></div>
          
          <!-- Content Info -->
-         <div class="absolute bottom-10 left-10 right-10 flex justify-between items-end z-10">
+         <div class="absolute bottom-6 left-6 right-6 md:bottom-10 md:left-10 md:right-10 flex justify-between items-end z-10">
             <div class="max-w-xl">
                <span class="bg-[#DCCA98] text-[#0C1F1A] text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full mb-4 inline-block shadow-lg shadow-black/20 animate-fade-in backdrop-blur-sm" style="animation-delay: 1000ms">{{ t.bestSeller }}</span>
-               <h2 class="text-5xl font-sans font-black text-white leading-[1.1] mb-3 tracking-tighter drop-shadow-lg">{{ lang === 'cn' ? featuredProduct.nameCN : featuredProduct.name }}</h2>
+               <h2 class="text-3xl md:text-5xl font-sans font-black text-white leading-[1.1] mb-2 md:mb-3 tracking-tighter drop-shadow-lg">{{ lang === 'cn' ? featuredProduct.nameCN : featuredProduct.name }}</h2>
                <p class="text-white/80 text-base font-medium line-clamp-2 leading-relaxed opacity-0 animate-slide-up-content max-w-sm" style="animation-delay: 1100ms">{{ lang === 'cn' ? featuredProduct.descriptionCN : featuredProduct.description }}</p>
             </div>
             
             <!-- Quick Add Button -->
-            <button class="size-20 rounded-[32px] bg-white text-[#103E32] flex items-center justify-center shadow-2xl transition-all duration-500 ease-luxury active:scale-90 active:rotate-90 group-hover:scale-110">
+            <button class="size-14 md:size-20 rounded-[24px] md:rounded-[32px] bg-white text-[#103E32] flex items-center justify-center shadow-2xl transition-all duration-500 ease-luxury active:scale-90 active:rotate-90 group-hover:scale-110 shrink-0">
                <span class="material-symbols-rounded text-4xl font-light">add</span>
             </button>
          </div>

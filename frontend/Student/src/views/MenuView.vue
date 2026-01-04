@@ -249,11 +249,11 @@ const handleSuggestionClick = (p: Product) => {
        </div>
 
        <!-- Header & Search Bar -->
-       <header class="px-6 md:px-12 pt-8 md:pt-12 shrink-0 animate-slide-down-content z-30">
-          <div class="flex items-center justify-between mb-8">
+       <header class="px-6 md:px-12 pt-4 md:pt-8 shrink-0 animate-slide-down-content z-30">
+          <div class="flex items-center justify-between mb-4 md:mb-8">
              <!-- Title Section -->
              <div class="flex flex-col gap-2">
-                <h1 class="text-4xl md:text-6xl font-sans font-black text-[#103E32] tracking-tighter leading-none">
+                <h1 class="text-2xl md:text-4xl lg:text-6xl font-sans font-black text-[#103E32] tracking-tighter leading-none">
                    <!-- Dynamic Title: Shows Category Name or 'Search' -->
                    <template v-if="searchTerm">
                       {{ lang === 'cn' ? '搜索结果' : 'Search' }}

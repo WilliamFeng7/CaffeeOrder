@@ -61,7 +61,6 @@ class OrderResponse(BaseModel):
     id: int
     order_no: str
     status: str
-    pickup_code: str
     total_amount: int
     pickup_number: int
     is_completed: bool

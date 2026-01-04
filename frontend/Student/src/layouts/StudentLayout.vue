@@ -231,15 +231,15 @@ watch(cartCount, (newCount) => {
       </div>
     </div>
 
-    <div class="flex-1 overflow-hidden relative w-full h-full z-0 transform-gpu pb-[104px]">
+    <div class="flex-1 overflow-hidden relative w-full h-full z-0 transform-gpu pb-[80px]">
       <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleQuickAdd" :lang="language" :user-name="userProfile.name" />
       <MenuView v-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" @remove-product-instance="handleRemoveProductInstance" :lang="language" @toggle-lang="handleToggleLang" @go-checkout="isCheckoutOpen = true" />
       <PickupView v-if="currentTab === 'pickup'" :orders="orders" :lang="language" />
       <SettingsView v-if="currentTab === 'profile'" :lang="language" @toggle-lang="handleToggleLang" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" @sign-out="handleSignOut" />
     </div>
 
-    <div v-if="cartCount > 0 && !isCheckoutOpen && !selectedProduct && currentTab === 'order'" class="absolute bottom-[112px] md:bottom-[120px] left-0 right-0 z-50 pointer-events-none flex justify-center animate-slide-up-content transform-gpu">
-       <div @click="isCheckoutOpen = true" data-testid="checkout-bar" class="pointer-events-auto bg-[#103E32] h-[72px] md:h-[84px] w-[90%] md:w-[600px] rounded-[42px] flex items-center justify-between p-2 pl-8 shadow-[0_30px_80px_-20px_rgba(16,62,50,0.6)] border border-[#ffffff10] transition-all duration-500 active:duration-300 ease-silk backdrop-blur-md relative overflow-hidden active:scale-[0.96]" :class="{ 'scale-[1.03]': cartBump }">
+    <div v-if="cartCount > 0 && !isCheckoutOpen && !selectedProduct && currentTab === 'order'" class="absolute bottom-[88px] md:bottom-[96px] left-0 right-0 z-50 pointer-events-none flex justify-center animate-slide-up-content transform-gpu">
+       <div @click="isCheckoutOpen = true" data-testid="checkout-bar" class="pointer-events-auto bg-[#103E32] h-[56px] md:h-[68px] w-[90%] md:w-[600px] rounded-[32px] flex items-center justify-between p-1.5 pl-6 shadow-[0_30px_80px_-20px_rgba(16,62,50,0.6)] border border-[#ffffff10] transition-all duration-500 active:duration-300 ease-silk backdrop-blur-md relative overflow-hidden active:scale-[0.96]" :class="{ 'scale-[1.03]': cartBump }">
           <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 translate-x-[-200%] animate-shimmer"></div>
           <div class="flex items-center gap-5 relative z-10">
              <div class="relative mt-0.5">
@@ -251,14 +251,14 @@ watch(cartCount, (newCount) => {
                 <span class="text-[9px] text-white/50 font-bold uppercase tracking-[0.2em] mt-0.5">Total</span>
              </div>
           </div>
-          <button class="h-[60px] md:h-[68px] px-8 md:px-10 rounded-[34px] bg-white text-[#103E32] font-black text-base md:text-lg flex items-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.1)] transition-all duration-500 ease-silk active:scale-[0.94] active:bg-[#f2f2f2] relative z-10">
+          <button class="h-[44px] md:h-[52px] px-6 md:px-8 rounded-[26px] bg-white text-[#103E32] font-black text-sm md:text-base flex items-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.1)] transition-all duration-500 ease-silk active:scale-[0.94] active:bg-[#f2f2f2] relative z-10">
             {{ t.checkout }}
             <span class="material-symbols-rounded text-xl md:text-2xl font-bold mt-0.5 transition-transform duration-500 ease-silk">arrow_forward</span>
           </button>
        </div>
     </div>
 
-    <div class="absolute bottom-0 left-0 w-full z-30 pointer-events-auto bg-white border-t border-gray-100 shadow-[0_-5px_40px_rgba(0,0,0,0.02)] h-[96px] md:h-[104px] pb-[env(safe-area-inset-bottom,20px)] flex items-center justify-center md:rounded-b-[32px] transform-gpu">
+    <div class="absolute bottom-0 left-0 w-full z-30 pointer-events-auto bg-white border-t border-gray-100 shadow-[0_-5px_40px_rgba(0,0,0,0.02)] h-[72px] md:h-[88px] pb-[env(safe-area-inset-bottom,12px)] flex items-center justify-center md:rounded-b-[32px] transform-gpu">
       <div class="flex items-center justify-between px-6 w-full max-w-lg h-full">
         <button v-for="tab in (['home', 'order', 'pickup', 'profile'] as TabState[])" :key="tab" @click="currentTab = tab" class="relative flex items-center justify-center gap-2 rounded-full transition-[flex-grow,background-color,padding,width,transform] duration-700 active:duration-300 ease-silk outline-none transform-gpu will-change-[flex-grow, transform] active:scale-[0.88]" :class="currentTab === tab ? 'bg-primary text-white pl-6 pr-6 py-3.5 grow-[1.5] shadow-lg shadow-primary/20' : 'bg-transparent text-gray-300 w-16 py-3 grow-0 active:bg-gray-50'">
             <span class="material-symbols-rounded text-[28px] md:text-[30px] shrink-0 transition-all duration-700 active:duration-300 ease-silk" :class="{ 'filled': currentTab === tab }">

@@ -165,7 +165,7 @@ export const api = {
                     items: Array.from(itemMap.values()),
                     total: o.total_amount / 100,
                     type: 'dine-in',
-                    pickupNumber: o.pickup_code,
+                    pickupNumber: o.pickup_number,
                     dailyNumber: o.pickup_number,
                     status: ['completed', 'refunded'].includes(o.status) ? 'completed' : 'active',
                     isCompleted: o.is_completed,

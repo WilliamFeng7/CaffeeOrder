@@ -21,6 +21,17 @@ export default {
                 "text-sub": "#5D736F",
                 "wechat": "#07C160",
                 "alipay": "#1677FF",
+                // KDS-specific colors
+                "kds-hot": "#EF4444",
+                "kds-iced": "#3B82F6",
+                "kds-pending": "#F59E0B",
+                "kds-processing": "#6366F1",
+                "kds-completed": "#10B981",
+                "kds-urgent": "#DC2626",
+                "kds-sugar-0": "#E5E7EB",
+                "kds-sugar-50": "#FDE68A",
+                "kds-sugar-100": "#F59E0B",
+                "kds-sugar-120": "#B45309",
             },
             fontFamily: {
                 sans: ["Spline Sans", "sans-serif"],
@@ -58,6 +69,11 @@ export default {
                 'cart-bump': 'cartBump 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 'jelly': 'jelly 0.7s cubic-bezier(0.5, 1.35, 0.4, 1) both',
                 'float': 'float 4s ease-in-out infinite',
+                // KDS-specific animations
+                'pulse-urgent': 'pulseUrgent 2s ease-in-out infinite',
+                'slide-in-left': 'slideInLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) both',
+                'bounce-in': 'bounceIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+                'glow-pulse': 'glowPulse 2s ease-in-out infinite',
             },
             keyframes: {
                 slideUpModal: {
@@ -112,6 +128,25 @@ export default {
                 float: {
                     '0%, 100%': { transform: 'translateY(0)' },
                     '50%': { transform: 'translateY(-12px)' },
+                },
+                // KDS-specific keyframes
+                pulseUrgent: {
+                    '0%, 100%': { opacity: '1', boxShadow: '0 0 0 0 rgba(220, 38, 38, 0.4)' },
+                    '50%': { opacity: '0.85', boxShadow: '0 0 20px 10px rgba(220, 38, 38, 0.2)' },
+                },
+                slideInLeft: {
+                    '0%': { transform: 'translateX(-30px)', opacity: '0' },
+                    '100%': { transform: 'translateX(0)', opacity: '1' },
+                },
+                bounceIn: {
+                    '0%': { transform: 'scale(0.3)', opacity: '0' },
+                    '50%': { transform: 'scale(1.1)' },
+                    '70%': { transform: 'scale(0.9)' },
+                    '100%': { transform: 'scale(1)', opacity: '1' },
+                },
+                glowPulse: {
+                    '0%, 100%': { boxShadow: '0 0 5px 0 currentColor' },
+                    '50%': { boxShadow: '0 0 20px 5px currentColor' },
                 }
             }
         }

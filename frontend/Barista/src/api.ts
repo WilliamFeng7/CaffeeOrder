@@ -5,7 +5,6 @@ export interface Order {
     user: number;
     user_id?: number; // Compat
     order_no?: string;
-    pickup_code?: string;
     pickup_number?: number;
     total: number;
     status: string;
@@ -41,7 +40,7 @@ export const api = {
             total: o.total_amount / 100,
             status: o.status,
             order_no: o.order_no,
-            pickup_code: o.pickup_code,
+            pickup_number: o.pickup_number,
             created_at: o.created_at,
             items: o.items // Pass items for detailed view
         }));
@@ -59,7 +58,6 @@ export const api = {
             order_no: o.order_no,
             user: o.user_id, // Map for compat
             user_id: o.user_id,
-            pickup_code: o.pickup_code,
             pickup_number: o.pickup_number,
             total: o.total_amount / 100,
             status: o.status,

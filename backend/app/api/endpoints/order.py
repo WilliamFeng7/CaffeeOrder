@@ -1,6 +1,5 @@
 import json
 import uuid
-import random
 import datetime
 import logging
 from datetime import timedelta
@@ -53,7 +52,6 @@ def map_order_to_response(order: Order, tx: Transaction, items: List[OrderItem])
         id=order.id,
         order_no=order.order_no,
         status=order.status.value,
-        pickup_code=order.pickup_code,
         pickup_number=order.pickup_number or 0,
         is_completed=order.is_completed,
         total_amount=order.total_amount,
@@ -192,7 +190,6 @@ async def create_order(
         session.add(user_in_db)
 
         # 5. Generate Identifiers
-        pickup_code = f"A{random.randint(10, 99)}"
         external_tx_id = f"LOC-{uuid.uuid4().hex[:8].upper()}"
         
         # Custom Order ID (YYYYMMDDHHMMSS + 0001)
@@ -219,7 +216,6 @@ async def create_order(
             order_no=order_no,
             status=OrderStatus.CREATED,
             total_amount=total_amount,
-            pickup_code=pickup_code,
             pickup_number=next_pickup_num,
             is_completed=False,
             created_at=now,
@@ -241,7 +237,7 @@ async def create_order(
             balance_after=user_in_db.balance,
             type="order",
             payment_method="balance",
-            description=f"Order #{pickup_code}",
+            description=f"Order #{next_pickup_num}",
             created_at=now
         )
         session.add(tx)
@@ -316,7 +312,7 @@ async def cancel_order(
             balance_after=user.balance,
             type="refund",
             payment_method="balance",
-            description=f"Refund for Order #{order.pickup_code}",
+            description=f"Refund for Order #{order.pickup_number}",
             created_at=timezone.now_cst()
         )
         session.add(tx)

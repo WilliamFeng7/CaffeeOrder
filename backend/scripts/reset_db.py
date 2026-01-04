@@ -186,15 +186,14 @@ async def reset_database():
                     
                     order_time = day_offset + timedelta(hours=random.randint(8, 20), minutes=random.randint(0, 59))
                     order_no = f"{order_time.strftime('%Y%m%d%H%M%S')}{random.randint(1000, 9999)}"
-                    pickup_code = f"A{random.randint(10, 99)}"
+                    pickup_num = random.randint(1, 100)
                     
                     order = Order(
                         user_id=student.id,
                         order_no=order_no,
                         status=OrderStatus.COMPLETED,
                         total_amount=price,
-                        pickup_code=pickup_code,
-                        pickup_number=random.randint(1, 100),
+                        pickup_number=pickup_num,
                         is_completed=True,
                         created_at=order_time,
                         updated_at=order_time + timedelta(minutes=5)
@@ -222,7 +221,7 @@ async def reset_database():
                         balance_after=student.balance,
                         type="order",
                         payment_method="balance",
-                        description=f"订单 #{pickup_code}",
+                        description=f"订单 #{pickup_num}",
                         created_at=order_time
                     )
                     session.add(tx)

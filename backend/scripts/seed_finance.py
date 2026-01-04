@@ -90,15 +90,14 @@ def seed_finance_data():
                 # Create Order
                 order_time = day_offset + timedelta(hours=random.randint(8, 22), minutes=random.randint(0, 59))
                 order_no = f"{order_time.strftime('%Y%m%d%H%M%S')}{random.randint(1000, 9999)}"
-                pickup_code = f"A{random.randint(10, 99)}"
+                pickup_num = random.randint(1, 100)
                 
                 order = Order(
                     user_id=user.id,
                     order_no=order_no,
                     status=OrderStatus.COMPLETED,
                     total_amount=price,
-                    pickup_code=pickup_code,
-                    pickup_number=random.randint(1, 100),
+                    pickup_number=pickup_num,
                     is_completed=True,
                     created_at=order_time,
                     updated_at=order_time + timedelta(minutes=5)
@@ -127,7 +126,7 @@ def seed_finance_data():
                     balance_after=user.balance,
                     type="order",
                     payment_method="balance",
-                    description=f"Order #{pickup_code}",
+                    description=f"Order #{pickup_num}",
                     created_at=order_time
                 )
                 session.add(tx)
