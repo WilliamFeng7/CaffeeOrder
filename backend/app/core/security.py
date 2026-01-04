@@ -33,8 +33,10 @@ def verify_password(plain_password: str, password_in_db: str) -> bool:
     Verify Password
     
     Comparing plain text as per user requirement.
+    Uses secrets.compare_digest for timing-safe comparison.
     """
-    return plain_password == password_in_db
+    # Sentinel Fix: Use constant-time comparison even for plain text
+    return secrets.compare_digest(plain_password, password_in_db)
 
 def get_password_hash(password: str) -> str:
     """
@@ -73,10 +75,14 @@ def validate_password(password: str) -> bool:
     
     Requirements:
     1. At least 8 characters
+    2. Not in common password list
     """
     if len(password) < 8:
         raise ValueError("密码长度必须至少为 8 位 (Password must be at least 8 characters)")
     
+    if password in COMMON_PASSWORDS:
+        raise ValueError("密码过于简单，请使用更强的密码 (Password is too common)")
+
     # User requested to remove complexity checks (letters/digits)
     
     return True

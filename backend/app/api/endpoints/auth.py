@@ -178,7 +178,7 @@ async def login_access_token(
         detail_data = {
             "code": "failed",
             "message": "Invalid username or password",
-            "attempts_left": final_attempts_left
+            "attempts_left": attempts_left
         }
         
         raise HTTPException(status_code=400, detail=detail_data)
