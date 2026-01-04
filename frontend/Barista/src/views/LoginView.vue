@@ -28,12 +28,14 @@ const handleLogin = async () => {
         loading.value = false;
     }
 };
+
+const noiseTexture = "data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E";
 </script>
 
 <template>
 <div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans select-none flex items-center justify-center">
   <!-- Background Noise Texture -->
-  <div class="fixed inset-0 pointer-events-none z-50 opacity-[0.04] mix-blend-overlay" style="background-image: url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E&quot;);"></div>
+  <div class="fixed inset-0 pointer-events-none z-50 opacity-[0.04] mix-blend-overlay" :style="{ backgroundImage: `url('${noiseTexture}')` }"></div>
   
   <!-- Abstract Decorations (Student Style Gradients) -->
   <div class="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-br from-secondary/20 to-transparent rounded-full blur-3xl -translate-y-1/3 translate-x-1/4"></div>
