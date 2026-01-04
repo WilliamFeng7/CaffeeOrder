@@ -2,11 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Body Styles (Student App Port) */
+/* Custom Body Styles (Same as Student App) */
 body {
     background-color: #F2F7F5;
     min-height: 100vh;
     margin: 0;
+    perspective: 1000px;
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
     touch-action: manipulation;
@@ -20,7 +21,7 @@ body {
     overflow: hidden;
 }
 
-/* Material Icons */
+/* Material Icons (Same as Student App) */
 .material-symbols-rounded {
     font-family: 'Material Symbols Rounded';
     font-weight: normal;
@@ -37,25 +38,7 @@ body {
     font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
-/* Premium Noise Texture */
-.bg-texture {
-    position: relative;
-}
-
-.bg-texture::before {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 50;
-    mix-blend-mode: overlay;
-}
-
-/* Global Button Silky Motion */
+/* Global Button Silky Motion (Same as Student App) */
 button,
 .clickable,
 [role="button"] {
@@ -76,6 +59,15 @@ button:active,
     transform: scale(0.96);
 }
 
+.transform-gpu {
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
+}
+
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
 /* Scrollbar utilities */
 .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -84,4 +76,10 @@ button:active,
 .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+}
+
+.scroll-smooth-touch {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    overscroll-behavior-y: contain;
 }

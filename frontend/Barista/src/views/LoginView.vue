@@ -31,57 +31,91 @@ const handleLogin = async () => {
 </script>
 
 <template>
-<div class="min-h-screen flex items-center justify-center bg-texture bg-primary fixed inset-0">
-     <!-- Abstract Decoration -->
-    <div class="absolute top-0 right-0 w-[500px] h-[500px] bg-secondary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-    <div class="absolute bottom-0 left-0 w-[500px] h-[500px] bg-secondary/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+<div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans select-none flex items-center justify-center">
+  <!-- Background Noise Texture -->
+  <div class="fixed inset-0 pointer-events-none z-50 opacity-[0.04] mix-blend-overlay" style="background-image: url(&quot;data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E&quot;);"></div>
+  
+  <!-- Abstract Decorations (Student Style Gradients) -->
+  <div class="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-br from-secondary/20 to-transparent rounded-full blur-3xl -translate-y-1/3 translate-x-1/4"></div>
+  <div class="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-primary/10 to-transparent rounded-full blur-3xl translate-y-1/3 -translate-x-1/4"></div>
 
-    <div class="w-full max-w-md p-8 relative z-10">
-        <div class="bg-surface-light/95 backdrop-blur-xl rounded-[40px] p-8 shadow-2xl border border-white/50 flex flex-col gap-8 animate-slide-up-modal">
-            
-            <!-- Header -->
-            <div class="text-center space-y-2">
-                <div class="w-16 h-16 bg-primary text-secondary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/30">
-                    <span class="material-symbols-rounded text-3xl">coffee_maker</span>
-                </div>
-                <h1 class="text-2xl font-serif font-bold text-text-main">Barista Access</h1>
-                <p class="text-text-sub text-sm">Sign in to manage orders</p>
-            </div>
-
-            <!-- Form -->
-            <form @submit.prevent="handleLogin" class="flex flex-col gap-5">
-                <div class="space-y-4">
-                    <div class="space-y-1">
-                        <label class="text-xs font-bold text-text-sub uppercase tracking-wider ml-1">Username</label>
-                        <input 
-                            v-model="username"
-                            type="text" 
-                            class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-text-main focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-sans"
-                            placeholder="Enter your username"
-                        >
-                    </div>
-
-                    <div class="space-y-1">
-                         <label class="text-xs font-bold text-text-sub uppercase tracking-wider ml-1">Password</label>
-                        <input 
-                            v-model="password"
-                            type="password" 
-                            class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-text-main focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-sans"
-                            placeholder="••••••••"
-                        >
-                    </div>
-                </div>
-
-                <button 
-                    type="submit" 
-                    :disabled="loading"
-                    class="w-full bg-primary text-secondary font-bold py-4 rounded-xl shadow-xl shadow-primary/30 hover:bg-primary/90 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 mt-2"
-                >
-                    <span v-if="loading" class="w-5 h-5 border-2 border-secondary/30 border-t-secondary rounded-full animate-spin"></span>
-                    <span v-else>Sign In</span>
-                </button>
-            </form>
+  <div class="w-full max-w-md p-6 md:p-8 relative z-10">
+    <!-- Login Card -->
+    <div class="bg-white rounded-[32px] md:rounded-[40px] p-6 md:p-8 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.15)] border border-gray-100 flex flex-col gap-6 md:gap-8 animate-slide-up-content">
+      
+      <!-- Header -->
+      <div class="text-center space-y-3">
+        <!-- Logo Icon -->
+        <div class="w-16 h-16 md:w-20 md:h-20 bg-primary text-secondary rounded-[20px] md:rounded-[24px] flex items-center justify-center mx-auto shadow-lg shadow-primary/25 animate-scale-in" style="animation-delay: 200ms">
+          <span class="material-symbols-rounded text-3xl md:text-4xl">coffee_maker</span>
         </div>
+        
+        <!-- Brand -->
+        <div class="animate-slide-up-content" style="animation-delay: 300ms">
+          <div class="flex items-center justify-center gap-2 mb-2">
+            <span class="text-[10px] font-black text-text-sub uppercase tracking-[0.3em]">OTIA DOWNTOWN</span>
+          </div>
+          <h1 class="text-3xl md:text-4xl font-sans font-black text-primary tracking-tight">Barista Access</h1>
+          <p class="text-text-sub text-sm mt-1">Sign in to manage orders</p>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <form @submit.prevent="handleLogin" class="flex flex-col gap-5 animate-slide-up-content" style="animation-delay: 400ms">
+        <div class="space-y-4">
+          <!-- Username Field -->
+          <div class="space-y-2">
+            <label class="text-[10px] font-black text-text-sub uppercase tracking-[0.15em] ml-1 flex items-center gap-2">
+              <span class="material-symbols-rounded text-sm opacity-50">person</span>
+              Username
+            </label>
+            <input 
+              v-model="username"
+              type="text" 
+              class="w-full bg-background-light border-2 border-transparent rounded-2xl px-5 py-4 text-text-main font-semibold focus:outline-none focus:border-primary/20 focus:bg-white transition-all duration-300 placeholder:text-text-sub/40"
+              placeholder="Enter your username"
+              autocomplete="username"
+            >
+          </div>
+
+          <!-- Password Field -->
+          <div class="space-y-2">
+            <label class="text-[10px] font-black text-text-sub uppercase tracking-[0.15em] ml-1 flex items-center gap-2">
+              <span class="material-symbols-rounded text-sm opacity-50">lock</span>
+              Password
+            </label>
+            <input 
+              v-model="password"
+              type="password" 
+              class="w-full bg-background-light border-2 border-transparent rounded-2xl px-5 py-4 text-text-main font-semibold focus:outline-none focus:border-primary/20 focus:bg-white transition-all duration-300 placeholder:text-text-sub/40"
+              placeholder="••••••••"
+              autocomplete="current-password"
+            >
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button 
+          type="submit" 
+          :disabled="loading"
+          class="w-full bg-primary text-white font-black py-4 rounded-2xl shadow-lg shadow-primary/25 active:scale-[0.97] disabled:opacity-60 disabled:cursor-not-allowed transition-all duration-300 flex items-center justify-center gap-3 mt-2 relative overflow-hidden group"
+        >
+          <!-- Shimmer effect -->
+          <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 translate-x-[-200%] group-hover:animate-shimmer"></div>
+          
+          <span v-if="loading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+          <template v-else>
+            <span class="relative z-10">Sign In</span>
+            <span class="material-symbols-rounded text-xl relative z-10">arrow_forward</span>
+          </template>
+        </button>
+      </form>
+      
+      <!-- Footer Hint -->
+      <p class="text-center text-text-sub/60 text-xs animate-fade-in" style="animation-delay: 600ms">
+        KDS System for Barista Staff Only
+      </p>
     </div>
+  </div>
 </div>
 </template>
