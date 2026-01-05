@@ -196,7 +196,7 @@ const handleLogin = async () => {
       <!-- Header / Logo Area -->
       <div class="text-center mb-10">
         <div class="size-24 bg-gradient-to-tr from-primary/10 to-primary/5 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner rotate-3 hover:rotate-6 transition-transform duration-500">
-           <span class="material-symbols-rounded text-primary text-5xl drop-shadow-sm">local_cafe</span>
+           <span class="material-symbols-rounded text-primary text-5xl drop-shadow-sm" aria-hidden="true">local_cafe</span>
         </div>
         <h1 class="text-4xl font-serif font-bold text-text-main mb-3 tracking-tight">Welcome Back</h1>
         <p class="text-text-sub/80 text-sm font-medium tracking-wide">Sign in to continue to OTIA Café</p>
@@ -206,10 +206,13 @@ const handleLogin = async () => {
       <form @submit.prevent="handleLogin" class="space-y-6">
         <!-- Account Input -->
         <div>
-          <label class="block text-xs font-bold uppercase text-text-sub tracking-widest mb-2 ml-4">Account</label>
+          <label for="username" class="block text-xs font-bold uppercase text-text-sub tracking-widest mb-2 ml-4">Account</label>
           <input 
+            id="username"
+            name="username"
             v-model="username"
             type="text" 
+            autocomplete="username"
             class="w-full bg-background-light border-none rounded-[24px] h-[64px] px-8 font-bold text-lg text-text-main focus:ring-2 focus:ring-[#103E32]/20 transition-all duration-300 ease-out outline-none placeholder:text-gray-300"
             :placeholder="lang === 'cn' ? '用户名 / 手机号 / 邮箱' : 'Username / Phone / Email'"
           />
@@ -218,10 +221,13 @@ const handleLogin = async () => {
 
         <!-- Password Input -->
         <div>
-          <label class="block text-xs font-bold uppercase text-text-sub tracking-widest mb-2 ml-4">Password</label>
+          <label for="password" class="block text-xs font-bold uppercase text-text-sub tracking-widest mb-2 ml-4">Password</label>
           <input 
+            id="password"
+            name="password"
             v-model="password"
             type="password" 
+            autocomplete="current-password"
             class="w-full bg-background-light border-none rounded-[24px] h-[64px] px-8 font-bold text-lg text-text-main focus:ring-2 focus:ring-[#103E32]/20 transition-all duration-300 ease-out outline-none placeholder:text-gray-300"
             placeholder="Enter your password"
           />
