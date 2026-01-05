@@ -46,6 +46,7 @@ const username = ref('');
 
 // 密码输入框
 const password = ref('');
+const showPassword = ref(false);
 
 // 登录请求加载状态
 const isLoading = ref(false);
@@ -222,15 +223,27 @@ const handleLogin = async () => {
         <!-- Password Input -->
         <div>
           <label for="password" class="block text-xs font-bold uppercase text-text-sub tracking-widest mb-2 ml-4">Password</label>
-          <input 
-            id="password"
-            name="password"
-            v-model="password"
-            type="password" 
-            autocomplete="current-password"
-            class="w-full bg-background-light border-none rounded-[24px] h-[64px] px-8 font-bold text-lg text-text-main focus:ring-2 focus:ring-[#103E32]/20 transition-all duration-300 ease-out outline-none placeholder:text-gray-300"
-            placeholder="Enter your password"
-          />
+          <div class="relative">
+            <input
+              id="password"
+              name="password"
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              autocomplete="current-password"
+              class="w-full bg-background-light border-none rounded-[24px] h-[64px] px-8 pr-14 font-bold text-lg text-text-main focus:ring-2 focus:ring-[#103E32]/20 transition-all duration-300 ease-out outline-none placeholder:text-gray-300"
+              placeholder="Enter your password"
+            />
+            <button
+              type="button"
+              @click="showPassword = !showPassword"
+              class="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#103E32] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#103E32]/20 rounded-full p-1"
+              :aria-label="showPassword ? (lang === 'cn' ? '隐藏密码' : 'Hide password') : (lang === 'cn' ? '显示密码' : 'Show password')"
+            >
+              <span class="material-symbols-rounded text-2xl select-none">
+                {{ showPassword ? 'visibility_off' : 'visibility' }}
+              </span>
+            </button>
+          </div>
         </div>
 
         <!-- Error Message Display Removed -->
