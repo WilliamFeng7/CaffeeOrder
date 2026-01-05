@@ -1,7 +1,6 @@
 import sys
 from sqlmodel import Session, select, create_engine
 import uuid
-import os
 from pathlib import Path
 
 # Add backend directory to sys.path to allow imports from 'app'
@@ -18,12 +17,15 @@ sqlite_file_name = backend_dir / "coffee.db"
 DATABASE_URL = f"sqlite:///{sqlite_file_name}"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
-def create_user(username, password, role_str="student", name=None, phone=None, email=None):
+
+def create_user(
+    username, password, role_str="student", name=None, phone=None, email=None
+):
     """
     创建用户的主逻辑 (Main logic to create user)
     """
     print(f"🔄 正在尝试创建用户: {username}...")
-    
+
     # 1. 验证角色 (Validate Role)
     try:
         role = UserRole(role_str.lower())
@@ -41,23 +43,27 @@ def create_user(username, password, role_str="student", name=None, phone=None, e
 
     with Session(engine) as session:
         # 3. 检查用户是否已存在 (Check Existence)
-        existing_user = session.exec(select(User).where(User.username == username)).first()
+        existing_user = session.exec(
+            select(User).where(User.username == username)
+        ).first()
         if existing_user:
-            print(f"❌ 创建失败: 用户名 '{username}' 已经存在! (ID: {existing_user.id})")
+            print(
+                f"❌ 创建失败: 用户名 '{username}' 已经存在! (ID: {existing_user.id})"
+            )
             return
 
         # 4. 创建新用户对象 (Create Object)
         new_user = User(
             username=username,
-            uuid=str(uuid.uuid4()), 
-            password=password, 
+            uuid=str(uuid.uuid4()),
+            password=password,
             role=role,
             name=name,
             phone=phone,
             email=email,
-            balance=0
+            balance=0,
         )
-        
+
         try:
             session.add(new_user)
             session.commit()
@@ -71,6 +77,7 @@ def create_user(username, password, role_str="student", name=None, phone=None, e
         except Exception as e:
             print(f"❌ 数据库错误: {e}")
 
+
 if __name__ == "__main__":
     # 命令行入口
     # 如果没有命令行参数，改为交互式输入 (Interactive Mode)
@@ -81,19 +88,19 @@ if __name__ == "__main__":
             if not username:
                 print("❌ 用户名不能为空")
                 sys.exit(1)
-                
+
             password = input("请输入密码 (Password): ").strip()
             if not password:
                 print("❌ 密码不能为空")
                 sys.exit(1)
-                
+
             role = input("请输入角色 (Role, 默认为 student): ").strip() or "student"
             name = input("请输入真实姓名 (Name, 可选): ").strip() or None
             phone = input("请输入手机号 (Phone, 可选): ").strip() or None
             email = input("请输入邮箱 (Email, 可选): ").strip() or None
-                
+
             create_user(username, password, role, name, phone, email)
-            
+
         except KeyboardInterrupt:
             print("\n已取消")
     else:

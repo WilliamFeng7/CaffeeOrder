@@ -26,31 +26,36 @@ connect_args = {"check_same_thread": False}
 # Create Async Engine
 engine = create_async_engine(
     DATABASE_URL,
-    echo=False, # Set to True to see SQL queries in logs
+    echo=False,  # Set to True to see SQL queries in logs
     connect_args=connect_args,
 )
+
 
 # 对 SQLite 启用 WAL 模式 (Write-Ahead Logging) 以支持更好的并发
 # Enable WAL mode for better concurrency
 async def init_db_wal():
     async with engine.begin() as conn:
         await conn.execute(text("PRAGMA journal_mode=WAL;"))
-        await conn.execute(text("PRAGMA synchronous=NORMAL;")) # Optional: distinct performance boost
+        await conn.execute(
+            text("PRAGMA synchronous=NORMAL;")
+        )  # Optional: distinct performance boost
+
 
 async def init_db():
     """
     初始化数据库 (Initialize Database)
-    
+
     主要功能:
     1. 创建所有定义的表结构 (如果使用 Alembic，这一步可能不再必要，但保留用于开发环境)
     """
     # WAL mode configuration is handled via event listener or explicit call if needed,
     # but for simple aiosqlite execution:
     # Note: aiosqlite engine usually handles connection pooling.
-    
+
     async with engine.begin() as conn:
         # await conn.run_sync(SQLModel.metadata.drop_all) # Uncomment to reset
         await conn.run_sync(SQLModel.metadata.create_all)
+
 
 # 创建异步 Session 工厂
 # Create Async Session Factory
@@ -62,10 +67,11 @@ async_session_factory = sessionmaker(
     autoflush=False,
 )
 
+
 async def get_session() -> AsyncSession:
     """
     FastAPI 依赖注入的 Session 提供者 (Async Session Provider)
-    
+
     用法:
     async def endpoint(session: AsyncSession = Depends(get_session)): ...
     """

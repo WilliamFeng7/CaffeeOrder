@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 from sqlmodel import SQLModel
-from app.models import * # Import your models here
+from app.models import *  # Import your models here
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -28,7 +28,9 @@ target_metadata = SQLModel.metadata
 # ... etc.
 
 import os
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 def get_url():
     url = os.getenv("DATABASE_URL")
@@ -36,6 +38,7 @@ def get_url():
         sqlite_file_name = os.path.join(BASE_DIR, "coffee.db")
         url = f"sqlite+aiosqlite:///{sqlite_file_name}"
     return url
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.

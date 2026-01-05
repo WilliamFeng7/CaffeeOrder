@@ -8,6 +8,7 @@ from app.models import MenuItem
 
 router = APIRouter()
 
+
 @router.get("/", response_model=List[MenuItem])
 async def read_menu(
     session: AsyncSession = Depends(get_session),
@@ -15,7 +16,7 @@ async def read_menu(
 ):
     """
     获取菜单列表 (Get Menu)
-    
+
     返回所有状态为 "上架 (active)" 的商品。
     无需登录即可访问（公共接口）。
     """
