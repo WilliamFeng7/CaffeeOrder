@@ -1,5 +1,5 @@
-from typing import Any, List
-from fastapi import APIRouter, Depends, HTTPException
+from typing import List
+from fastapi import APIRouter, Depends
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel import select
 from pydantic import BaseModel
@@ -9,8 +9,10 @@ from app.api import deps
 
 router = APIRouter()
 
+
 class SettingUpdate(BaseModel):
     value: str
+
 
 @router.get("/", response_model=List[SystemSetting])
 async def read_settings(
@@ -21,6 +23,7 @@ async def read_settings(
     """
     result = await session.exec(select(SystemSetting))
     return result.all()
+
 
 @router.put("/{key}", response_model=SystemSetting)
 async def update_setting(
@@ -39,7 +42,7 @@ async def update_setting(
         setting = SystemSetting(key=key, value=setting_in.value)
     else:
         setting.value = setting_in.value
-        
+
     session.add(setting)
     await session.commit()
     await session.refresh(setting)

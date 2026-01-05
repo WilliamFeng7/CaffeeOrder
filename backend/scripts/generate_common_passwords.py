@@ -10,18 +10,56 @@ import itertools
 
 # Base words commonly found in weak passwords
 base_words = [
-    "password", "admin", "login", "welcome", "qwerty", "letmein", "monkey",
-    "dragon", "football", "iloveyou", "starwars", "123456", "123456789",
-    "abc123", "111111", "123123", "654321", "666666", "7777777",
-    "sunshine", "princess", "master", "shadow", "superman", "asdfgh",
-    "zxcvbn", "coffee", "latte", "espresso", "mocha", "cappuccino",
+    "password",
+    "admin",
+    "login",
+    "welcome",
+    "qwerty",
+    "letmein",
+    "monkey",
+    "dragon",
+    "football",
+    "iloveyou",
+    "starwars",
+    "123456",
+    "123456789",
+    "abc123",
+    "111111",
+    "123123",
+    "654321",
+    "666666",
+    "7777777",
+    "sunshine",
+    "princess",
+    "master",
+    "shadow",
+    "superman",
+    "asdfgh",
+    "zxcvbn",
+    "coffee",
+    "latte",
+    "espresso",
+    "mocha",
+    "cappuccino",
 ]
 
 # Numeric patterns
 numbers = [
-    "123", "1234", "12345", "123456", "1234567", "12345678",
-    "111", "1111", "11111", "222", "2222", "3333",
-    "000", "0000", "00000",
+    "123",
+    "1234",
+    "12345",
+    "123456",
+    "1234567",
+    "12345678",
+    "111",
+    "1111",
+    "11111",
+    "222",
+    "2222",
+    "3333",
+    "000",
+    "0000",
+    "00000",
 ]
 
 # Years from 1900 to 2030
@@ -49,8 +87,15 @@ entries.update(years)
 
 # Add common patterns like "password!", "admin@123", etc.
 patterns = [
-    "password!", "admin@123", "login2020", "welcome1", "qwerty123",
-    "letmein!", "monkey123", "dragon2021", "football!",
+    "password!",
+    "admin@123",
+    "login2020",
+    "welcome1",
+    "qwerty123",
+    "letmein!",
+    "monkey123",
+    "dragon2021",
+    "football!",
 ]
 entries.update(patterns)
 
@@ -65,7 +110,9 @@ while len(entries) < 3500:
     entries.add(w2 + "2022")
 
 # Write to file
-output_path = os.path.join(os.path.dirname(__file__), "..", "app", "core", "common_passwords.txt")
+output_path = os.path.join(
+    os.path.dirname(__file__), "..", "app", "core", "common_passwords.txt"
+)
 # Resolve any relative path components
 output_path = os.path.abspath(output_path)
 with open(output_path, "w", encoding="utf-8") as f:
