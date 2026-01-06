@@ -1,7 +1,13 @@
 <script setup lang="ts">
+/**
+ * KDSLayout.vue
+ * 
+ * Premium Kitchen Display System layout - matching Student app aesthetic.
+ * Features: Glass-morphism header, elegant brand, live clock, toast system.
+ */
 import { useRouter } from 'vue-router';
 import { useToastStore } from '../stores/toast';
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 
 const router = useRouter();
 const toastStore = useToastStore();
@@ -15,8 +21,8 @@ const handleLogout = () => {
 
 const updateTime = () => {
   const now = new Date();
-  currentTime.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-  currentDate.value = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  currentTime.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  currentDate.value = now.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
 };
 
 let timeInterval: number | null = null;
@@ -28,73 +34,81 @@ onMounted(() => {
 onUnmounted(() => {
   if (timeInterval) clearInterval(timeInterval);
 });
-
-const noiseTexture = "data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E";
 </script>
 
 <template>
   <div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans select-none flex flex-col z-0">
-    <!-- Background Noise Texture -->
-    <div class="fixed inset-0 pointer-events-none z-50 opacity-[0.03] mix-blend-overlay" :style="{ backgroundImage: `url('${noiseTexture}')` }"></div>
-
+    
     <!-- Header -->
-    <header class="py-3 md:py-4 px-4 md:px-6 flex flex-wrap items-center justify-between gap-3 z-10 bg-background-light/90 backdrop-blur-md border-b border-gray-100/50 sticky top-0">
+    <header class="py-4 md:py-5 px-5 md:px-8 flex items-center justify-between gap-4 z-10 bg-white/70 backdrop-blur-xl border-b border-gray-100/80 sticky top-0 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
+      
       <!-- Left: Brand -->
-      <div class="flex items-center gap-3">
-        <div class="size-10 md:size-11 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-          <span class="material-symbols-rounded text-secondary text-xl md:text-2xl">coffee_maker</span>
+      <div class="flex items-center gap-4">
+        <div class="size-12 md:size-14 bg-gradient-to-br from-primary to-[#0A2921] rounded-[18px] md:rounded-[20px] flex items-center justify-center shadow-lg shadow-primary/25 transition-transform duration-500 ease-luxury active:scale-95">
+          <span class="material-symbols-rounded text-secondary text-2xl md:text-3xl">coffee_maker</span>
         </div>
         <div class="flex flex-col">
-          <span class="text-xs md:text-sm font-black text-primary leading-tight">Kitchen Display</span>
-          <div class="flex items-center gap-1.5">
-            <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span class="text-[9px] md:text-[10px] font-bold text-text-sub uppercase tracking-wide">Online</span>
+          <span class="text-base md:text-lg font-black text-primary leading-tight tracking-tight">Kitchen Display</span>
+          <div class="flex items-center gap-2">
+            <span class="size-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50"></span>
+            <span class="text-[10px] md:text-xs font-bold text-text-sub uppercase tracking-widest">Live</span>
           </div>
         </div>
       </div>
 
       <!-- Center: Time -->
-      <div class="flex flex-col items-center order-last lg:order-none w-full lg:w-auto">
-        <div class="text-2xl md:text-3xl font-black text-primary font-mono tracking-tight leading-none">
+      <div class="hidden md:flex flex-col items-center bg-white/80 px-8 py-3 rounded-2xl border border-gray-100/50 shadow-sm">
+        <div class="text-3xl lg:text-4xl font-black text-primary font-mono tracking-tight leading-none">
           {{ currentTime }}
         </div>
-        <div class="text-[10px] font-bold text-text-sub uppercase tracking-wide">
+        <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-1">
           {{ currentDate }}
         </div>
       </div>
 
       <!-- Right: Actions -->
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-3">
+        <!-- Mobile Time -->
+        <div class="md:hidden flex flex-col items-end">
+          <span class="text-lg font-black text-primary font-mono">{{ currentTime }}</span>
+        </div>
+        
         <button 
           @click="handleLogout"
-          class="flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-xl bg-white text-text-main font-bold text-xs md:text-sm shadow-sm border border-gray-100 active:scale-95 transition-all hover:shadow-md"
+          class="flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 rounded-xl md:rounded-2xl bg-white text-text-main font-bold text-xs md:text-sm shadow-sm border border-gray-100 active:scale-95 transition-all duration-300 hover:shadow-md hover:border-gray-200"
         >
-          <span class="material-symbols-rounded text-lg opacity-60">logout</span>
-          <span class="hidden sm:inline">Exit</span>
+          <span class="material-symbols-rounded text-lg md:text-xl opacity-50">logout</span>
+          <span class="hidden sm:inline">Sign Out</span>
         </button>
       </div>
     </header>
 
     <!-- Main Content Area -->
-    <main class="flex-1 w-full overflow-auto relative z-0 p-3 md:p-5">
+    <main class="flex-1 w-full overflow-hidden relative z-0 p-4 md:p-6 lg:p-8">
       <slot></slot>
     </main>
 
     <!-- Global Toast -->
-    <div class="fixed top-16 md:top-20 left-0 right-0 z-[120] flex flex-col items-center gap-2 pointer-events-none px-4">
+    <div class="fixed top-20 md:top-24 left-0 right-0 z-[120] flex flex-col items-center gap-3 pointer-events-none px-4">
       <div 
         v-for="toast in toastStore.toasts" 
         :key="toast.id" 
-        class="bg-primary text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2.5 animate-slide-down-content pointer-events-auto max-w-sm"
+        class="bg-primary/95 backdrop-blur-xl text-white pl-4 pr-6 py-3.5 rounded-2xl shadow-[0_20px_60px_-10px_rgba(16,62,50,0.4)] flex items-center gap-3 animate-slide-down-content pointer-events-auto border border-white/10 max-w-md"
       >
-        <span class="material-symbols-rounded text-lg filled" :class="{
-          'text-secondary': toast.type === 'success',
-          'text-red-400': toast.type === 'error',
-          'text-blue-400': toast.type === 'info'
+        <div class="size-8 rounded-xl flex items-center justify-center" :class="{
+          'bg-secondary/20': toast.type === 'success',
+          'bg-red-500/20': toast.type === 'error',
+          'bg-blue-400/20': toast.type === 'info'
         }">
-          {{ toast.type === 'success' ? 'check_circle' : toast.type === 'error' ? 'error' : 'info' }}
-        </span>
-        <span class="text-sm font-semibold">{{ toast.message }}</span>
+          <span class="material-symbols-rounded text-lg filled" :class="{
+            'text-secondary': toast.type === 'success',
+            'text-red-400': toast.type === 'error',
+            'text-blue-400': toast.type === 'info'
+          }">
+            {{ toast.type === 'success' ? 'check_circle' : toast.type === 'error' ? 'error' : 'info' }}
+          </span>
+        </div>
+        <span class="text-sm font-bold tracking-tight">{{ toast.message }}</span>
       </div>
     </div>
   </div>

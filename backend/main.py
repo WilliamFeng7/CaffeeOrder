@@ -1,15 +1,33 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 import os
 
 from app.api.api import api_router
 from app.core.config import settings
 
+
+# --- Lifespan Event Handler (Modern Pattern) ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan: startup and shutdown events."""
+    # Startup: Initialize database with WAL mode
+    from app.database import init_db_wal
+    await init_db_wal()
+    yield
+    # Shutdown: cleanup if needed
+
+
 # --- 初始化应用 (Initialize App) ---
-app = FastAPI(title=settings.PROJECT_NAME)
+app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
+
+# --- GZip Compression Middleware ---
+# Compress responses larger than 500 bytes for better network performance
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # --- 静态文件服务 (Static Files) ---
 # 用于提供图片资源 (e.g. /static/coffee.jpg)

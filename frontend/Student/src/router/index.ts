@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import StudentLayout from '../layouts/StudentLayout.vue';
-import LoginView from '../views/LoginView.vue';
 import { auth } from '@shared/auth';
+
+// Lazy-loaded route components for better initial load performance
+const StudentLayout = () => import('../layouts/StudentLayout.vue');
+const LoginView = () => import('../views/LoginView.vue');
 
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),

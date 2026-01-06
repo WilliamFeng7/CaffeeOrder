@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta
 from typing import Any, Union
 from jose import jwt
@@ -60,7 +61,7 @@ def _load_common_passwords():
     """
     Load common passwords from file, falling back to a hardcoded set if file is missing.
     """
-    default_weak = {"123456", "password", "admin", "12345678", "qwerty", "system"}
+    default_weak = {"123456", "password", "password123", "admin", "12345678", "qwerty", "system"}
 
     try:
         import os
@@ -92,6 +93,12 @@ def validate_password(password: str) -> bool:
     if len(password) < 8:
         raise ValueError(
             "密码长度必须至少为 8 位 (Password must be at least 8 characters)"
+        )
+
+    # Check against common passwords list
+    if password.lower() in COMMON_PASSWORDS:
+        raise ValueError(
+            "密码太常见，请选择更安全的密码 (Password is too common, please choose a stronger one)"
         )
 
     # User requested to remove complexity checks (letters/digits)

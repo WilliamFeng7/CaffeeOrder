@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
+/**
+ * KDSView.vue
+ * 
+ * Premium Kitchen Display System Order Board.
+ * Features: Three-column Kanban layout, stats bar, sound notifications, keyboard shortcuts.
+ */
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { api, type Order } from '../api';
 import { useToastStore } from '../stores/toast';
 import OrderCard from '../components/OrderCard.vue';
@@ -10,6 +16,10 @@ const loading = ref(true);
 const refreshing = ref(false);
 const toast = useToastStore();
 let pollInterval: number | null = null;
+
+// Global tick for OrderCard time updates (instead of per-card intervals)
+const globalTick = ref(0);
+let tickInterval: number | null = null;
 
 // Sound notification
 const playNotificationSound = () => {
@@ -34,6 +44,7 @@ const playNotificationSound = () => {
 };
 
 const previousPendingCount = ref(0);
+const hasInitialLoad = ref(false);
 
 const fetchOrders = async (showRefresh = false) => {
     if (showRefresh) refreshing.value = true;
@@ -41,12 +52,13 @@ const fetchOrders = async (showRefresh = false) => {
         const data = await api.getAllOrders();
         const newOrders = data.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         
-        // Check for new pending orders
+        // Check for new pending orders (skip on initial load to avoid false positive)
         const newPendingCount = newOrders.filter(o => ['pending', 'new'].includes(o.status.toLowerCase())).length;
-        if (previousPendingCount.value > 0 && newPendingCount > previousPendingCount.value) {
+        if (hasInitialLoad.value && newPendingCount > previousPendingCount.value) {
           playNotificationSound();
           toast.info(`${newPendingCount - previousPendingCount.value} new order(s)!`);
         }
+        hasInitialLoad.value = true;
         previousPendingCount.value = newPendingCount;
         
         orders.value = newOrders;
@@ -91,19 +103,50 @@ const handleKeydown = (e: KeyboardEvent) => {
 
 onMounted(() => {
     fetchOrders();
-    pollInterval = setInterval(() => fetchOrders(), 4000) as unknown as number;
+    // Reduced polling frequency: 8s instead of 4s (consider WebSocket for real-time)
+    pollInterval = setInterval(() => fetchOrders(), 8000) as unknown as number;
+    // Global tick every 30s for OrderCard time updates
+    tickInterval = setInterval(() => { globalTick.value++; }, 30000) as unknown as number;
     window.addEventListener('keydown', handleKeydown);
 });
 
 onUnmounted(() => {
     if (pollInterval) clearInterval(pollInterval);
+    if (tickInterval) clearInterval(tickInterval);
     window.removeEventListener('keydown', handleKeydown);
 });
 
 const columns = [
-  { title: 'New', orders: pendingOrders, icon: 'schedule', bgColor: 'bg-amber-50', iconColor: 'text-amber-500', countBg: 'bg-amber-500', borderColor: 'border-amber-200' },
-  { title: 'Making', orders: processingOrders, icon: 'local_fire_department', bgColor: 'bg-indigo-50', iconColor: 'text-indigo-500', countBg: 'bg-indigo-500', borderColor: 'border-indigo-200' },
-  { title: 'Ready', orders: completedOrders, icon: 'check_circle', bgColor: 'bg-emerald-50', iconColor: 'text-emerald-500', countBg: 'bg-emerald-500', borderColor: 'border-emerald-200' }
+  { 
+    title: 'New Orders', 
+    orders: pendingOrders, 
+    icon: 'schedule', 
+    accentColor: 'amber',
+    iconBg: 'bg-amber-100',
+    iconColor: 'text-amber-600',
+    countBg: 'bg-amber-500',
+    borderColor: 'border-amber-100'
+  },
+  { 
+    title: 'Making', 
+    orders: processingOrders, 
+    icon: 'local_fire_department', 
+    accentColor: 'indigo',
+    iconBg: 'bg-indigo-100',
+    iconColor: 'text-indigo-600',
+    countBg: 'bg-indigo-500',
+    borderColor: 'border-indigo-100'
+  },
+  { 
+    title: 'Ready', 
+    orders: completedOrders, 
+    icon: 'check_circle', 
+    accentColor: 'emerald',
+    iconBg: 'bg-emerald-100',
+    iconColor: 'text-emerald-600',
+    countBg: 'bg-emerald-500',
+    borderColor: 'border-emerald-100'
+  }
 ];
 
 const manualRefresh = () => fetchOrders(true);
@@ -111,15 +154,18 @@ const manualRefresh = () => fetchOrders(true);
 
 <template>
   <KDSLayout>
-    <div class="flex flex-col h-full gap-4 md:gap-5 pb-8">
+    <div class="flex flex-col h-full gap-5 md:gap-6">
+      
       <!-- Hero Section -->
-      <div class="flex flex-wrap items-end justify-between gap-4 px-1 md:px-2">
-        <div>
-          <h1 class="text-4xl md:text-5xl lg:text-6xl font-sans font-black text-primary leading-[0.9] tracking-tighter animate-text-reveal transform-gpu">
+      <div class="flex flex-wrap items-end justify-between gap-4 px-1">
+        <div class="animate-slide-up-content">
+          <h1 class="text-4xl md:text-5xl lg:text-6xl font-sans font-black text-primary leading-[0.95] tracking-tighter">
             Order Board
           </h1>
-          <p class="text-sm md:text-base font-serif italic text-text-sub ml-0.5 opacity-80 mt-1">
-            Current active orders · Press <kbd class="px-1.5 py-0.5 bg-gray-100 rounded text-[10px] font-mono font-bold not-italic">R</kbd> to refresh
+          <p class="text-sm md:text-base font-serif italic text-text-sub ml-0.5 mt-2 flex items-center gap-2">
+            <span>Real-time order management</span>
+            <kbd class="px-2 py-1 bg-white rounded-lg text-[10px] font-mono font-bold not-italic text-gray-400 border border-gray-100 shadow-sm">R</kbd>
+            <span class="text-gray-300">to refresh</span>
           </p>
         </div>
         
@@ -127,103 +173,112 @@ const manualRefresh = () => fetchOrders(true);
         <button 
           @click="manualRefresh"
           :disabled="refreshing"
-          class="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl shadow-sm border border-gray-100 text-sm font-bold text-text-main hover:shadow-md active:scale-95 transition-all disabled:opacity-50"
+          class="flex items-center gap-2.5 px-5 py-3 bg-white rounded-2xl shadow-sm border border-gray-100 text-sm font-bold text-text-main hover:shadow-md active:scale-95 transition-all duration-300 disabled:opacity-50 animate-slide-up-content"
+          style="animation-delay: 100ms"
         >
-          <span class="material-symbols-rounded text-lg" :class="{ 'animate-spin': refreshing }">refresh</span>
+          <span class="material-symbols-rounded text-xl" :class="{ 'animate-spin': refreshing }">refresh</span>
           <span class="hidden sm:inline">Refresh</span>
         </button>
       </div>
 
       <!-- Quick Stats Bar -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 animate-slide-up-content" style="animation-delay: 200ms">
-        <div class="flex items-center gap-2.5 bg-white rounded-xl px-3 py-2.5 shadow-sm border border-gray-100">
-          <div class="size-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-            <span class="material-symbols-rounded text-primary text-lg">receipt_long</span>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 animate-slide-up-content" style="animation-delay: 150ms">
+        <!-- Total Orders -->
+        <div class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-50">
+          <div class="size-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <span class="material-symbols-rounded text-primary text-xl">receipt_long</span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black text-primary leading-none">{{ totalOrders }}</div>
-            <div class="text-[9px] font-bold text-text-sub uppercase tracking-wide truncate">Total</div>
+            <div class="text-2xl font-black text-primary leading-none">{{ totalOrders }}</div>
+            <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-0.5">Total Today</div>
           </div>
         </div>
         
-        <div class="flex items-center gap-2.5 bg-white rounded-xl px-3 py-2.5 shadow-sm border border-gray-100">
-          <div class="size-8 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
-            <span class="material-symbols-rounded text-amber-500 text-lg">pending</span>
+        <!-- Active Orders -->
+        <div class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-50">
+          <div class="size-11 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+            <span class="material-symbols-rounded text-amber-500 text-xl">pending</span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black text-primary leading-none">{{ pendingOrders.length + processingOrders.length }}</div>
-            <div class="text-[9px] font-bold text-text-sub uppercase tracking-wide truncate">Active</div>
+            <div class="text-2xl font-black text-primary leading-none">{{ pendingOrders.length + processingOrders.length }}</div>
+            <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-0.5">Active</div>
           </div>
         </div>
         
-        <div class="flex items-center gap-2.5 bg-white rounded-xl px-3 py-2.5 shadow-sm border border-gray-100">
-          <div class="size-8 rounded-lg bg-secondary/30 flex items-center justify-center shrink-0">
-            <span class="material-symbols-rounded text-secondary-content text-lg">timer</span>
+        <!-- Average Wait -->
+        <div class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-50">
+          <div class="size-11 rounded-xl bg-secondary/30 flex items-center justify-center shrink-0">
+            <span class="material-symbols-rounded text-secondary-content text-xl">timer</span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black text-primary leading-none">{{ avgWaitTime }}<span class="text-xs font-bold text-text-sub">m</span></div>
-            <div class="text-[9px] font-bold text-text-sub uppercase tracking-wide truncate">Avg Wait</div>
+            <div class="text-2xl font-black text-primary leading-none">{{ avgWaitTime }}<span class="text-sm font-bold text-text-sub ml-0.5">min</span></div>
+            <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-0.5">Avg Wait</div>
           </div>
         </div>
         
-        <div class="flex items-center gap-2.5 bg-white rounded-xl px-3 py-2.5 shadow-sm border border-gray-100">
-          <div class="size-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-            <span class="material-symbols-rounded text-emerald-500 text-lg filled">check_circle</span>
+        <!-- Ready Orders -->
+        <div class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-50">
+          <div class="size-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+            <span class="material-symbols-rounded text-emerald-500 text-xl filled">check_circle</span>
           </div>
           <div class="min-w-0">
-            <div class="text-xl font-black text-primary leading-none">{{ completedOrders.length }}</div>
-            <div class="text-[9px] font-bold text-text-sub uppercase tracking-wide truncate">Ready</div>
+            <div class="text-2xl font-black text-primary leading-none">{{ completedOrders.length }}</div>
+            <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-0.5">Ready</div>
           </div>
         </div>
       </div>
 
       <!-- Loading State -->
       <div v-if="loading" class="flex-1 flex items-center justify-center">
-        <div class="flex flex-col items-center gap-4 animate-fade-in">
-          <div class="size-14 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
+        <div class="flex flex-col items-center gap-5 animate-fade-in">
+          <div class="size-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
           <span class="text-text-sub font-bold text-sm">Loading orders...</span>
         </div>
       </div>
 
-      <!-- KDS Grid -->
-      <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 flex-1 min-h-0">
+      <!-- KDS Three-Column Grid -->
+      <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5 flex-1 min-h-0 pb-4">
         <div 
           v-for="(col, idx) in columns" 
           :key="col.title" 
-          class="flex flex-col h-full min-h-[280px] lg:min-h-0 bg-white rounded-[24px] md:rounded-[28px] p-3 md:p-4 border shadow-sm transition-all duration-500 ease-luxury hover:shadow-md animate-slide-up-content transform-gpu"
+          class="flex flex-col h-full min-h-[320px] lg:min-h-0 bg-white rounded-[28px] md:rounded-[32px] p-4 md:p-5 border shadow-sm transition-all duration-500 ease-luxury hover:shadow-md animate-slide-up-content"
           :class="col.borderColor"
-          :style="{ animationDelay: `${300 + idx * 60}ms` }"
+          :style="{ animationDelay: `${200 + idx * 80}ms` }"
         >
-          <!-- Header -->
-          <div class="flex items-center justify-between gap-2 mb-3 pb-2.5 border-b border-gray-100">
-            <div class="flex items-center gap-2">
-              <div class="size-8 rounded-lg flex items-center justify-center" :class="col.bgColor">
-                <span class="material-symbols-rounded text-lg" :class="col.iconColor">{{ col.icon }}</span>
+          <!-- Column Header -->
+          <div class="flex items-center justify-between gap-3 mb-4 pb-4 border-b border-gray-100/80">
+            <div class="flex items-center gap-3">
+              <div class="size-10 md:size-11 rounded-xl flex items-center justify-center" :class="col.iconBg">
+                <span class="material-symbols-rounded text-xl md:text-2xl filled" :class="col.iconColor">{{ col.icon }}</span>
               </div>
-              <h2 class="text-base md:text-lg font-black tracking-tight text-primary">{{ col.title }}</h2>
+              <h2 class="text-lg md:text-xl font-black tracking-tight text-primary">{{ col.title }}</h2>
             </div>
-            <span class="size-6 md:size-7 rounded-full flex items-center justify-center text-xs font-black text-white shadow" :class="col.countBg">
+            <span 
+              class="size-8 md:size-9 rounded-xl flex items-center justify-center text-sm font-black text-white shadow-lg" 
+              :class="col.countBg"
+            >
               {{ col.orders.value.length }}
             </span>
           </div>
 
-          <!-- Scrollable List -->
-          <div class="flex-1 overflow-y-auto pr-0.5 space-y-2.5 md:space-y-3 no-scrollbar scroll-smooth-touch">
+          <!-- Scrollable Order List -->
+          <div class="flex-1 overflow-y-auto pr-1 space-y-3 no-scrollbar scroll-smooth-touch">
             <TransitionGroup name="list">
               <OrderCard 
                 v-for="order in col.orders.value" 
                 :key="order.id" 
-                :order="order" 
+                :order="order"
+                :global-tick="globalTick"
                 @update-status="handleStatusUpdate"
               />
             </TransitionGroup>
 
             <!-- Empty State -->
-            <div v-if="col.orders.value.length === 0" class="h-32 md:h-40 flex flex-col items-center justify-center text-gray-300 animate-fade-in">
-              <div class="size-14 md:size-16 rounded-full bg-gray-50 flex items-center justify-center mb-2 shadow-inner">
-                <span class="material-symbols-rounded text-2xl md:text-3xl opacity-20">coffee</span>
+            <div v-if="col.orders.value.length === 0" class="h-40 md:h-48 flex flex-col items-center justify-center text-gray-300 animate-fade-in">
+              <div class="size-20 md:size-24 rounded-[24px] bg-gray-50 flex items-center justify-center mb-3 shadow-inner">
+                <span class="material-symbols-rounded text-4xl md:text-5xl opacity-30">coffee</span>
               </div>
-              <span class="text-[9px] font-bold uppercase tracking-[0.1em] opacity-40">Empty</span>
+              <span class="text-xs font-bold uppercase tracking-widest opacity-50">No orders</span>
             </div>
           </div>
         </div>
@@ -241,10 +296,10 @@ const manualRefresh = () => fetchOrders(true);
 .list-enter-from,
 .list-leave-to {
   opacity: 0;
-  transform: scale(0.96) translateY(8px);
+  transform: scale(0.95) translateY(10px);
 }
 .list-leave-active {
   position: absolute;
-  width: calc(100% - 0.125rem);
+  width: calc(100% - 0.25rem);
 }
 </style>

@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
 
     return {
         server: {
-            port: 8081, // Dedicated port for Barista KDS
+            port: 8081,
             proxy: {
                 '/api/v1': {
                     target: 'http://127.0.0.1:8000',
@@ -32,15 +32,33 @@ export default defineConfig(({ mode }) => {
         },
         base: mode === 'production' ? '/' : '/',
         build: {
-            outDir: '../../backend/static/barista', // Separate output dir if needed, or just static/barista
+            outDir: '../../backend/static/barista',
             emptyOutDir: true,
+            // Code splitting configuration
+            rollupOptions: {
+                output: {
+                    manualChunks: {
+                        'vendor': ['vue', 'vue-router', 'pinia'],
+                    }
+                }
+            },
+            // Minification
+            minify: 'esbuild',
+            // Source maps only in dev
+            sourcemap: mode !== 'production',
         },
-        plugins: [vue()],
+        plugins: [
+            vue(),
+        ],
         resolve: {
             alias: {
                 '@': resolve(__dirname, './src'),
                 '@shared': resolve(__dirname, '../shared/src'),
             },
+        },
+        // Optimize deps
+        optimizeDeps: {
+            include: ['vue', 'vue-router', 'pinia'],
         },
     };
 });

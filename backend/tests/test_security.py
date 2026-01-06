@@ -11,7 +11,7 @@ def test_common_password_rejection():
     # Common weak password should raise ValueError
     with pytest.raises(ValueError) as exc:
         security.validate_password("password123")
-    assert "Password is too common" in str(exc.value)
+    assert "too common" in str(exc.value).lower()
 
 
 def test_short_password_rejection():

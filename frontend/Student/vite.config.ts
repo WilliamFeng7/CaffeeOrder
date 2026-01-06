@@ -15,25 +15,19 @@ import { dirname, resolve } from 'node:path';
 import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
-// ESM 路径解析 (ESM path resolution)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Vite 配置导出
 export default defineConfig(({ mode }) => {
-  // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
-    // 开发服务器配置 (Dev server configuration)
     server: {
       proxy: {
-        // API 请求代理: 转发到后端 FastAPI
         '/api/v1': {
           target: 'http://127.0.0.1:8000',
           changeOrigin: true,
         },
-        // 静态资源代理: 确保图片等资源能从后端获取
         '/static': {
           target: 'http://127.0.0.1:8000',
           changeOrigin: true,
@@ -46,32 +40,35 @@ export default defineConfig(({ mode }) => {
         ]
       }
     },
-    // 基础路径: 生产环境使用 /static/ 前缀，开发环境使用 /
     base: mode === 'production' ? '/' : '/',
-
-    // 构建配置 (Build options)
     build: {
-      // 输出目录设置为后端的 static 文件夹
       outDir: '../../backend/static',
-      // 构建前清空输出目录
       emptyOutDir: true,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor': ['vue', 'vue-router', 'pinia', 'axios'],
+          }
+        }
+      },
+      minify: 'esbuild',
+      sourcemap: mode !== 'production',
     },
-
-    // 插件列表
-    plugins: [vue()],
-
-    // 定义全局常量 (Define global constants)
+    plugins: [
+      vue(),
+    ],
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
     },
-
-    // 路径别名解析 (Resolve configuration)
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url)),
-        '@shared': fileURLToPath(new URL('../shared/src', import.meta.url)),
+        '@': resolve(__dirname, './src'),
+        '@shared': resolve(__dirname, '../shared/src'),
       },
+    },
+    optimizeDeps: {
+      include: ['vue', 'vue-router', 'pinia', 'axios'],
     },
   };
 });
