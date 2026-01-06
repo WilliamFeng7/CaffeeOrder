@@ -1,0 +1,44 @@
+services:
+  backend:
+    build: ./backend
+    container_name: coffee_backend
+    ports:
+      - "8000:80"
+    volumes:
+      - ./data:/data
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:////data/coffee.db
+    restart: always
+
+  student:
+    build:
+      context: .
+      dockerfile: frontend/Student/Dockerfile
+    container_name: coffee_student
+    ports:
+      - "80:80" # Standard HTTP port
+    depends_on:
+      - backend
+    restart: always
+
+  admin:
+    build:
+      context: .
+      dockerfile: frontend/Admin/Dockerfile
+    container_name: coffee_admin
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: always
+
+  barista:
+    build:
+      context: .
+      dockerfile: frontend/Barista/Dockerfile
+    container_name: coffee_barista
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+    restart: always

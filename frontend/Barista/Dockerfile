@@ -1,9 +1,13 @@
 # Build stage
 FROM node:18-alpine as build-stage
+# Use Aliyun Alpine mirror
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 WORKDIR /app
 COPY frontend/Barista /app/frontend/Barista
 COPY frontend/shared /app/frontend/shared
 WORKDIR /app/frontend/Barista
+RUN npm config set registry https://registry.npmmirror.com
 RUN rm -f package-lock.json && npm install && ln -s /app/frontend/Barista/node_modules /app/frontend/node_modules
 RUN npx vite build --outDir dist
 

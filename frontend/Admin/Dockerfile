@@ -1,9 +1,13 @@
 # Build stage
 FROM node:18-alpine as build-stage
+# Use Aliyun Alpine mirror
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
+
 WORKDIR /app
 COPY frontend/Admin /app/frontend/Admin
 COPY frontend/shared /app/frontend/shared
 WORKDIR /app/frontend/Admin
+RUN npm config set registry https://registry.npmmirror.com
 RUN npm install && ln -s /app/frontend/Admin/node_modules /app/frontend/node_modules
 RUN npx vite build
 

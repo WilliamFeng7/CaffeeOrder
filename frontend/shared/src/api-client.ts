@@ -26,7 +26,14 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 apiClient.interceptors.response.use(
     (response: AxiosResponse) => response,
     (error: any) => {
-        // 可以添加全局错误提示逻辑
+        // Handle 401 Unauthorized
+        if (error.response && error.response.status === 401) {
+            sessionStorage.removeItem(TOKEN_KEY);
+            // Only redirect if not already on login page to avoid loops
+            if (!window.location.href.includes('/login')) {
+                window.location.href = '/login';
+            }
+        }
         return Promise.reject(error);
     }
 );

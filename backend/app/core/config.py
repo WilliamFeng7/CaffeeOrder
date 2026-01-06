@@ -34,11 +34,12 @@ class Settings(BaseSettings):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # Check if SECRET_KEY was loaded from environment
-        if not os.getenv("SECRET_KEY"):
+        # Check if we are using the persistent key or a random one
+        # If the key was loaded from env, it should match our expected persistent key pattern or be non-random
+        if not self.SECRET_KEY.startswith("persistent_"):
             warnings.warn(
-                "SECRET_KEY not set in environment. Using generated temporary key. "
-                "Sessions will not persist across restarts.",
+                "Using generated temporary key. Sessions will not persist across restarts. "
+                "Please set SECRET_KEY in environment variables.",
                 UserWarning,
             )
 
