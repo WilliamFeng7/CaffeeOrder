@@ -144,7 +144,7 @@ const handleLogin = async () => {
            // 账户已锁定
            const unlockAt = new Date(detail.unlock_at);
            const now = new Date();
-           let diffSeconds = Math.ceil((unlockAt.getTime() - now.getTime()) / 1000);
+           const diffSeconds = Math.ceil((unlockAt.getTime() - now.getTime()) / 1000);
            
            if (diffSeconds > 0) {
                const msg = props.lang === 'cn' 

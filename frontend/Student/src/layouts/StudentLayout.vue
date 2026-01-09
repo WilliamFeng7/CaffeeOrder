@@ -120,7 +120,7 @@ const handleToggleLang = () => {
 
 const handleAddToCart = (options: { size: string; temp: string; sugar: string }) => {
   if (selectedProduct.value) {
-    let finalPrice = selectedProduct.value.price;
+    const finalPrice = selectedProduct.value.price;
     // Size price logic removed
 
     const newItem: CartItem = {
