@@ -209,6 +209,23 @@ async def login_access_token(
 
     # 5. Login Success
 
+    # --- Auto-Migration to Hash ---
+    # If the password in DB is plain text (not a valid hash), update it to a hash.
+    # Note: pwd_context.identify returns True if it recognizes the hash format.
+    from app.core.security import pwd_context
+    is_hashed = False
+    try:
+        is_hashed = pwd_context.identify(user.password)
+    except ValueError:
+        pass
+
+    if not is_hashed:
+        # It's a legacy plain text password. Update it.
+        new_hash = security.get_password_hash(form_data.password)
+        user.password = new_hash
+        session.add(user)
+        # We will commit together with the login log
+
     # Reset failure counters
     if user.failed_login_attempts > 0 or user.lockout_until:
         user.failed_login_attempts = 0

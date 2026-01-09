@@ -262,16 +262,14 @@ const manualRefresh = () => fetchOrders(true);
           </div>
 
           <!-- Scrollable Order List -->
-          <div class="flex-1 overflow-y-auto pr-1 space-y-3 no-scrollbar scroll-smooth-touch">
-            <TransitionGroup name="list">
-              <OrderCard 
-                v-for="order in col.orders.value" 
-                :key="order.id" 
-                :order="order"
-                :global-tick="globalTick"
-                @update-status="handleStatusUpdate"
-              />
-            </TransitionGroup>
+          <div class="flex-1 overflow-y-auto pr-1 space-y-3 no-scrollbar scroll-smooth-touch" v-auto-animate>
+            <OrderCard
+              v-for="order in col.orders.value"
+              :key="order.id"
+              :order="order"
+              :global-tick="globalTick"
+              @update-status="handleStatusUpdate"
+            />
 
             <!-- Empty State -->
             <div v-if="col.orders.value.length === 0" class="h-40 md:h-48 flex flex-col items-center justify-center text-gray-300 animate-fade-in">
