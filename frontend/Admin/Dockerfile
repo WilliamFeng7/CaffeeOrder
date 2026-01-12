@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine as build-stage
+FROM docker.m.daocloud.io/library/node:18-alpine as build-stage
 # Use Aliyun Alpine mirror
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
@@ -12,7 +12,7 @@ RUN npm install && ln -s /app/frontend/Admin/node_modules /app/frontend/node_mod
 RUN npx vite build
 
 # Production stage
-FROM nginx:stable-alpine as production-stage
+FROM docker.m.daocloud.io/library/nginx:stable-alpine as production-stage
 COPY --from=build-stage /app/frontend/Admin/dist /usr/share/nginx/html
 COPY --from=build-stage /app/frontend/Admin/nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

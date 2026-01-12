@@ -59,6 +59,15 @@ const initials = computed(() => {
 });
 
 /**
+ * 管理后台链接 (Admin URL)
+ * 动态获取当前主机名，并使用 HTTPS 和 8080 端口。
+ */
+const adminUrl = computed(() => {
+  const hostname = window.location.hostname;
+  return `https://${hostname}:8080`;
+});
+
+/**
  * 同步资料到编辑表单
  */
 watch(() => props.userProfile, (newVal) => {
@@ -197,7 +206,7 @@ const handleLogout = () => {
               <span class="material-symbols-rounded text-gray-300">chevron_right</span>
            </button>
 
-           <a href="http://localhost:8080" target="_blank" class="w-full bg-gradient-to-r from-gray-900 to-gray-800 p-7 rounded-[32px] flex items-center justify-between shadow-lg shadow-gray-900/20 active:scale-[0.98] transition-all duration-500 ease-luxury border border-gray-700 block">
+           <a :href="adminUrl" target="_blank" class="w-full bg-gradient-to-r from-gray-900 to-gray-800 p-7 rounded-[32px] flex items-center justify-between shadow-lg shadow-gray-900/20 active:scale-[0.98] transition-all duration-500 ease-luxury border border-gray-700 block">
               <div class="flex items-center gap-5">
                  <div class="size-14 rounded-2xl bg-white/10 flex items-center justify-center text-white backdrop-blur-sm"><span class="material-symbols-rounded text-2xl">admin_panel_settings</span></div>
                  <div class="text-left">

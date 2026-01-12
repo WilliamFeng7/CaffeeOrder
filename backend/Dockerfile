@@ -1,5 +1,5 @@
 # 使用轻量的 Python 镜像
-FROM python:3.11-slim
+FROM docker.m.daocloud.io/library/python:3.11-slim
 
 # 设置工作目录
 WORKDIR /app
@@ -25,4 +25,4 @@ COPY . .
 EXPOSE 80
 
 # 启动命令 (使用 uvicorn)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--proxy-headers", "--forwarded-allow-ips", "*"]

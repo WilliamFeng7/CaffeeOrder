@@ -45,25 +45,22 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 # --- CORS 跨域配置 (CORS Configuration) ---
-# 允许前端应用访问后端 API (Allow frontend apps to access API)
 origins = [
     "http://localhost:3000",
-    "http://localhost:5173",  # Vite Dev Server
-    "http://localhost:3001",
-    "http://localhost",  # Production Login
-    "http://localhost:8081",  # Production Admin
-    "http://localhost:8081",  # Production Barista
-    "http://localhost:8080",  # New Admin Port
+    "http://localhost:5173",
+    "http://localhost",
+    "https://fengweiqin.com",       # 学生端 HTTPS
+    "https://fengweiqin.com:8080",  # 管理端 HTTPS
+    "https://fengweiqin.com:8081",  # 咖啡师端 HTTPS
     "http://127.0.0.1",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex="https?://.*",
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # 允许所有 HTTP 方法 (Allow all HTTP methods: GET, POST, etc.)
-    allow_headers=["*"],  # 允许所有 Headers (Allow all Headers)
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

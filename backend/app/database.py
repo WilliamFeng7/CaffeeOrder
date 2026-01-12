@@ -14,9 +14,14 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Get Database URL from environment or default to local SQLite
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sqlite_file_name = os.path.join(BASE_DIR, "coffee.db")
     # 注意: aiosqlite 需要 sqlite+aiosqlite:// 前缀
     DATABASE_URL = f"sqlite+aiosqlite:///{sqlite_file_name}"
+else:
+    # 确保如果是映射到卷里的目录，目录必须存在
+    if "/data" in DATABASE_URL:
+        os.makedirs("/data", exist_ok=True)
 
 # check_same_thread=False 允许 SQLite 在 FastAPI 的多线程/协程环境中使用
 # check_same_thread=False is needed for SQLite with FastAPI

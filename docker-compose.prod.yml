@@ -8,6 +8,8 @@ services:
       - ./data:/data
     environment:
       - DATABASE_URL=sqlite+aiosqlite:////data/coffee.db
+      - FORWARDED_ALLOW_IPS=*
+      - SECRET_KEY=***REMOVED-PURGED***
     restart: always
 
   student:
@@ -16,7 +18,10 @@ services:
       dockerfile: frontend/Student/Dockerfile
     container_name: coffee_student
     ports:
-      - "80:80" # Standard HTTP port
+      - "80:80" # HTTP
+      - "443:443" # HTTPS
+    volumes:
+      - ./nginx/certs:/etc/nginx/certs:ro # 映射证书路径
     depends_on:
       - backend
     restart: always
@@ -27,7 +32,9 @@ services:
       dockerfile: frontend/Admin/Dockerfile
     container_name: coffee_admin
     ports:
-      - "8080:80"
+      - "8080:443" # 外部 8080 访问内部 443 SSL
+    volumes:
+      - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - backend
     restart: always
@@ -38,7 +45,9 @@ services:
       dockerfile: frontend/Barista/Dockerfile
     container_name: coffee_barista
     ports:
-      - "8081:80"
+      - "8081:443" # 外部 8081 访问内部 443 SSL
+    volumes:
+      - ./nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - backend
     restart: always
