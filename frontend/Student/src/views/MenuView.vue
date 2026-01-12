@@ -335,8 +335,8 @@ const handleSuggestionClick = (p: Product) => {
                    />
                    
                    <!-- Floating Add Button -->
-                   <div class="absolute bottom-3 right-3 size-14 rounded-[20px] bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg transition-all duration-500 ease-luxury group-hover:bg-[#103E32] group-hover:text-white group-active:scale-90 group-active:bg-[#103E32] group-active:text-white z-10">
-                      <span class="material-symbols-rounded text-[#103E32] font-medium group-hover:text-white group-active:text-white transition-all duration-500 ease-luxury text-2xl group-hover:rotate-90">add</span>
+                   <div class="absolute bottom-3 right-3 size-14 rounded-[20px] bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg transition-all duration-500 ease-luxury group-active:scale-90 group-active:bg-[#103E32] group-active:text-white">
+                      <span class="material-symbols-rounded text-[#103E32] font-medium group-active:text-white transition-colors text-2xl">add</span>
                    </div>
 
                    <!-- Badges -->

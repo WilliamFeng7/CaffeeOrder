@@ -14,10 +14,10 @@
         "postcss": "^8.5.6",
         "tailwindcss": "^3.4.17",
         "typescript": "~5.8.2",
-        "vite": "^6.0.5"
+        "vite": "^6.2.0"
     },
     "dependencies": {
-        "@vitejs/plugin-vue": "^5.2.1",
+        "@vitejs/plugin-vue": "^6.0.3",
         "axios": "^1.13.2",
         "dayjs": "^1.11.19",
         "pinia": "^3.0.4",
