@@ -127,27 +127,37 @@ async def read_dashboard_stats(
     # --- 2. Real-time Operations ---
     # Funnel
     # Optimize: Parallelize these queries with asyncio.gather
+    # Bolt Optimization: Reduced 5 sequential queries to 2 grouped queries to minimize DB round-trips.
 
-    async def get_count(clause):
-        r = await session.exec(select(func.count(Order.id)).where(clause))
-        return r.one()
+    # Query 1: Active orders (Created, Processing, Ready) - Filter by Status
+    active_counts_res = await session.exec(
+        select(Order.status, func.count(Order.id).label("count"))
+        .where(
+            Order.status.in_(
+                [OrderStatus.CREATED, OrderStatus.PROCESSING, OrderStatus.READY]
+            )
+        )
+        .group_by(Order.status)
+    )
+    active_counts = {row.status: row.count for row in active_counts_res.all()}
 
-    funnel_pending = await get_count(Order.status == OrderStatus.CREATED)
-    funnel_processing = await get_count(Order.status == OrderStatus.PROCESSING)
-    funnel_ready = await get_count(Order.status == OrderStatus.READY)
-    funnel_completed = await get_count(
-        (Order.status == OrderStatus.COMPLETED) & (Order.created_at >= today_start)
+    # Query 2: Historical orders (Completed, Refunded) - Filter by Status + Date
+    today_counts_res = await session.exec(
+        select(Order.status, func.count(Order.id).label("count"))
+        .where(
+            Order.status.in_([OrderStatus.COMPLETED, OrderStatus.REFUNDED]),
+            Order.created_at >= today_start,
+        )
+        .group_by(Order.status)
     )
-    funnel_cancelled = await get_count(
-        (Order.status == OrderStatus.REFUNDED) & (Order.created_at >= today_start)
-    )
+    today_counts = {row.status: row.count for row in today_counts_res.all()}
 
     funnel = {
-        "pending": funnel_pending,
-        "processing": funnel_processing,
-        "ready": funnel_ready,
-        "completed": funnel_completed,
-        "cancelled": funnel_cancelled,
+        "pending": active_counts.get(OrderStatus.CREATED, 0),
+        "processing": active_counts.get(OrderStatus.PROCESSING, 0),
+        "ready": active_counts.get(OrderStatus.READY, 0),
+        "completed": today_counts.get(OrderStatus.COMPLETED, 0),
+        "cancelled": today_counts.get(OrderStatus.REFUNDED, 0),
     }
 
     # Estimated Wait Time (3 mins per active order)

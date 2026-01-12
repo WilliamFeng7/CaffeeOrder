@@ -2,11 +2,11 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Any, Union
 from jose import jwt
+from passlib.context import CryptContext
 from app.core.config import settings
 
-# Note: Password hashing is disabled per user request (Plain Text Mode).
-# from passlib.context import CryptContext
-# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing configuration (Bcrypt)
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def create_access_token(
@@ -36,24 +36,29 @@ def create_access_token(
     return encoded_jwt
 
 
-def verify_password(plain_password: str, password_in_db: str) -> bool:
+def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify Password
-
-    Comparing plain text as per user requirement.
-    Uses secrets.compare_digest for timing-safe comparison.
+    Supports both BCrypt hashes and legacy Plain Text.
     """
-    # Sentinel Fix: Use constant-time comparison even for plain text
-    return secrets.compare_digest(plain_password, password_in_db)
+    # 1. Try verifying as a BCrypt hash
+    try:
+        # identify method calls identify(hash) -> returns method name or None
+        if pwd_context.identify(hashed_password):
+            return pwd_context.verify(plain_password, hashed_password)
+    except ValueError:
+        pass
+
+    # 2. Fallback: Compare as plain text (Legacy support)
+    # This allows existing users to log in before their password is migrated to a hash
+    return secrets.compare_digest(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
     """
-    Hash Password
-
-    Returning plain text as per user requirement.
+    Hash Password using BCrypt
     """
-    return password
+    return pwd_context.hash(password)
 
 
 # --- Common Weak Passwords ---
@@ -100,7 +105,5 @@ def validate_password(password: str) -> bool:
         raise ValueError(
             "密码太常见，请选择更安全的密码 (Password is too common, please choose a stronger one)"
         )
-
-    # User requested to remove complexity checks (letters/digits)
 
     return True

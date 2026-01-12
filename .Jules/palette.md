@@ -1,3 +1,3 @@
-## 2024-05-22 - Form Accessibility Basics
-**Learning:** Even modern Vue apps often miss basic HTML accessibility attributes like `for`/`id` association and `autocomplete`. These are critical for screen readers and password managers.
-**Action:** Always check form inputs for `id` and labels for `for` attribute. Add `autocomplete` to common fields.
+## 2026-01-05 - Missing Password Visibility Toggle
+**Learning:** Authentication forms without a visibility toggle create unnecessary friction and anxiety for users, especially on mobile where typing is error-prone.
+**Action:** Always include a show/hide password toggle in login/register forms. Use "visibility/visibility_off" icons to indicate state, and update ARIA labels accordingly.
