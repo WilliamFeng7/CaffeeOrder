@@ -1,23 +1,26 @@
 services:
   backend:
-    build: ./backend
+    build: ./apps/backend
     container_name: coffee_backend
     ports:
       - "8000:80"
     volumes:
-      - ./backend:/app
+      - ./data:/data
     environment:
-      - DATABASE_URL=sqlite+aiosqlite:///./coffee.db
-      - SECRET_KEY=persistent_secret_key_89129885_coffee_order_system
+      - DATABASE_URL=sqlite+aiosqlite:////data/coffee.db
+      - FORWARDED_ALLOW_IPS=*
     restart: always
 
   student:
     build:
       context: .
-      dockerfile: frontend/Student/Dockerfile
+      dockerfile: apps/frontend/Student/Dockerfile
     container_name: coffee_student
     ports:
-      - "80:80"
+      - "80:80" # HTTP
+      - "443:443" # HTTPS
+    volumes:
+      - ./deploy/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - backend
     restart: always
@@ -25,10 +28,12 @@ services:
   admin:
     build:
       context: .
-      dockerfile: frontend/Admin/Dockerfile
+      dockerfile: apps/frontend/Admin/Dockerfile
     container_name: coffee_admin
     ports:
-      - "8080:80"
+      - "8080:443"
+    volumes:
+      - ./deploy/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - backend
     restart: always
@@ -36,10 +41,12 @@ services:
   barista:
     build:
       context: .
-      dockerfile: frontend/Barista/Dockerfile
+      dockerfile: apps/frontend/Barista/Dockerfile
     container_name: coffee_barista
     ports:
-      - "8081:80"
+      - "8081:443"
+    volumes:
+      - ./deploy/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - backend
     restart: always
