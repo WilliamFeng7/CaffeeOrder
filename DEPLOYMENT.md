@@ -54,6 +54,12 @@ If you prefer to run commands manually:
 
 ## Configuration
 -   **Environment Variables**: The `docker-compose.prod.yml` file sets the `DATABASE_URL` to store the database in the mounted volume.
+-   **`SECRET_KEY` (REQUIRED)**: Used to sign JWT login tokens. It is **not** stored in the repo — export it before starting the stack:
+    ```bash
+    export SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(32))')"
+    # or put SECRET_KEY=... into a .env file next to docker-compose.prod.yml
+    ```
+    Docker Compose will refuse to start if it is missing. Changing it invalidates all existing login tokens.
 -   **Ports**:
     -   Backend: Internal 80, Exposed 8000
     -   Student: Exposed 80 (HTTP redirect) and 443 (HTTPS)
@@ -61,9 +67,13 @@ If you prefer to run commands manually:
     -   Barista: Exposed 8081 → 443 SSL
 
 ## SSL Certificates
-Place your SSL certificate files in `deploy/nginx/certs/`:
+Place your SSL certificate files in `deploy/nginx/certs/` **on the server only**:
 -   `fengweiqin.com.pem` (Certificate)
 -   `fengweiqin.com.key` (Private Key)
+
+> **Never commit these files.** `deploy/nginx/certs/` is listed in `.gitignore`.
+> A private key committed to a public repository lets anyone impersonate the site.
+> If a key was ever committed, consider it compromised and re-issue the certificate.
 
 ## Troubleshooting
 -   **Check Logs**:
