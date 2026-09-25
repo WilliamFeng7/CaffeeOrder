@@ -27,7 +27,11 @@ else:
 
 # check_same_thread=False 允许 SQLite 在 FastAPI 的多线程/协程环境中使用
 # check_same_thread=False is needed for SQLite with FastAPI
-connect_args = {"check_same_thread": False}
+# timeout=5 makes every pooled connection wait up to 5s for a writer lock instead
+# of raising "database is locked" immediately. The PRAGMA busy_timeout in
+# init_db_wal() only ever reached the single connection used at startup, so
+# without this the rest of the pool had no lock tolerance at all.
+connect_args = {"check_same_thread": False, "timeout": 5.0}
 
 # 创建异步数据库引擎
 # Create Async Engine

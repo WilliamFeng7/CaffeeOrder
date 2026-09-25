@@ -9,6 +9,13 @@ import { createPinia } from 'pinia'
 import './index.css'
 import App from './App.vue'
 import router from './router'
+import { setUnauthorizedHandler } from '@shared/api-client'
+
+// Expired/invalid token -> this app's login view, via the router (so it honours
+// whatever base path the app is mounted at) instead of a hardcoded root URL.
+setUnauthorizedHandler(() => {
+  void router.replace('/login');
+});
 
 // 创建 Vue 应用实例
 const app = createApp(App)

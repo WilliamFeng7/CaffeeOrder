@@ -42,7 +42,13 @@ export default defineConfig(({ mode }) => {
     },
     base: mode === 'production' ? '/' : '/',
     build: {
-      outDir: '../../backend/static',
+      // This used to be '../../backend/static' together with
+      // `emptyOutDir: true`, which meant a routine `npm run build` deleted the
+      // directory the backend serves product images and uploads from
+      // (apps/backend/static, including static/menu/*.jpg). The production image
+      // already overrides this with `--outDir dist`, so building to dist keeps the
+      // local and Docker behaviours identical.
+      outDir: 'dist',
       emptyOutDir: true,
       rollupOptions: {
         output: {

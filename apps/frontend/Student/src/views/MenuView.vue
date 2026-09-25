@@ -316,15 +316,18 @@ const handleSuggestionClick = (p: Product) => {
 
        <!-- Product Grid Main Area -->
        <main class="flex-1 overflow-y-auto p-6 md:p-12 pt-2 pb-40 no-scrollbar">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          <!-- `.stagger-in` (packages/shared/styles/motion.css) cascades the card
+               entrances and caps the delay at 300ms; the previous inline
+               `animationDelay: idx * 60ms` had no ceiling, so a long menu made the
+               last cards wait seconds, and it ignored prefers-reduced-motion. -->
+          <div class="stagger-in grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
              <!-- Product Card -->
-             <div 
-                v-for="(product, idx) in filteredProducts"
+             <div
+                v-for="product in filteredProducts"
                 :key="product.id"
                 @click="emit('select-product', product)"
                 data-testid="product-card"
-                class="group bg-white rounded-[40px] p-4 pb-6 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.02)] transition-all duration-500 ease-luxury active:scale-[0.96] animate-slide-up-content border border-transparent relative transform-gpu overflow-hidden"
-                :style="{ animationDelay: `${idx * 60}ms` }"
+                class="group bg-white rounded-[40px] p-4 pb-6 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.02)] transition-[transform,box-shadow,border-color] duration-500 ease-luxury active:scale-[0.96] border border-transparent relative transform-gpu overflow-hidden"
              >
                 <!-- Image Section -->
                 <div class="aspect-[4/3] rounded-[32px] overflow-hidden mb-5 relative bg-[#F2F2F2] shadow-inner">

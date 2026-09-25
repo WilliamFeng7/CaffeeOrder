@@ -106,21 +106,22 @@ export const api = {
 
     /**
      * 创建订单 (Create Order)
+     *
+     * Sends one line per cart entry with an explicit `quantity` instead of
+     * exploding a quantity of 3 into three identical rows. The order service
+     * reserves `quantity` units in a single atomic statement and stores one
+     * order line, so the KDS shows "3× Flat White" rather than three cards rows.
      */
     async createOrder(items: CartItem[]) {
-        const backendItems = [];
-        for (const item of items) {
-            for (let i = 0; i < item.quantity; i++) {
-                backendItems.push({
-                    menu_item_id: parseInt(item.id),
-                    spec: {
-                        size: item.size || 'Regular',
-                        sugar: item.sugar || 'Regular',
-                        temp: item.temperature || 'Hot',
-                    }
-                });
+        const backendItems = items.map((item) => ({
+            menu_item_id: parseInt(item.id),
+            quantity: item.quantity,
+            spec: {
+                size: item.size || 'Regular',
+                sugar: item.sugar || 'Regular',
+                temp: item.temperature || 'Hot',
             }
-        }
+        }));
 
         const response = await apiClient.post('/orders/', { items: backendItems });
         return response.data;

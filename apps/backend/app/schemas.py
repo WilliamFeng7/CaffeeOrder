@@ -2,9 +2,9 @@ from __future__ import annotations
 import json
 import re
 from datetime import datetime
-from typing import Any, Optional, Union, List, Dict
+from typing import Any, Optional, List, Dict
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # --- 认证相关 Schema (Auth Schemas) ---
 
@@ -32,6 +32,10 @@ class OrderItemSchema(BaseModel):
 
     menu_item_id: int
     spec: Dict[str, str] = {}  # 规格参数，如 {"temp": "hot", "sugar": "half"}
+    # A line can now carry its own quantity. The student client still sends one
+    # line per unit, and the order service merges identical lines, so this is
+    # backwards compatible while letting API clients order 3 at once.
+    quantity: int = Field(default=1, ge=1, le=99)
 
 
 class OrderCreate(BaseModel):
@@ -39,7 +43,10 @@ class OrderCreate(BaseModel):
     订单创建请求模型
     """
 
-    items: List[OrderItemSchema]
+    # Bound the payload: an unbounded list let a client submit an arbitrarily
+    # large order, which multiplied into that many stock-UPDATE statements
+    # inside a single transaction.
+    items: List[OrderItemSchema] = Field(min_length=1, max_length=50)
 
 
 class OrderItemResponse(BaseModel):
@@ -52,6 +59,7 @@ class OrderItemResponse(BaseModel):
     price_snap: int
     image_url: str
     spec: Dict[str, str]
+    quantity: int = 1
 
     @field_validator("spec", mode="before")
     @classmethod

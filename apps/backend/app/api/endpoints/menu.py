@@ -1,18 +1,11 @@
-import time
-
 from fastapi import APIRouter, Depends, Response
-from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.database import get_session
 from app.models import MenuItem
+from app.services import menu as menu_service
 
 router = APIRouter()
-
-# --- Menu Cache ---
-# Simple in-memory cache for menu items (semi-static data)
-_menu_cache = {"data": None, "timestamp": 0}
-CACHE_TTL = 300  # 5 minutes
 
 
 @router.get("/", response_model=list[MenuItem])
@@ -31,23 +24,11 @@ async def read_menu(
     # HTTP Cache-Control header for browser/CDN caching
     response.headers["Cache-Control"] = "public, max-age=60"
 
-    # Check in-memory cache
-    if _menu_cache["data"] and (time.time() - _menu_cache["timestamp"]) < CACHE_TTL:
-        return _menu_cache["data"]
-
-    # Query database
-    # 查询所有 is_active=True 的记录
-    result = await session.exec(select(MenuItem).where(MenuItem.is_active))
-    items = result.all()
-
-    # Update cache
-    _menu_cache["data"] = items
-    _menu_cache["timestamp"] = time.time()
-
-    return items
+    # In-memory cache + query live in the menu service so that stock changes made
+    # by the order service can invalidate it without importing from this router.
+    return await menu_service.list_active(session)
 
 
 def invalidate_menu_cache():
-    """Call this when menu items are updated (e.g., in admin endpoints)."""
-    _menu_cache["data"] = None
-    _menu_cache["timestamp"] = 0
+    """Backwards-compatible alias; the cache itself lives in app/services/menu.py."""
+    menu_service.invalidate()

@@ -3,13 +3,29 @@ services:
     build: ./apps/backend
     container_name: coffee_backend
     ports:
-      - "8000:80"
+      # Bound to the server's loopback on purpose. This was "8000:80", which
+      # published the raw API (and /docs) on the public interface, bypassing the
+      # TLS-terminating nginx and letting clients talk to the app while ignoring
+      # the X-Forwarded-For the proxies set. Public traffic reaches the API only
+      # through nginx's `location /api`.
+      - "127.0.0.1:8000:80"
     volumes:
       - ./data:/data
     environment:
       - DATABASE_URL=sqlite+aiosqlite:////data/coffee.db
-      - FORWARDED_ALLOW_IPS=*
-      - SECRET_KEY=***REMOVED-PURGED***
+      # Only the nginx containers on the pinned private network below may assert a
+      # client IP via X-Forwarded-For. This replaces `*`, which let any peer spoof
+      # its address and thereby mint an unlimited number of login rate-limit
+      # buckets (and forge the IP stored in LoginLog).
+      - FORWARDED_ALLOW_IPS=172.28.0.0/16
+      # SECURITY: this must be replaced with a real secret before deploying.
+      # `***REMOVED-PURGED***` is a scrubbed placeholder, and because it was
+      # committed the original value must be treated as leaked: rotate it, set it
+      # out-of-band (e.g. an untracked .env / secret store), and note that
+      # replacing it invalidates every issued JWT (all users must log in again).
+      - SECRET_KEY=${SECRET_KEY:?set SECRET_KEY in the environment, do not commit it}
+    networks:
+      - coffee-edge
     restart: always
 
   student:
@@ -24,6 +40,8 @@ services:
       - ./deploy/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - backend
+    networks:
+      - coffee-edge
     restart: always
 
   admin:
@@ -37,6 +55,8 @@ services:
       - ./deploy/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - backend
+    networks:
+      - coffee-edge
     restart: always
 
   barista:
@@ -50,4 +70,15 @@ services:
       - ./deploy/nginx/certs:/etc/nginx/certs:ro
     depends_on:
       - backend
+    networks:
+      - coffee-edge
     restart: always
+
+networks:
+  # Pinned so FORWARDED_ALLOW_IPS above can name a concrete, stable range instead
+  # of trusting every source.
+  coffee-edge:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

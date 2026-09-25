@@ -13,7 +13,9 @@ import PickupView from '../views/PickupView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import { api } from '../api';
 import { PRODUCTS, TRANSLATIONS } from '../data';
-import { type CartItem, type Product, type Order, type Language, type TabState, type Toast, type UserProfile } from '../types';
+import { formatCents, sumCents } from '../utils/money';
+import { useToastStore } from '../stores/toast';
+import { type CartItem, type Product, type Order, type Language, type TabState, type UserProfile } from '../types';
 import { auth } from '@shared/auth';
 
 const router = useRouter();
@@ -25,7 +27,7 @@ const cart = ref<CartItem[]>([]);
 const selectedProduct = ref<Product | null>(null);
 const language = ref<Language>('en');
 const orders = ref<Order[]>([]);
-const toasts = ref<Toast[]>([]);
+const toastStore = useToastStore();
 const userProfile = ref<UserProfile>({
   name: '',
   phone: '',
@@ -36,18 +38,33 @@ const userProfile = ref<UserProfile>({
 const t = computed(() => TRANSLATIONS[language.value]);
 
 // --- Lifecycle ---
+const readStoredJSON = <T,>(key: string): T | null => {
+  // A corrupted/truncated sessionStorage entry used to throw out of onMounted
+  // and leave the whole app blank; tolerate it and fall back to a fresh load.
+  const raw = sessionStorage.getItem(key);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    sessionStorage.removeItem(key);
+    return null;
+  }
+};
+
 onMounted(() => {
-  const storedHistory = sessionStorage.getItem('otia_cafe_history');
-  if (storedHistory) orders.value = JSON.parse(storedHistory);
-
-  const storedProfile = sessionStorage.getItem('otia_cafe_profile');
-  if (storedProfile) userProfile.value = JSON.parse(storedProfile);
-
-  // Check Auth
+  // Auth first: reading another account's cached history before we know who is
+  // logged in is what let stale data flash on screen after an account switch.
   if (!auth.isLoggedIn()) {
     router.push('/login');
     return;
   }
+
+  const storedHistory = readStoredJSON<Order[]>('otia_cafe_history');
+  if (storedHistory) orders.value = storedHistory;
+
+  const storedProfile = readStoredJSON<UserProfile>('otia_cafe_profile');
+  if (storedProfile) userProfile.value = storedProfile;
+
   loadMenuData();
   loadProfile();
   checkShopStatus();
@@ -89,20 +106,33 @@ const loadMenuData = async () => {
 
 const handleSignOut = () => {
   auth.clearToken();
+
+  // Signing out has to tear down everything that describes the *previous*
+  // account. PRODUCTS is a module-level reactive singleton, and the order
+  // history / profile were mirrored into sessionStorage, so clearing only the
+  // token left the next user's first render populated with the old user's
+  // cart, balances and order history (until a fetch happened to overwrite it).
+  cart.value = [];
+  orders.value = [];
+  selectedProduct.value = null;
+  userProfile.value = { name: '', phone: '', email: '', uuid: '' };
+  PRODUCTS.splice(0, PRODUCTS.length);
+  sessionStorage.removeItem('otia_cafe_history');
+  sessionStorage.removeItem('otia_cafe_profile');
+
   currentTab.value = 'home';
   addToast('Signed out successfully');
   router.push('/login');
 };
 
 // --- Methods ---
-let toastSeq = 0;
-const addToast = (message: string, type: 'success' | 'info' = 'info') => {
-  // Date.now() alone can collide for two toasts in the same millisecond
-  const id = `${Date.now()}-${++toastSeq}`;
-  toasts.value.push({ id, message, type });
-  setTimeout(() => {
-    toasts.value = toasts.value.filter(t => t.id !== id);
-  }, 3000);
+// Toasts go through the shared store instead of a second, app-local queue.
+// Student previously ran two toast systems at once (this hand-rolled one plus
+// ToastContainer.vue), so a message could be raised in one and never rendered by
+// the other. `addToast` keeps its old signature so the call sites above are
+// unchanged.
+const addToast = (message: string, type: 'success' | 'info' | 'error' | 'warning' = 'info') => {
+  toastStore.addToast(message, type);
 };
 
 const handleSelectProduct = (product: Product) => {
@@ -127,7 +157,12 @@ const handleAddToCart = (options: { size: string; temp: string; sugar: string })
 
     const newItem: CartItem = {
       ...selectedProduct.value,
-      cartId: Math.random().toString(36).substr(2, 9),
+      cartId:
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          // Deprecated String.prototype.substr could hand out colliding ids for
+          // two items added in the same tick, which then updated as one row.
+          : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
       quantity: 1,
       price: finalPrice,
       size: 'Regular', // Fixed
@@ -217,7 +252,9 @@ const handleUpdateProfile = async (p: UserProfile) => {
   }
 };
 
-const cartTotal = computed(() => cart.value.reduce((sum, item) => sum + (item.price * item.quantity), 0));
+// Integer cents, so a multi-item cart cannot drift a cent away from the total
+// the server computes (see utils/money.ts).
+const cartTotalCents = computed(() => sumCents(cart.value));
 const cartCount = computed(() => cart.value.reduce((sum, item) => sum + item.quantity, 0));
 const cartBump = ref(false);
 watch(cartCount, (newCount) => {
@@ -230,12 +267,9 @@ watch(cartCount, (newCount) => {
 
 <template>
   <div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans select-none flex flex-col z-0">
-    <div class="fixed top-8 left-0 right-0 z-[120] flex flex-col items-center gap-3 pointer-events-none">
-      <div v-for="toast in toasts" :key="toast.id" class="bg-primary/95 backdrop-blur-xl text-white pl-4 pr-6 py-4 rounded-full shadow-[0_20px_60px_-10px_rgba(0,0,0,0.4)] flex items-center gap-4 animate-slide-down-content pointer-events-auto border border-white/10 ring-1 ring-black/5">
-        <span class="material-symbols-rounded text-xl filled text-secondary animate-scale-up">check_circle</span>
-        <span class="text-sm font-bold tracking-tight">{{ toast.message }}</span>
-      </div>
-    </div>
+    <!-- Toasts are rendered once, globally, by the shared <ToastContainer /> mounted
+         in App.vue. This layout used to run its own inline pill list on top of that,
+         so a single message appeared twice. -->
 
     <div class="flex-1 overflow-hidden relative w-full h-full z-0 transform-gpu pb-[80px]">
       <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleQuickAdd" :lang="language" :user-name="userProfile.name" />
@@ -253,7 +287,7 @@ watch(cartCount, (newCount) => {
                 <span class="absolute -top-1 -right-1.5 bg-[#EF4444] text-white text-[10px] font-bold size-4 md:size-5 rounded-full flex items-center justify-center border-[2px] border-[#103E32] shadow-sm animate-cart-bump">{{ cartCount }}</span>
              </div>
              <div class="flex flex-col justify-center">
-                <span class="text-[20px] md:text-[24px] font-[800] text-white leading-none tracking-tight font-sans">¥{{ cartTotal.toFixed(2) }}</span>
+                <span class="text-[20px] md:text-[24px] font-[800] text-white leading-none tracking-tight font-sans">¥{{ formatCents(cartTotalCents) }}</span>
                 <span class="text-[9px] text-white/50 font-bold uppercase tracking-[0.2em] mt-0.5">Total</span>
              </div>
           </div>

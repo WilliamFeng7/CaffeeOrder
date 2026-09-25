@@ -1,3 +1,7 @@
+/* Shared motion contract (press feedback, focus ring, stagger,
+   prefers-reduced-motion) for Student / Admin / Barista. */
+@import '../../../../packages/shared/styles/motion.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

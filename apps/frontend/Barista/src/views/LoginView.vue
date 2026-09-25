@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api';
 import { useToastStore } from '../stores/toast';
+import { auth } from '@shared/auth';
 
 const username = ref('');
 const password = ref('');
@@ -19,7 +20,15 @@ const handleLogin = async () => {
     loading.value = true;
     try {
         const data = await api.login(username.value, password.value);
-        sessionStorage.setItem('coffee_access_token', data.access_token);
+        // The KDS is a staff screen: only baristas (and admins) belong here.
+        // This used to store the raw token with no role check, and it hardcoded
+        // the storage key instead of using the shared TOKEN_KEY.
+        const role = String(data.role || '').toLowerCase();
+        if (role !== 'barista' && role !== 'admin') {
+            toast.error('This account has no access to the KDS');
+            return;
+        }
+        auth.setSession(data.access_token, data.role);
         toast.success('Login successful');
         router.push('/');
     } catch (e) {

@@ -1,7 +1,7 @@
 from datetime import timedelta
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlmodel import func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -13,13 +13,8 @@ from app.models import Transaction, User, UserRole
 router = APIRouter()
 
 
-# Dependency: Admin Only
-def get_current_admin(
-    current_user: User = Depends(deps.get_current_user),
-) -> User:
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Privileges required")
-    return current_user
+# Shared role gate (see app/api/deps.py) - do not re-implement per router.
+get_current_admin = deps.get_current_admin
 
 
 @router.get("/stats")
@@ -221,8 +216,7 @@ async def get_finance_chart(
 
 @router.get("/transactions")
 async def get_transactions(
-    skip: int = 0,
-    limit: int = 20,
+    page: deps.Pagination = Depends(deps.pagination),
     type: str = "order",  # order or deposit
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_admin),
@@ -234,7 +228,7 @@ async def get_transactions(
         .where(Transaction.type == type)
         .order_by(Transaction.created_at.desc())
     )
-    query = query.offset(skip).limit(limit)
+    query = query.offset(page.skip).limit(page.limit)
     result = await session.exec(query)
     # Result is a list of (Transaction, User) tuples
     rows = result.all()

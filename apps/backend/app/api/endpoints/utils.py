@@ -7,25 +7,29 @@ import aiofiles
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.api import deps
-from app.models import User, UserRole
+from app.models import User
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-UPLOAD_DIR = os.path.join(os.getcwd(), "static", "uploads")
+# Shared role gate (see app/api/deps.py) - do not re-implement per router.
+get_current_admin = deps.get_current_admin
+
+# Uploads must land inside the directory that main.py actually mounts at /static.
+# This used to be os.getcwd()/static/uploads, which only worked by accident when
+# uvicorn happened to be started from apps/backend; started from anywhere else,
+# uploaded files were written where the static mount could not serve them.
+# __file__ = apps/backend/app/api/endpoints/utils.py
+#   -> 3x dirname = apps/backend/app, so one more is needed to reach apps/backend
+_BACKEND_DIR = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
+UPLOAD_DIR = os.path.join(_BACKEND_DIR, "static", "uploads")
 # Ensure directory exists
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 MAX_UPLOAD_SIZE = 5 * 1024 * 1024  # 5 MB
-
-
-def get_current_admin(
-    current_user: User = Depends(deps.get_current_user),
-) -> User:
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Privileges required")
-    return current_user
 
 
 @router.post("/upload", response_model=dict)

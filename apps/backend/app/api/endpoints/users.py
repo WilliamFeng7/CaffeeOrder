@@ -1,25 +1,21 @@
 import uuid
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import update
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app import schemas
 from app.api import deps
 from app.database import get_session
-from app.models import User, UserRole
+from app.models import User
 from app.schemas import UserOut, UserSelfUpdate
 
 router = APIRouter()
 
-
-# Dependency: Admin Only
-def get_current_admin(
-    current_user: User = Depends(deps.get_current_user),
-) -> User:
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Privileges required")
-    return current_user
+# Shared role gate (see app/api/deps.py) - do not re-implement per router.
+get_current_admin = deps.get_current_admin
 
 
 @router.get("/me", response_model=UserOut)
@@ -92,16 +88,24 @@ async def update_password_me(
     需要验证旧密码。新密码会被哈希存储。
     """
     from app.core import security
+    from starlette.concurrency import run_in_threadpool
 
     # 1. 验证旧密码 (Verify Old Password)
-    if not security.verify_password(password_in.old_password, current_user.password):
+    # Offloaded to a thread: bcrypt is deliberately slow and must not run on the
+    # event loop inside an `async def`.
+    old_ok = await run_in_threadpool(
+        security.verify_password, password_in.old_password, current_user.password
+    )
+    if not old_ok:
         raise HTTPException(
             status_code=400, detail="旧密码错误 (Incorrect old password)"
         )
 
     # 2. 验证并更新新密码 (Update New Password)
     # 强度校验在 schema 层处理 (UserPasswordUpdate -> validate_password)
-    new_password = security.get_password_hash(password_in.new_password)
+    new_password = await run_in_threadpool(
+        security.get_password_hash, password_in.new_password
+    )
     current_user.password = new_password
 
     session.add(current_user)
@@ -115,7 +119,10 @@ async def deposit_user_balance(
     *,
     session: AsyncSession = Depends(get_session),
     user_id: int,
-    amount: int,  # Expected in cents
+    # Expected in cents. Bounded server-side so a mistyped amount (or the
+    # double-conversion bug this endpoint used to be on the receiving end of)
+    # cannot silently write an absurd balance into the ledger.
+    amount: int = Query(..., gt=0, le=1_000_000, description="Top-up amount in cents (max ¥10,000)"),
     current_user: User = Depends(get_current_admin),  # Admin only
 ) -> Any:
     """
@@ -128,12 +135,17 @@ async def deposit_user_balance(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    if amount <= 0:
-        raise HTTPException(status_code=400, detail="Amount must be positive")
-
     # 1. Update Balance
-    user.balance += amount
-    session.add(user)
+    # Atomic increment in SQL. `user.balance += amount` was a read-modify-write
+    # on an ORM instance, so a deposit racing with an order (or another deposit)
+    # overwrote the other transaction's result and lost money.
+    await session.exec(
+        update(User).where(User.id == user_id).values(balance=User.balance + amount)
+    )
+    bal_res = await session.exec(select(User.balance).where(User.id == user_id))
+    balance_after = bal_res.one_or_none()
+    if balance_after is None:
+        raise HTTPException(status_code=404, detail="User not found")
 
     # 2. Create Transaction Record
     from app.core import timezone
@@ -145,7 +157,7 @@ async def deposit_user_balance(
         # two deposits for the same user within one second
         external_transaction_id=f"DEP{now.strftime('%Y%m%d%H%M%S')}{user.id}-{uuid.uuid4().hex[:6].upper()}",
         amount=amount,
-        balance_after=user.balance,
+        balance_after=balance_after,
         type="deposit",
         payment_method="admin_topup",
         description="Admin Manual Top-up",

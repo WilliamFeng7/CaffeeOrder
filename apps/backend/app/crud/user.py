@@ -4,6 +4,7 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
+from starlette.concurrency import run_in_threadpool
 
 from app.core import security
 from app.models import User
@@ -21,7 +22,10 @@ class CRUDUser:
     async def create(self, db: AsyncSession, *, obj_in: UserCreate) -> User:
         db_obj = User(
             username=obj_in.username,
-            password=security.get_password_hash(obj_in.password),
+            # bcrypt runs in a worker thread so the event loop stays responsive
+            password=await run_in_threadpool(
+                security.get_password_hash, obj_in.password
+            ),
             name=obj_in.name,
             phone=obj_in.phone,
             email=obj_in.email,
@@ -41,7 +45,9 @@ class CRUDUser:
         if "password" in obj_data and obj_data["password"]:
             # Enforce strength rules for admin-set passwords too
             security.validate_password(obj_data["password"])
-            obj_data["password"] = security.get_password_hash(obj_data["password"])
+            obj_data["password"] = await run_in_threadpool(
+                security.get_password_hash, obj_data["password"]
+            )
 
         for field in obj_data:
             if hasattr(db_obj, field):

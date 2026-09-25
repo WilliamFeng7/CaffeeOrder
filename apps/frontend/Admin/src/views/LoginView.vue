@@ -50,7 +50,14 @@ const handleLogin = async () => {
 
     try {
         const res = await api.login(username.value, password.value);
-        auth.setToken(res.access_token);
+        // Reject non-admin accounts *before* storing anything: the backend
+        // returns `role` on the token response, so accepting a student/barista
+        // session here could only produce 403s later.
+        if (String(res.role).toLowerCase() !== 'admin') {
+            toast.error('该账号无权访问管理后台 (Not an admin account)');
+            return;
+        }
+        auth.setSession(res.access_token, res.role);
         router.push('/');
     } catch (e: any) {
         // 检查是否有详细的结构化错误信息

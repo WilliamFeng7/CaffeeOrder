@@ -50,10 +50,15 @@ def test_bcrypt_hashing():
     assert security.verify_password("wrong", hashed) is False
 
 
-def test_verify_password_match():
-    # Legacy plain-text rows still verify (pre-migration support)
+def test_verify_password_rejects_plaintext_rows():
+    # A row whose password column is not a bcrypt hash must never authenticate.
+    # This used to assert the opposite: verify_password() fell back to a direct
+    # string comparison, so a cleartext password stored in the DB (or a hash
+    # column that had been overwritten with plain text) would log someone in.
     password = "89129885"
-    assert security.verify_password(password, password) is True
+    assert security.verify_password(password, password) is False
+    # garbage / truncated hash-shaped values are rejected too, not raised
+    assert security.verify_password("anything", "$2b$12$notarealhash") is False
 
 
 def test_verify_password_mismatch():

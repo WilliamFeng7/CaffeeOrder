@@ -1,5 +1,6 @@
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { auth } from '@shared/auth'
 import KDSView from '../views/KDSView.vue'
 import LoginView from '../views/LoginView.vue'
 
@@ -21,9 +22,15 @@ const router = createRouter({
 })
 
 // Navigation Guard
-router.beforeEach((to, from, next) => {
-    const token = sessionStorage.getItem('coffee_access_token');
-    if (to.meta.requiresAuth && !token) {
+router.beforeEach((to, _from, next) => {
+    // Uses the shared auth helper instead of re-hardcoding the storage key, and
+    // requires a staff role rather than merely "some token is present".
+    const authorized = auth.hasRole('barista', 'admin');
+
+    if (to.meta.requiresAuth && !authorized) {
+        if (auth.isLoggedIn()) {
+            auth.clearToken();
+        }
         next('/login');
     } else {
         next();

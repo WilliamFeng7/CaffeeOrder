@@ -7,13 +7,16 @@
  */
 import { useRouter } from 'vue-router';
 import { ref, onMounted, onUnmounted } from 'vue';
+import { auth } from '@shared/auth';
 
 const router = useRouter();
 const currentTime = ref('');
 const currentDate = ref('');
 
 const handleLogout = () => {
-  sessionStorage.removeItem('coffee_access_token');
+  // Shared helper so the recorded role is cleared with the token (a hardcoded
+  // key here left the role behind and could re-authorize the next session).
+  auth.clearToken();
   router.push('/login');
 };
 

@@ -2,7 +2,7 @@ from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 
-from sqlalchemy import Index
+from sqlalchemy import Index, text
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.core import timezone
@@ -109,6 +109,18 @@ class Order(SQLModel, table=True):
         Index("ix_order_status_created_at", "status", "created_at"),
         # Composite index for user's order history sorted by time
         Index("ix_order_user_created_at", "user_id", "created_at"),
+        # pickup_number is a *daily* sequence (it restarts at 1 every day), so it
+        # cannot be globally unique. The pick-a-number step is SELECT max(...)+1,
+        # which two concurrent orders can win at once, silently giving two
+        # customers the same counter number. This expression index makes the
+        # collision raise IntegrityError instead, so create_order's existing
+        # retry loop hands out a fresh number.
+        Index(
+            "uix_order_day_pickup",
+            text("date(created_at)"),
+            "pickup_number",
+            unique=True,
+        ),
     )
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: Optional[int] = Field(default=None, foreign_key="user.id", index=True)

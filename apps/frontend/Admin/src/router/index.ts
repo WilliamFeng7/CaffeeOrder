@@ -59,7 +59,14 @@ const router = createRouter({
 })
 
 router.beforeEach((to, _from, next) => {
-    if (to.meta.requiresAuth && !auth.isLoggedIn()) {
+    // Existence of a token is not enough - it must be an admin session, or the
+    // console would render for a student/barista and then 403 on every request.
+    const authorized = auth.hasRole('admin');
+
+    if (to.meta.requiresAuth && !authorized) {
+        if (auth.isLoggedIn()) {
+            auth.clearToken();
+        }
         next('/login')
     } else {
         next()

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
@@ -73,3 +73,64 @@ async def get_current_active_superuser(
             status_code=403, detail="The user doesn't have enough privileges"
         )
     return current_user
+
+
+def require_roles(*roles: str):
+    """
+    Build a dependency that admits only the given roles.
+
+    This exists because the admin check was previously copy-pasted into the
+    admin/finance/users/utils routers (four near-identical variants that only
+    differed in the error string), which is exactly how an updated rule ends up
+    enforced on some endpoints and forgotten on others.
+    """
+
+    async def _dependency(
+        current_user: User = Depends(get_current_user),
+    ) -> User:
+        from app.models import UserRole
+
+        def _value(role) -> str:
+            # Normalise on the *enum value* (lower-case, e.g. "admin") so passing
+            # either UserRole.ADMIN or the string "ADMIN" behaves the same.
+            # Comparing the raw literal against role.value silently rejected
+            # every admin when this first landed.
+            raw = role.value if isinstance(role, UserRole) else str(role)
+            return raw.lower()
+
+        allowed = {_value(r) for r in roles}
+        current = _value(current_user.role)
+        if current not in allowed:
+            raise HTTPException(
+                status_code=403,
+                detail="The user doesn't have enough privileges",
+            )
+        return current_user
+
+    return _dependency
+
+
+# Canonical role gates. Import these instead of re-implementing the check.
+get_current_admin = require_roles("ADMIN")
+get_current_admin_or_barista = require_roles("ADMIN", "BARISTA")
+
+
+class Pagination(BaseModel):
+    """Validated list window."""
+
+    skip: int
+    limit: int
+
+
+def pagination(
+    skip: int = Query(0, ge=0, description="Rows to skip"),
+    limit: int = Query(20, ge=1, le=200, description="Rows to return (max 200)"),
+) -> Pagination:
+    """
+    Shared pagination dependency.
+
+    The bound matters: with a plain `limit: int` parameter, `limit=-1` reached
+    SQLite as a negative LIMIT, which SQLite reads as "no limit" - so one request
+    could dump an entire table.
+    """
+    return Pagination(skip=skip, limit=limit)

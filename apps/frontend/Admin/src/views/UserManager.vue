@@ -61,9 +61,11 @@ const handleDepositOpen = (user: any) => {
 
 const handleDepositSubmit = async () => {
     if (depositUser.value && depositAmount.value > 0) {
-        // Amount is in Yuan, convert to Cents
+        // Pass display units (Yuan) - api.deposit() converts to cents exactly once.
+        // This used to convert here *and* inside api.deposit(), so a ¥100 top-up
+        // was submitted as 1000000 cents (¥10,000).
         try {
-            await api.deposit(depositUser.value.id, Math.round(depositAmount.value * 100));
+            await api.deposit(depositUser.value.id, depositAmount.value);
             showDepositModal.value = false;
             fetchUsers();
             toast.success('充值成功 (Top-up Successful)');
@@ -103,11 +105,9 @@ const handleDepositSubmit = async () => {
         }
         
         try {
-            // Prepare payload with balance converted to Cents (integers)
-            const payload = {
-                ...u,
-                balance: Math.round(u.balance * 100)
-            };
+            // Balance stays in display units (Yuan) here; api.createUser /
+            // api.updateUser each convert to cents once. Spreading `u` is enough.
+            const payload = { ...u };
 
             if (u.id) {
                 await api.updateUser(u.id, payload);
@@ -229,7 +229,7 @@ onMounted(fetchUsers);
                  </div>
                  <div>
                      <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">密码 (Password)</label>
-                     <input v-model="editingUser.password" type="text" placeholder="留空则不修改 (Leave empty to keep)" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20" />
+                     <input v-model="editingUser.password" type="password" autocomplete="new-password" placeholder="留空则不修改 (Leave empty to keep)" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20" />
                      <p v-if="!editingUser.id" class="text-[10px] text-red-400 font-bold mt-1 ml-2">* 必填 (Required, >8 chars)</p>
                      <p v-else class="text-[10px] text-gray-400 font-bold mt-1 ml-2">若修改需 >8 位 (If changed, must be >8 chars)</p>
                  </div>

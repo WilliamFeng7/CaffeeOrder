@@ -13,6 +13,7 @@
 
 import { computed } from 'vue';
 import { TRANSLATIONS } from '../data';
+import { formatCents, toCents, sumCents } from '../utils/money';
 import type { CartItem, ViewState, Language } from '../types';
 
 // --- Props & Events ---
@@ -34,15 +35,15 @@ const t = computed(() => TRANSLATIONS[props.lang]);
 
 /**
  * 计算订单小计 (Subtotal)
- * 遍历购物车，累加 (单价 * 数量)。
+ * 以整数「分」累加，避免浮点元值累积出与后端相差一分钱的显示结果。
  */
-const subtotal = computed(() => props.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0));
+const subtotalCents = computed(() => sumCents(props.cart));
 
 /**
  * 计算应付总额 (Total)
  * 目前无税费或运费，等于小计。
  */
-const total = computed(() => subtotal.value);
+const totalCents = computed(() => subtotalCents.value);
 
 </script>
 
@@ -97,7 +98,7 @@ const total = computed(() => subtotal.value);
                           <h3 class="text-base md:text-lg font-[800] text-text-main line-clamp-1">
                              {{ lang === 'cn' ? item.nameCN : item.name }}
                           </h3>
-                          <span class="font-[900] text-base text-primary">¥{{ (item.price * item.quantity).toFixed(2) }}</span>
+                          <span class="font-[900] text-base text-primary">¥{{ formatCents(toCents(item.price) * item.quantity) }}</span>
                        </div>
                        <!-- Spec Tags -->
                        <div class="flex flex-wrap gap-1.5 opacity-60 mb-2">
@@ -134,7 +135,7 @@ const total = computed(() => subtotal.value);
                            </button>
                         </div>
                         <!-- Unit Price -->
-                        <span class="text-[10px] font-bold text-gray-400">¥{{ Number(item.price).toFixed(2) }} / ea</span>
+                        <span class="text-[10px] font-bold text-gray-400">¥{{ formatCents(toCents(item.price)) }} / ea</span>
                      </div>
                   </div>
                </div>
@@ -152,12 +153,12 @@ const total = computed(() => subtotal.value);
             <div class="space-y-3">
                <div class="flex justify-between text-text-sub text-sm font-bold">
                   <span>{{ t.subtotal }}</span>
-                  <span>¥{{ subtotal.toFixed(2) }}</span>
+                  <span>¥{{ formatCents(subtotalCents) }}</span>
                </div>
                <div class="h-px bg-gray-100 my-2"></div>
                 <div class="flex justify-between text-3xl font-sans font-black text-[#103E32] tracking-tighter">
                    <span>{{ t.total }}</span>
-                   <span class="font-sans">¥{{ total.toFixed(2) }}</span>
+                   <span class="font-sans">¥{{ formatCents(totalCents) }}</span>
                 </div>
             </div>
 
@@ -167,7 +168,7 @@ const total = computed(() => subtotal.value);
                :disabled="cart.length === 0"
                class="hidden md:block w-full h-[72px] rounded-[32px] font-sans font-black text-2xl shadow-xl mt-4 transition-all duration-500 ease-luxury active:scale-[0.96] disabled:opacity-50 disabled:grayscale outline-none text-white bg-[#103E32] shadow-[#103E32]/30"
             >
-               {{ lang === 'cn' ? '支付' : 'Pay' }} <span class="bg-white/10 px-2 py-0.5 rounded-lg ml-1 font-sans">¥{{ total.toFixed(2) }}</span>
+               {{ lang === 'cn' ? '支付' : 'Pay' }} <span class="bg-white/10 px-2 py-0.5 rounded-lg ml-1 font-sans">¥{{ formatCents(totalCents) }}</span>
             </button>
             
             <p class="text-center text-[9px] font-bold text-gray-300 uppercase tracking-widest">{{ t.securePayment }}</p>
@@ -183,7 +184,7 @@ const total = computed(() => subtotal.value);
            :disabled="cart.length === 0"
            class="w-full h-16 rounded-[32px] font-sans font-black text-xl shadow-lg active:scale-[0.96] transition-all duration-500 ease-luxury disabled:opacity-50 outline-none flex items-center justify-center gap-2 text-white bg-[#103E32] shadow-[#103E32]/20"
         >
-           {{ lang === 'cn' ? '支付' : 'Pay' }} <span class="bg-white/20 px-3 py-1 rounded-xl text-white text-lg font-sans font-bold">¥{{ total.toFixed(2) }}</span>
+           {{ lang === 'cn' ? '支付' : 'Pay' }} <span class="bg-white/20 px-3 py-1 rounded-xl text-white text-lg font-sans font-bold">¥{{ formatCents(totalCents) }}</span>
         </button>
     </div>
   </div>

@@ -22,19 +22,17 @@ const router = createRouter({
     ]
 });
 
-router.beforeEach((to, from, next) => {
-    const isLoggedIn = auth.isLoggedIn();
+router.beforeEach((to, _from, next) => {
+    // A token alone is not authorization for this app: the guard must also
+    // confirm the session belongs to a student, otherwise an admin/barista
+    // token stored by any of the three apps would pass here.
+    const authorized = auth.hasRole('student');
 
-    // If going to login and already logged in? 
-    // Maybe redirect to home. But user wanted "Login every time" maybe?
-    // Let's keep it standard: if token exists, go to home/dashboard.
-    // Actually, if user wants "login every time", reloading the page should stay logged in?
-    // "每次刷新页面或重新打开应用时，系统都会强制要求您重新输入账号密码" -> This means NO persistence on refresh?
-    // If so, I should check if it's a "fresh load".
-    // But standard usage is: token persists.
-    // I will check for token.
-
-    if (to.meta.requiresAuth && !isLoggedIn) {
+    if (to.meta.requiresAuth && !authorized) {
+        if (auth.isLoggedIn()) {
+            // Wrong-portal session: drop it so the login form is honest.
+            auth.clearToken();
+        }
         next('/login');
         return;
     }

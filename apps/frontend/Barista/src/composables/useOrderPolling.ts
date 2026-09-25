@@ -1,10 +1,19 @@
 import { shallowRef, ref, onMounted, onUnmounted } from 'vue';
+import axios from 'axios';
 import { api, type Order } from '../api';
 
 interface UseOrderPollingOptions {
     interval?: number;
     onNewOrders?: (count: number) => void;
 }
+
+/**
+ * Backend OrderStatus values that count as a *newly arrived* order.
+ * The previous check looked for 'pending' / 'new', which this API never returns
+ * (it uses created / processing / ready / completed / refunded), so the callback
+ * could only ever compare 0 with 0 and never fired.
+ */
+const NEW_ORDER_STATUSES = ['created'];
 
 export function useOrderPolling(options: UseOrderPollingOptions = {}) {
     const { interval = 4000, onNewOrders } = options;
@@ -27,14 +36,14 @@ export function useOrderPolling(options: UseOrderPollingOptions = {}) {
         if (showRefresh) refreshing.value = true;
 
         try {
-            const data = await api.getAllOrders();
+            const data = await api.getAllOrders(abortController.signal);
             const sortedOrders = data.sort((a, b) =>
                 new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
             );
 
             // Check for new pending orders
             const newPendingCount = sortedOrders.filter(o =>
-                ['pending', 'new'].includes(o.status.toLowerCase())
+                NEW_ORDER_STATUSES.includes(o.status.toLowerCase())
             ).length;
 
             if (previousPendingCount > 0 && newPendingCount > previousPendingCount) {
@@ -45,7 +54,9 @@ export function useOrderPolling(options: UseOrderPollingOptions = {}) {
             orders.value = sortedOrders;
             error.value = null;
         } catch (e) {
-            if ((e as Error).name !== 'AbortError') {
+            // A cancellation is expected whenever a newer tick superseded this
+            // one - it is not an outage and must not surface as an error.
+            if (!axios.isCancel(e)) {
                 error.value = e as Error;
                 console.error('Failed to fetch orders', e);
             }

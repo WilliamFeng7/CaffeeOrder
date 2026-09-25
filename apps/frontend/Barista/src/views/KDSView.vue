@@ -6,16 +6,13 @@
  * Features: Three-column Kanban layout, stats bar, sound notifications, keyboard shortcuts.
  */
 import { ref, onMounted, onUnmounted, computed } from 'vue';
-import { api, type Order } from '../api';
+import { api } from '../api';
 import { useToastStore } from '../stores/toast';
+import { useOrderPolling } from '../composables/useOrderPolling';
 import OrderCard from '../components/OrderCard.vue';
 import KDSLayout from '../components/KDSLayout.vue';
 
-const orders = ref<Order[]>([]);
-const loading = ref(true);
-const refreshing = ref(false);
 const toast = useToastStore();
-let pollInterval: number | null = null;
 
 // Global tick for OrderCard time updates (instead of per-card intervals)
 const globalTick = ref(0);
@@ -43,38 +40,24 @@ const playNotificationSound = () => {
   }
 };
 
-const previousPendingCount = ref(0);
-const hasInitialLoad = ref(false);
-
-const fetchOrders = async (showRefresh = false) => {
-    if (showRefresh) refreshing.value = true;
-    try {
-        const data = await api.getAllOrders();
-        const newOrders = data.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-        
-        // Check for new orders (skip on initial load to avoid false positive)
-        const newPendingCount = newOrders.filter(o => o.status.toLowerCase() === 'created').length;
-        if (hasInitialLoad.value && newPendingCount > previousPendingCount.value) {
-          playNotificationSound();
-          toast.info(`${newPendingCount - previousPendingCount.value} new order(s)!`);
-        }
-        hasInitialLoad.value = true;
-        previousPendingCount.value = newPendingCount;
-        
-        orders.value = newOrders;
-    } catch (e) {
-        console.error("Failed to fetch orders", e);
-    } finally {
-        loading.value = false;
-        refreshing.value = false;
-    }
-};
+// Polling is delegated to the shared composable. It replaces the ad-hoc 8s
+// setInterval this view used to run, which (a) could overlap when a request was
+// slower than the interval, (b) kept hammering the API while the KDS tab was
+// hidden, and (c) duplicated the same fetch/new-order-diff logic that already
+// existed, unused, in composables/useOrderPolling.ts.
+const { orders, loading, refreshing, refresh } = useOrderPolling({
+    interval: 8000,
+    onNewOrders: (count) => {
+        playNotificationSound();
+        toast.info(`${count} new order(s)!`);
+    },
+});
 
 const handleStatusUpdate = async (orderId: number, status: string) => {
     try {
         await api.updateOrderStatus(orderId, status);
         toast.success(`Order #${orderId} → ${status}`);
-        await fetchOrders();
+        await refresh();
     } catch (e) {
         toast.error('Failed to update status');
     }
@@ -98,21 +81,19 @@ const avgWaitTime = computed(() => {
 // Keyboard shortcuts
 const handleKeydown = (e: KeyboardEvent) => {
   if (e.key === 'r' && !e.ctrlKey && !e.metaKey) {
-    fetchOrders(true);
+    refresh();
   }
 };
 
+// Polling lifecycle (start/stop, visibility pause, abort on unmount) is owned by
+// useOrderPolling, which registers its own mounted/unmounted hooks.
 onMounted(() => {
-    fetchOrders();
-    // Reduced polling frequency: 8s instead of 4s (consider WebSocket for real-time)
-    pollInterval = setInterval(() => fetchOrders(), 8000) as unknown as number;
     // Global tick every 30s for OrderCard time updates
     tickInterval = setInterval(() => { globalTick.value++; }, 30000) as unknown as number;
     window.addEventListener('keydown', handleKeydown);
 });
 
 onUnmounted(() => {
-    if (pollInterval) clearInterval(pollInterval);
     if (tickInterval) clearInterval(tickInterval);
     window.removeEventListener('keydown', handleKeydown);
 });
@@ -150,7 +131,7 @@ const columns = [
   }
 ];
 
-const manualRefresh = () => fetchOrders(true);
+const manualRefresh = () => refresh();
 </script>
 
 <template>

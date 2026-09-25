@@ -18,9 +18,13 @@ class SettingUpdate(BaseModel):
 @router.get("/", response_model=list[SystemSetting])
 async def read_settings(
     session: AsyncSession = Depends(get_session),
+    # System settings are not public configuration: reading them requires an
+    # admin token, matching the PUT handler below. Previously this endpoint had
+    # no auth dependency at all and answered anonymous requests with 200.
+    current_user: User = Depends(deps.get_current_active_superuser),
 ):
     """
-    Get all system settings.
+    Get all system settings. (Admin only)
     """
     result = await session.exec(select(SystemSetting))
     return result.all()

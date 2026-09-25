@@ -89,7 +89,13 @@ export const api = {
     },
 
     async createUser(data: Partial<User>): Promise<User> {
-        const res = await apiClient.post('/admin/users', data, {
+        // The API layer is the single owner of Yuan -> Cents conversion for every
+        // money mutation. Callers pass display units (Yuan) consistently.
+        const payload = { ...data };
+        if (payload.balance !== undefined && payload.balance !== null) {
+            payload.balance = Math.round(Number(payload.balance) * 100);
+        }
+        const res = await apiClient.post('/admin/users', payload, {
             headers: { 'Content-Type': 'application/json' }
         });
         return res.data;
@@ -113,9 +119,9 @@ export const api = {
         return res.data;
     },
 
-    async deposit(userId: number, amount: number) {
-        // Convert Yuan to Cents
-        const amountInCents = Math.round(amount * 100);
+    async deposit(userId: number, amountYuan: number) {
+        // `amountYuan` is in display units; this is the only place it becomes cents
+        const amountInCents = Math.round(amountYuan * 100);
         const res = await apiClient.post(`/users/${userId}/deposit?amount=${amountInCents}`);
         return res.data;
     },

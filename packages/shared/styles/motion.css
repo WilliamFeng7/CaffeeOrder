@@ -1,0 +1,112 @@
+/**
+ * Shared motion stylesheet for Student / Admin / Barista.
+ *
+ * Imported from each app's index.css so that the three apps stop drifting apart
+ * on the things that make motion feel consistent: press feedback, the reduced
+ * motion contract, and list entrance staggering.
+ */
+
+/* --- Press feedback ------------------------------------------------------- */
+/* Applied once, globally, instead of `active:scale-95 transition-all` sprinkled
+   across hundreds of elements. `transition-property` is listed explicitly:
+   `transition-all` also animates layout-affecting properties (width/height/padding),
+   which is the single biggest source of dropped frames in these apps. */
+button,
+.clickable,
+[role="button"] {
+  transition-property: transform, opacity, background-color, border-color, color,
+    box-shadow;
+  transition-duration: 250ms;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transform: translateZ(0);
+}
+
+button:active:not(:disabled),
+.clickable:active,
+[role="button"]:active {
+  transition-duration: 120ms;
+  transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  transform: scale(0.96);
+}
+
+button:disabled {
+  transition-duration: 150ms;
+}
+
+/* Visible keyboard focus. The apps previously relied on the UA outline being
+   present; with the resets in place, keyboard users had no reliable focus ring. */
+:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* --- List entrance staggering -------------------------------------------- */
+/* Gives a container's children a cascading slide-up without any per-item inline
+   `style="animation-delay: ..."` bookkeeping in the templates. */
+.stagger-in > * {
+  animation: slideUpContent 0.55s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+.stagger-in > *:nth-child(1)  { animation-delay: 0ms; }
+.stagger-in > *:nth-child(2)  { animation-delay: 40ms; }
+.stagger-in > *:nth-child(3)  { animation-delay: 80ms; }
+.stagger-in > *:nth-child(4)  { animation-delay: 120ms; }
+.stagger-in > *:nth-child(5)  { animation-delay: 160ms; }
+.stagger-in > *:nth-child(6)  { animation-delay: 200ms; }
+.stagger-in > *:nth-child(7)  { animation-delay: 240ms; }
+.stagger-in > *:nth-child(8)  { animation-delay: 280ms; }
+/* Beyond the 8th child stop stacking delay - a long menu should not take
+   several seconds to become readable. */
+.stagger-in > *:nth-child(n + 9) { animation-delay: 300ms; }
+
+@keyframes slideUpContent {
+  from {
+    transform: translate3d(0, 24px, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+/* --- Reduced motion ----------------------------------------------------- */
+/* The whole system is animation-heavy (blur-in heroes, jelly buttons, infinite
+   float and pulse loops). Users with vestibular disorders or motion sensitivity -
+   and anyone who set "reduce motion" at the OS level - had no way out, because
+   nothing in any of the three apps checked this media feature.
+   Entrances are collapsed to a quick opacity change and all looping motion is
+   stopped; opacity fades are kept because they are not disorienting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Keep a short, non-moving fade so state changes are still perceivable. */
+  .stagger-in > *,
+  [class*="animate-fade-in"],
+  [class*="animate-scale-in"],
+  [class*="animate-slide-up-content"],
+  [class*="animate-slide-down-content"],
+  [class*="animate-blur-in"] {
+    animation: fadeOnly 150ms linear backwards !important;
+  }
+
+  button:active:not(:disabled),
+  .clickable:active,
+  [role="button"]:active {
+    transform: none;
+  }
+}
+
+@keyframes fadeOnly {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

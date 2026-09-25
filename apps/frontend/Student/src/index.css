@@ -1,3 +1,6 @@
+/* Shared motion contract (press feedback, stagger, prefers-reduced-motion)
+   for Student / Admin / Barista. */
+@import '../../../../packages/shared/styles/motion.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -71,28 +74,6 @@ body {
 
 .material-symbols-rounded.filled {
     font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-}
-
-/* Global Button Silky Motion */
-button,
-.clickable,
-[role="button"] {
-    transition-property: transform, background-color, opacity, box-shadow, border-color, color;
-    transition-duration: 400ms;
-    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-    /* cursor: pointer; REMOVED for iPad */
-    touch-action: manipulation;
-    user-select: none;
-    -webkit-user-select: none;
-    transform: translateZ(0);
-}
-
-button:active,
-.clickable:active,
-[role="button"]:active {
-    transition-duration: 200ms;
-    transition-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
-    transform: scale(0.96);
 }
 
 /* NOTE: no custom .transform-gpu here — a plain `transform: translate3d(0,0,0)`

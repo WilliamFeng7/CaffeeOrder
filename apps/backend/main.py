@@ -60,10 +60,19 @@ app.add_middleware(
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     from fastapi.encoders import jsonable_encoder
 
+    # exc.errors() embeds an `input` key containing the raw submitted value for
+    # every failed field. On the login and password-change routes that value is
+    # the user's password, so the previous behaviour reflected cleartext
+    # credentials back to the caller (and into any proxy/access log that records
+    # response bodies). Keep the field/message/type locators, drop the payload.
+    safe_errors = [
+        {k: v for k, v in err.items() if k != "input"} for err in exc.errors()
+    ]
+
     return JSONResponse(
         status_code=422,
         content=jsonable_encoder(
-            {"detail": exc.errors(), "message": "Changes validation failed"}
+            {"detail": safe_errors, "message": "Changes validation failed"}
         ),
     )
 

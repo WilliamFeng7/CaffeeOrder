@@ -3,25 +3,53 @@ import time
 from fastapi import HTTPException, Request, status
 
 # --- 简单内存限流器 (Simple In-Memory Rate Limiter) ---
-# 存储结构: { (IP, 设备ID): [失败时间戳1, 失败时间戳2, ...] }
+# 存储结构: { 客户端IP: [失败时间戳1, 失败时间戳2, ...] }
 # 注意：生产环境建议使用 Redis 以支持多实例部署和持久化。
 # Note: Use Redis for production.
-_failed_attempts: dict[tuple[str, str], list[float]] = {}
+_failed_attempts: dict[str, list[float]] = {}
 
 # 配置
 LOCKOUT_DURATION = 60  # 锁定时间窗口 (秒) -> 1分钟
 MAX_ATTEMPTS = 6  # 窗口内最大请求次数 (允许5次密码尝试，第6次被拦截)
 
+# 清理阈值：窗口外的 key 一律删除，避免字典随流量无限膨胀
+_MAX_TRACKED_KEYS = 10000
 
-def check_rate_limit(request: Request, device_id: str):
+
+def _prune_expired(now: float) -> None:
+    """Drop keys whose window has fully elapsed so the store stays bounded."""
+    if len(_failed_attempts) < _MAX_TRACKED_KEYS:
+        return
+    for key in [
+        k for k, ts in _failed_attempts.items()
+        if not ts or now - max(ts) >= LOCKOUT_DURATION
+    ]:
+        _failed_attempts.pop(key, None)
+
+
+def _client_key(request: Request) -> str:
+    """
+    Rate-limit bucket for a request.
+
+    This deliberately keys on the peer IP only. It used to also include a
+    client-supplied `device_id` cookie, which let an attacker mint a fresh bucket
+    per attempt (just drop/rename the cookie) and bypass the limiter entirely.
+    Per-account brute forcing is still covered by the progressive account
+    lockout stored on the User row.
+    """
+    return request.client.host if request.client else "unknown"
+
+
+def check_rate_limit(request: Request, device_id: str | None = None):
     """
     检查是否超过速率限制 (Check Rate Limit)
 
     采用滑动窗口算法 (Sliding Window Algorithm):
     只计算最近 LOCKOUT_DURATION 秒内的失败次数。
+
+    `device_id` 参数保留仅为兼容既有调用方，已不再参与限流键计算。
     """
-    client_ip = request.client.host
-    key = (client_ip, device_id)
+    key = _client_key(request)
     now = time.time()
 
     # 1. 清理过期记录 (Clean up old attempts)
@@ -48,15 +76,12 @@ def check_rate_limit(request: Request, device_id: str):
     return MAX_ATTEMPTS - current_attempts
 
 
-def record_failed_attempt(request: Request, device_id: str) -> None:
+def record_failed_attempt(request: Request, device_id: str | None = None) -> None:
     """
     记录一次失败尝试 (Record Failed Attempt)
     """
-    client_ip = request.client.host
-    key = (client_ip, device_id)
+    key = _client_key(request)
     now = time.time()
 
-    if key not in _failed_attempts:
-        _failed_attempts[key] = []
-
-    _failed_attempts[key].append(now)
+    _failed_attempts.setdefault(key, []).append(now)
+    _prune_expired(now)

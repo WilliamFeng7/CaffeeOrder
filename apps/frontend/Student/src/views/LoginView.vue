@@ -114,23 +114,29 @@ const handleLogin = async () => {
   }
   
   isLoading.value = true;
-  isLoading.value = true;
   inputError.value = '';
   clearCountdown();
   
   try {
     // 调用 API 获取 Token 和用户信息
     const data = await api.login(username.value, password.value);
-    
-    // 存储 Token 到本地
-    auth.setToken(data.access_token);
-    
-    // 检查角色 (Check Role)
-    if (data.role === 'admin') {
-        throw new Error('403 Admin account cannot login to Student App');
+
+    // 检查角色 (Check Role) - BEFORE storing anything.
+    // The token used to be written to sessionStorage first and only then
+    // rejected, which left a live admin session sitting in the student app's
+    // storage; barista accounts were not checked at all.
+    const role = String(data.role || '').toLowerCase();
+    if (role !== 'student') {
+      throw new Error(
+        role === 'admin'
+          ? '403 Admin account cannot login to Student App'
+          : '403 Staff account cannot login to Student App'
+      );
     }
-    
-    // 如果是学生 (If student)
+
+    // 存储 Token 到本地
+    auth.setSession(data.access_token, data.role);
+
     router.push('/');
     emit('login-success'); // 兼容旧逻辑，但在路由模式下可能不需要
     

@@ -25,4 +25,13 @@ COPY . .
 EXPOSE 80
 
 # 启动命令 (使用 uvicorn)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--proxy-headers", "--forwarded-allow-ips", "*"]
+# `--forwarded-allow-ips *` used to be hardcoded here, which told uvicorn to trust
+# X-Forwarded-For from ANY peer. This container is reachable from the host, so an
+# attacker could set an arbitrary X-Forwarded-For value, mint a fresh login
+# rate-limit bucket per attempt (defeating the limiter) and spoof the IP stored in
+# LoginLog.
+#
+# Trust is now taken from FORWARDED_ALLOW_IPS (uvicorn reads that env itself and
+# defaults to 127.0.0.1). docker-compose.prod.yml pins it to the private compose
+# network, so only the nginx containers behind it may assert a client IP.
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--proxy-headers"]

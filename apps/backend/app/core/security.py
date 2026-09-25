@@ -1,4 +1,3 @@
-import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any, Union
 
@@ -40,20 +39,27 @@ def create_access_token(
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    Verify Password
-    Supports both BCrypt hashes and legacy Plain Text.
-    """
-    # 1. Try verifying as a BCrypt hash
-    try:
-        # identify method calls identify(hash) -> returns method name or None
-        if pwd_context.identify(hashed_password):
-            return pwd_context.verify(plain_password, hashed_password)
-    except ValueError:
-        pass
+    Verify Password against a BCrypt hash.
 
-    # 2. Fallback: Compare as plain text (Legacy support)
-    # This allows existing users to log in before their password is migrated to a hash
-    return secrets.compare_digest(plain_password, hashed_password)
+    Only hashed credentials are accepted. The previous "legacy plaintext"
+    fallback compared the submitted password directly against whatever string
+    was stored in the DB, which meant a plaintext password in the database (or a
+    row whose hash column had been overwritten) would authenticate. Every stored
+    password is already a bcrypt hash, and `scripts/migrate_passwords.py` exists
+    for importing legacy rows, so the fallback has been removed.
+    """
+    try:
+        # identify() raises ValueError when the value is not a known hash format
+        if not pwd_context.identify(hashed_password):
+            return False
+    except ValueError:
+        return False
+
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        # Malformed hash in the DB must never authenticate a caller
+        return False
 
 
 def get_password_hash(password: str) -> str:

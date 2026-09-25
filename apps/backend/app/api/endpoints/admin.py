@@ -2,17 +2,16 @@ from datetime import timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import selectinload
 from sqlmodel import func, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.api import deps
-from app.api.endpoints.menu import invalidate_menu_cache
-from app.api.endpoints.order import VALID_STATUS_TRANSITIONS, process_refund
 from app.core import timezone
 from app.crud.user import user as user_crud
 from app.database import get_session
 from app.models import MenuItem, Order, OrderStatus, Transaction, User, UserRole
+from app.services import menu as menu_service
+from app.services import orders as order_service
 from app.schemas import (
     OrderResponse,
     ProductCreate,
@@ -24,27 +23,11 @@ from app.schemas import (
 
 router = APIRouter()
 
-
-# --- Dependency: Check for Admin Role ---
-def get_current_admin(
-    current_user: User = Depends(deps.get_current_user),
-) -> User:
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=403, detail="The user doesn't have enough privileges"
-        )
-    return current_user
-
-
-# --- Dependency: Check for Admin OR Barista Role ---
-def get_current_admin_or_barista(
-    current_user: User = Depends(deps.get_current_user),
-) -> User:
-    if current_user.role not in [UserRole.ADMIN, UserRole.BARISTA]:
-        raise HTTPException(
-            status_code=403, detail="The user doesn't have enough privileges"
-        )
-    return current_user
+# Role gates live in deps so every router enforces the same rule.
+# Re-exported under the historical names because other modules import them from
+# here (e.g. users.py) and the endpoint signatures reference them by name.
+get_current_admin = deps.get_current_admin
+get_current_admin_or_barista = deps.get_current_admin_or_barista
 
 
 @router.get("/stats")
@@ -302,8 +285,10 @@ async def delete_user(
 
 @router.get("/users", response_model=list[UserOut])
 async def read_users(
-    skip: int = 0,
-    limit: int = 100,
+    # Bounds live in the shared pagination dependency: without an upper bound,
+    # limit=-1 (SQLite reads a negative LIMIT as "no limit") let any admin token
+    # dump the entire user table in one call.
+    page: deps.Pagination = Depends(deps.pagination),
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_admin),
 ) -> Any:
@@ -311,7 +296,7 @@ async def read_users(
     Retrieve users.
     """
     result = await session.exec(
-        select(User).order_by(User.id).offset(skip).limit(limit)
+        select(User).order_by(User.id).offset(page.skip).limit(page.limit)
     )
     users = result.all()
     return users
@@ -383,7 +368,7 @@ async def create_product(
     session.add(product)
     await session.commit()
     await session.refresh(product)
-    invalidate_menu_cache()
+    menu_service.invalidate()
     return product
 
 
@@ -407,7 +392,7 @@ async def update_product(
     session.add(product)
     await session.commit()
     await session.refresh(product)
-    invalidate_menu_cache()
+    menu_service.invalidate()
     return product
 
 
@@ -426,15 +411,14 @@ async def delete_product(
         raise HTTPException(status_code=404, detail="Product not found")
     await session.delete(product)
     await session.commit()
-    invalidate_menu_cache()
+    menu_service.invalidate()
     return {"ok": True}
 
 
 # --- Order Management ---
 @router.get("/orders", response_model=list[OrderResponse])
 async def read_orders(
-    skip: int = 0,
-    limit: int = 100,
+    page: deps.Pagination = Depends(deps.pagination),
     status: str = None,
     session: AsyncSession = Depends(get_session),
     current_user: User = Depends(get_current_admin_or_barista),
@@ -446,15 +430,15 @@ async def read_orders(
     if status:
         query = query.where(Order.status == status)
 
-    query = (
-        query.order_by(Order.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .options(selectinload(Order.items))
-    )
-    result = await session.exec(query)
-    orders = result.all()
-    return orders
+    orders = (
+        await session.exec(
+            query.order_by(Order.created_at.desc()).offset(page.skip).limit(page.limit)
+        )
+    ).all()
+    # Use the same batched hydration as the /orders routes instead of returning
+    # raw ORM rows, so the two listings cannot drift in shape (and so this one
+    # stops relying on a selectinload that the other routes never did).
+    return await order_service.load_order_responses(session, orders)
 
 
 @router.put("/orders/{order_id}/status")
@@ -472,35 +456,23 @@ async def update_order_status(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    # Admin override: same lifecycle as the staff endpoint, plus a direct
-    # jump to COMPLETED from any active state (the admin UI has a
-    # "complete now" shortcut button).
-    admin_transitions = {
-        **VALID_STATUS_TRANSITIONS,
-        OrderStatus.CREATED: [
-            *VALID_STATUS_TRANSITIONS[OrderStatus.CREATED],
-            OrderStatus.COMPLETED,
-        ],
-        OrderStatus.PROCESSING: [
-            *VALID_STATUS_TRANSITIONS[OrderStatus.PROCESSING],
-            OrderStatus.COMPLETED,
-        ],
-    }
-    if status not in admin_transitions.get(order.status, []):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid status transition from {order.status} to {status}",
-        )
-
-    if status == OrderStatus.REFUNDED:
-        # Refund balance + restore inventory, not just flip the status
-        await process_refund(session, order)
-    else:
-        order.status = status
-        order.updated_at = timezone.now_cst()
-        if status == OrderStatus.COMPLETED:
-            order.is_completed = True
-        session.add(order)
+    # The lifecycle table, the admin-only refund rule and the payout itself all
+    # live in the order service. This route previously re-implemented them here,
+    # which is how a BARISTA token could still trigger a refund through /admin
+    # after the /orders route had been locked down.
+    #
+    # extra_transitions grants the admin console one additional convenience the
+    # staff flow does not have: a direct jump to COMPLETED from an active state.
+    await order_service.change_status(
+        session,
+        order,
+        status,
+        current_user,
+        extra_transitions={
+            OrderStatus.CREATED: [OrderStatus.COMPLETED],
+            OrderStatus.PROCESSING: [OrderStatus.COMPLETED],
+        },
+    )
 
     await session.commit()
     await session.refresh(order)

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import or_, select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
 from app.core import security, timezone
 from app.core.config import settings
@@ -34,14 +35,12 @@ async def login_access_token(
     """
 
     # 1. Check Rate Limit
-    # Sentinel Fix: Use consistent rate limit key to prevent bypass by clients without cookies
-    rate_limit_key = device_id or "unknown"
-    ip_attempts_left = check_rate_limit(request, rate_limit_key)
+    # The limiter buckets by peer IP; the device_id cookie is not a security
+    # signal (a client controls it) and must not widen the bucket.
+    check_rate_limit(request)
 
-    # Generate new device ID if missing, but AFTER rate limit check
-    new_device_id = device_id
-    if not new_device_id:
-        new_device_id = str(uuid.uuid4())
+    # Issue an anonymous device id purely for the cookie contract below.
+    new_device_id = device_id or str(uuid.uuid4())
 
     ip_addr = request.client.host
     user_agent = request.headers.get("user-agent")
@@ -96,22 +95,24 @@ async def login_access_token(
             await session.commit()
 
     # 4. Verify Password
-    # Sentinel Fix: Always call verify_password (even with dummy data) to equalize timing?
-    # Actually, verify_password is now constant time, but DB lookup time dominates.
-    # The main fix here is correct logic handling.
-
+    # bcrypt costs ~100-300ms. Running it inline inside this `async def` blocks
+    # the single event loop, so every other in-flight request stalls until the
+    # hash finishes. Offload it to a worker thread instead.
     password_valid = False
     if user:
-        password_valid = security.verify_password(form_data.password, user.password)
+        password_valid = await run_in_threadpool(
+            security.verify_password, form_data.password, user.password
+        )
     else:
-        # Dummy verification to simulate work (though minimal impact compared to DB)
-        security.verify_password(form_data.password, "dummy_password_hash")
+        # Dummy verification to keep the response time similar whether or not
+        # the username exists (avoids a cheap user-enumeration oracle).
+        await run_in_threadpool(
+            security.verify_password, form_data.password, "$2b$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinva"
+        )
 
     if not user or not password_valid:
         # --- Handle Login Failure ---
-
-        # Sentinel Fix: Use the SAME key as check_rate_limit
-        record_failed_attempt(request, rate_limit_key)
+        record_failed_attempt(request)
 
 
 
@@ -187,24 +188,10 @@ async def login_access_token(
         raise HTTPException(status_code=401, detail=detail_data)
 
     # 5. Login Success
-
-    # --- Auto-Migration to Hash ---
-    # If the password in DB is plain text (not a valid hash), update it to a hash.
-    # Note: pwd_context.identify returns True if it recognizes the hash format.
-    from app.core.security import pwd_context
-
-    is_hashed = False
-    try:
-        is_hashed = pwd_context.identify(user.password)
-    except ValueError:
-        pass
-
-    if not is_hashed:
-        # It's a legacy plain text password. Update it.
-        new_hash = security.get_password_hash(form_data.password)
-        user.password = new_hash
-        session.add(user)
-        # We will commit together with the login log
+    # NOTE: the old "auto-migrate plaintext to hash on login" block was removed
+    # together with the plaintext fallback in security.verify_password - a row
+    # that is not a valid bcrypt hash can no longer authenticate at all. Import
+    # legacy accounts with scripts/migrate_passwords.py instead.
 
     # Reset failure counters
     if user.failed_login_attempts > 0 or user.lockout_until:
