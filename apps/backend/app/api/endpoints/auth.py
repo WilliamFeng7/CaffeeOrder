@@ -214,7 +214,12 @@ async def login_access_token(
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
 
     response.set_cookie(
-        key="device_id", value=new_device_id, httponly=True, max_age=31536000
+        key="device_id",
+        value=new_device_id,
+        httponly=True,
+        max_age=31536000,
+        samesite="lax",
+        secure=True,
     )
 
     return {

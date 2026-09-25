@@ -116,8 +116,11 @@ const handleContentClick = (e: MouseEvent) => {
      
      <!-- Modal Sheet Panel -->
      <!-- 弹窗主体面板 -->
-     <div 
+     <div
        @click="handleContentClick"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="modal-title"
        class="bg-background-light w-full h-[75%] md:h-[80%] md:max-w-2xl md:rounded-t-[40px] md:mx-auto md:mb-8 md:rounded-b-[40px] rounded-t-[36px] overflow-hidden flex flex-col shadow-2xl relative z-10 transform-gpu transition-all duration-700 ease-luxury"
        :class="isClosing ? 'translate-y-[110%] opacity-0' : 'translate-y-0 animate-slide-up-modal'"
      >
@@ -125,24 +128,34 @@ const handleContentClick = (e: MouseEvent) => {
         <div class="md:hidden flex-none h-1.5 w-12 bg-gray-200/80 rounded-full mx-auto my-3"></div>
 
         <!-- Close Button (Floating) -->
-        <button 
-          @click="handleClose" 
+        <button
+          @click="handleClose"
+          :aria-label="lang === 'cn' ? '关闭' : 'Close'"
           class="absolute top-4 right-4 z-30 size-12 rounded-full bg-white/60 backdrop-blur-lg flex items-center justify-center border border-white/50 shadow-sm transition-all duration-500 ease-luxury active:scale-75 active:rotate-90 active:bg-white"
         >
-           <span class="material-symbols-rounded text-2xl text-gray-800">close</span>
+           <span class="material-symbols-rounded text-2xl text-gray-800" aria-hidden="true">close</span>
         </button>
 
         <!-- Scrollable Content Area -->
         <div class="flex-1 overflow-y-auto no-scrollbar scroll-smooth-touch pb-4">
            <!-- Product Image Header -->
            <div class="relative h-[180px] md:h-[260px] w-full shrink-0 overflow-hidden">
-              <img :src="product.image" class="w-full h-full object-cover animate-blur-in origin-bottom" style="animation-duration: 0.8s" />
+              <img
+                :src="product.image"
+                :alt="lang === 'cn' ? product.nameCN : product.name"
+                class="w-full h-full object-cover animate-blur-in origin-bottom"
+                style="animation-duration: 0.8s"
+              />
               <!-- Gradient Overlay for text readability -->
               <div class="absolute inset-0 bg-gradient-to-t from-background-light via-background-light/20 to-transparent"></div>
-              
+
               <!-- Title & Description -->
               <div class="absolute bottom-0 left-0 right-0 px-8 md:px-12 pb-8">
-                 <h1 class="text-4xl md:text-6xl font-sans font-black text-[#103E32] mb-3 tracking-tighter leading-none drop-shadow-sm animate-slide-up-content" style="animation-delay: 100ms">
+                 <h1
+                   id="modal-title"
+                   class="text-4xl md:text-6xl font-sans font-black text-[#103E32] mb-3 tracking-tighter leading-none drop-shadow-sm animate-slide-up-content"
+                   style="animation-delay: 100ms"
+                 >
                    {{ lang === 'cn' ? product.nameCN : product.name }}
                  </h1>
                  <p class="text-text-sub font-medium text-base md:text-lg line-clamp-2 opacity-80 max-w-lg animate-slide-up-content leading-relaxed" style="animation-delay: 200ms">
@@ -163,6 +176,8 @@ const handleContentClick = (e: MouseEvent) => {
                      v-for="s in (['0%', '50%', 'Regular', '120%'] as const)"
                      :key="s"
                      @click="sugar = s"
+                     type="button"
+                     :aria-pressed="sugar === s"
                      class="flex-1 py-4 px-4 min-w-[70px] rounded-2xl text-xs md:text-sm font-bold transition-all duration-500 active:duration-300 ease-luxury active:scale-90"
                      :class="sugar === s ? 'bg-white text-primary shadow-md scale-100' : 'text-gray-400 active:bg-white/50 scale-95'"
                    >

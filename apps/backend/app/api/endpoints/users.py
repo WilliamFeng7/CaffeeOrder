@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import update
-from sqlmodel import select
+from sqlmodel import or_, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app import schemas
@@ -55,6 +55,19 @@ async def update_user_me(
     Only allows updating non-sensitive fields. Role/Balance updates are strictly forbidden.
     """
     user_data = user_in.model_dump(exclude_unset=True)
+
+    conditions = [
+        col == user_data[field]
+        for field, col in (("email", User.email), ("phone", User.phone))
+        if user_data.get(field)
+    ]
+    if conditions:
+        existing = await session.exec(select(User).where(or_(*conditions)))
+        if any(u.id != current_user.id for u in existing.all()):
+            raise HTTPException(
+                status_code=400, detail="Email or phone already registered by another user"
+            )
+
     for field, value in user_data.items():
         setattr(current_user, field, value)
 
