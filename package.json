@@ -1,0 +1,15 @@
+{
+    "name": "coffee-order-root",
+    "private": true,
+    "workspaces": [
+        "apps/frontend/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "dev:student": "npm run dev -w apps/frontend/Student",
+        "dev:admin": "npm run dev -w apps/frontend/Admin",
+        "dev:barista": "npm run dev -w apps/frontend/Barista",
+        "build": "npm run build --workspaces --if-present",
+        "install:all": "npm install"
+    }
+}

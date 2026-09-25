@@ -1,0 +1,27 @@
+/**
+ * main.ts
+ * 
+ * 应用程序入口文件。
+ * 负责初始化 Vue 应用实例，引入全局样式，并挂载到 DOM 上。
+ */
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import './index.css'
+import App from './App.vue'
+import router from './router'
+import { setUnauthorizedHandler } from '@shared/api-client'
+
+// Expired/invalid token -> this app's login view, via the router (so it honours
+// whatever base path the app is mounted at) instead of a hardcoded root URL.
+setUnauthorizedHandler(() => {
+  void router.replace('/login');
+});
+
+// 创建 Vue 应用实例
+const app = createApp(App)
+
+app.use(createPinia())
+app.use(router)
+
+// 挂载应用到页面根元素 (#app)
+app.mount('#app')
