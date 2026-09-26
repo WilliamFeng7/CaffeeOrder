@@ -10,6 +10,8 @@
 import motion from '../../../packages/shared/tailwind-motion.mjs';
 
 export default {
+  // Hover styles only on devices that can hover: taps on iPad/phones no longer leave stuck hover states.
+  future: { hoverOnlyWhenSupported: true },
     presets: [motion],
     content: [
         "./index.html",

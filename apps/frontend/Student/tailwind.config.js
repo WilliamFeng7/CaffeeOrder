@@ -15,6 +15,8 @@
 import motion from '../../../packages/shared/tailwind-motion.mjs';
 
 export default {
+  // Hover styles only on devices that can hover: taps on iPad/phones no longer leave stuck hover states.
+  future: { hoverOnlyWhenSupported: true },
     // Motion tokens (easing/duration/keyframes/animations) come from the shared
     // preset so Student / Admin / Barista cannot drift apart.
     presets: [motion],
