@@ -11,6 +11,8 @@ services:
       - "127.0.0.1:8000:80"
     volumes:
       - ./data:/data
+      # Admin-uploaded product photos; without a volume they vanished on every rebuild.
+      - ./data/uploads:/app/static/uploads
     environment:
       - DATABASE_URL=sqlite+aiosqlite:////data/coffee.db
       # Only the nginx containers on the pinned private network below may assert a

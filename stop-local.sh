@@ -2,7 +2,7 @@
 # Stop everything started by ./run-local.sh
 set -uo pipefail
 
-for pattern in "uvicorn main:app" "vite --port 5173" "vite --port 8080" "vite --port 8081"; do
+for pattern in "bin/server -addr" "uvicorn main:app" "vite --port 5173" "vite --port 8080" "vite --port 8081"; do
   if pkill -f "$pattern" 2>/dev/null; then
     echo "stopped: $pattern"
   else

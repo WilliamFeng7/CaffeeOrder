@@ -71,3 +71,6 @@ vite.config.js
 
 # npm
 .npm
+
+# Go backend build output
+apps/backend/bin/

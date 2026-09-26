@@ -1,37 +1,22 @@
-# 使用轻量的 Python 镜像
-FROM docker.m.daocloud.io/library/python:3.11-slim
+# --- build -------------------------------------------------------------------
+FROM docker.m.daocloud.io/library/golang:1.26-alpine AS build
+WORKDIR /src
+ENV GOPROXY=https://goproxy.cn,direct CGO_ENABLED=0
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd ./cmd
+COPY internal ./internal
+RUN go build -trimpath -ldflags="-s -w" -o /out/server ./cmd/server \
+ && go build -trimpath -ldflags="-s -w" -o /out/createuser ./cmd/createuser
 
-# 设置工作目录
+# --- run ---------------------------------------------------------------------
+FROM docker.m.daocloud.io/library/alpine:3.20
 WORKDIR /app
-
-# 防止 Python 产生 pyc 文件，并让输出直接打印到终端
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-# 安装系统依赖 (使用阿里云镜像)
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends gcc libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# 安装 Python 依赖 (使用阿里云镜像)
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
-
-# 复制项目代码
-COPY . .
-
-# 暴露 80 端口
+COPY --from=build /out/server /out/createuser ./
+COPY static ./static
+# Runs as root like the Python image did, so the existing ./data volume stays
+# writable without changing its ownership on the server.
+RUN mkdir -p static/uploads /data
 EXPOSE 80
-
-# 启动命令 (使用 uvicorn)
-# `--forwarded-allow-ips *` used to be hardcoded here, which told uvicorn to trust
-# X-Forwarded-For from ANY peer. This container is reachable from the host, so an
-# attacker could set an arbitrary X-Forwarded-For value, mint a fresh login
-# rate-limit bucket per attempt (defeating the limiter) and spoof the IP stored in
-# LoginLog.
-#
-# Trust is now taken from FORWARDED_ALLOW_IPS (uvicorn reads that env itself and
-# defaults to 127.0.0.1). docker-compose.prod.yml pins it to the private compose
-# network, so only the nginx containers behind it may assert a client IP.
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--proxy-headers"]
+# SECRET_KEY, DATABASE_URL and FORWARDED_ALLOW_IPS come from docker-compose.
+CMD ["./server", "-addr", ":80", "-dir", "/app"]

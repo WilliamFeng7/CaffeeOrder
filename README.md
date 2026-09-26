@@ -1,9 +1,8 @@
 # ☕ 校园咖啡点单系统 (CoffeeOrder System)
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10+-blue?logo=python" alt="Python">
+  <img src="https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go" alt="Go">
   <img src="https://img.shields.io/badge/Vue-3.4+-green?logo=vue.js" alt="Vue">
-  <img src="https://img.shields.io/badge/FastAPI-0.100+-teal?logo=fastapi" alt="FastAPI">
   <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License">
 </p>
 
@@ -26,7 +25,7 @@
 | 层级 | 技术 |
 |------|------|
 | **前端** | Vue 3 + Vite + Tailwind CSS + Pinia |
-| **后端** | FastAPI + SQLModel + SQLite (WAL) |
+| **后端** | Go（标准库 net/http）+ SQLite (WAL，纯 Go 驱动 modernc.org/sqlite) |
 | **认证** | JWT + bcrypt + 渐进式锁定 |
 | **部署** | Docker Compose |
 
@@ -35,7 +34,7 @@
 ## 🚀 快速开始
 
 ### 环境要求
-- Python 3.10+（`run-local.sh` 用 [uv](https://docs.astral.sh/uv/) 创建 3.12 虚拟环境）
+- Go 1.26+（macOS：`brew install go`）
 - Node.js 16+
 
 ### 推荐：一键本地启动
@@ -46,18 +45,17 @@
 ./stop-local.sh           # 全部停止
 ```
 
-> 该脚本会自动准备 `apps/backend/.venv`、补齐 `requirements.txt` 缺失的
-> `greenlet` / 固定 `bcrypt==4.0.1`，并把 `data/coffee.db` 播种为
-> `apps/backend/coffee.db`。
+> 该脚本会编译 Go 后端（`apps/backend/bin/server`），并在没有数据库时把
+> `data/coffee.db` 播种为 `apps/backend/coffee.db`；缺失的表会在后端启动时自动创建。
 
 ### 手动启动（等价步骤）
 
 ```bash
-# 后端
+# 后端（国内网络建议 export GOPROXY=https://goproxy.cn,direct）
 cd apps/backend
-uv venv --python 3.12 .venv && source .venv/bin/activate
-uv pip install -r requirements.txt greenlet "bcrypt==4.0.1"
-.venv/bin/python -m uvicorn main:app --host 127.0.0.1 --port 8000
+go run ./cmd/server -addr 127.0.0.1:8000
+# 新库创建第一个管理员（密码从提示或 COFFEE_PASSWORD 读取）
+go run ./cmd/createuser -username admin -name 店长 -role admin
 
 # 前端（npm workspace，依赖装在仓库根目录）
 npm install
@@ -70,7 +68,7 @@ npm run dev:barista     # 咖啡师端
 >
 > | 服务 | 地址 |
 > |------|------|
-> | 后端 API | http://localhost:8000 （文档 `/docs`）|
+> | 后端 API | http://localhost:8000/api/v1 |
 > | 学生端 | http://localhost:5173 |
 > | 管理端 | http://localhost:8080 |
 > | 咖啡师端 (KDS) | http://localhost:8081 |
@@ -82,12 +80,9 @@ npm run dev:barista     # 咖啡师端
 
 ```bash
 cd apps/backend
-uv pip install --python .venv/bin/python pytest pytest-asyncio
-.venv/bin/python -m pytest tests -q
+go test ./...            # 含并发下单 / 重复退款等测试
+go test -race ./...      # 竞态检测
 ```
-
-> 注意：`pytest` 不在 `requirements.txt` 里（运行时依赖与测试依赖混在一起），
-> 需要先按上面单独安装一次。
 
 ### Docker 一键部署
 ```bash
@@ -126,14 +121,14 @@ docker-compose -f docker-compose.prod.yml up -d --build   # 生产编排
 ```
 CoffeeOrder/
 ├── apps/
-│   ├── backend/            # FastAPI 后端
-│   │   ├── app/
-│   │   │   ├── api/endpoints/   # 薄路由层：只做参数解析与响应整形
-│   │   │   ├── services/        # 领域层：订单/金额/菜单缓存等业务规则
-│   │   │   ├── core/            # 配置、安全、限流、时区
-│   │   │   └── models.py / schemas.py
-│   │   ├── static/              # /static 静态资源（商品图等）
-│   │   └── tests/
+│   ├── backend/            # Go 后端
+│   │   ├── cmd/server/          # HTTP 服务入口
+│   │   ├── cmd/createuser/      # 创建账号 / 重置密码
+│   │   ├── internal/api/        # 路由、鉴权、请求校验与响应格式
+│   │   ├── internal/orders/     # 订单规则：库存、扣款、状态流转、退款
+│   │   ├── internal/auth/       # bcrypt、密码策略、JWT、登录限流
+│   │   ├── internal/store/      # SQLite 连接、表结构、时间与枚举约定
+│   │   └── static/              # /static 静态资源（商品图、上传图片）
 │   └── frontend/
 │       ├── Student/        # 学生端 (Vue 3 + Vite)
 │       ├── Admin/          # 管理端
@@ -146,9 +141,11 @@ CoffeeOrder/
 
 ### 分层约定
 
-路由 (`endpoints/*.py`) 不再直接实现业务规则。金额变动、订单状态机、退款与
-菜单缓存都在 `app/services/` 里，这样多条路由共享同一份约束（历史上
-`/orders` 与 `/admin/orders` 各自实现了一遍退款逻辑，导致其中一条漏掉了角色校验）。
+HTTP 层（`internal/api`）只负责解析请求和整形响应；金额、库存、订单状态机和退款
+都在 `internal/orders` 里。所有会改钱或库存的写操作都是带条件的 UPDATE（比如
+`balance >= 金额`、`status = 旧状态`），用受影响行数判断成败，所以并发下单不会超卖，
+同一订单也只会退款一次。接口路径、JSON 字段和错误格式与原 Python 后端保持一致，
+三个前端无需改动。
 
 ---
 
