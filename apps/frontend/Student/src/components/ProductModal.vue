@@ -20,6 +20,7 @@
 import { ref, computed } from 'vue';
 import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Product, Language } from '../types';
+import { useSheetDrag } from '../composables/useSheetDrag';
 
 // --- Props & Events ---
 const props = defineProps<{
@@ -51,6 +52,15 @@ const isJelly = ref(false);
 
 // 计算属性: 获取当前语言包
 const t = computed(() => TRANSLATIONS[props.lang]);
+
+// 下拉关闭: 按住商品图往下拖 (手机抽屉和 iPad 卡片都支持)
+const sheetEl = ref<HTMLElement | null>(null);
+const backdropEl = ref<HTMLElement | null>(null);
+const { handlers: dragHandlers } = useSheetDrag({
+  sheet: sheetEl,
+  backdrop: backdropEl,
+  onDismiss: () => emit('close'),
+});
 
 // --- 方法定义 (Methods) ---
 
@@ -107,6 +117,7 @@ const handleContentClick = (e: MouseEvent) => {
      <!-- Backdrop (Click to close) -->
      <!-- 背景遮罩 (点击空白处关闭)；不做模糊：面板滑动时每一帧都要重算整屏模糊 -->
      <div 
+        ref="backdropEl"
         class="absolute inset-0 bg-black/45 transition-opacity duration-200 ease-out" 
         :class="isClosing ? 'opacity-0' : 'opacity-100 animate-fade-in'"
         @click="handleClose"
@@ -115,6 +126,7 @@ const handleContentClick = (e: MouseEvent) => {
      <!-- Modal Sheet Panel -->
      <!-- 弹窗主体面板：手机为底部抽屉，iPad 为居中卡片；高度随内容，不再留一大片空白 -->
      <div
+       ref="sheetEl"
        @click="handleContentClick"
        role="dialog"
        aria-modal="true"
@@ -134,15 +146,15 @@ const handleContentClick = (e: MouseEvent) => {
 
         <!-- Scrollable Content Area -->
         <div class="flex-1 min-h-0 overflow-y-auto no-scrollbar scroll-smooth-touch">
-           <!-- Product Image Header -->
-           <div class="relative h-[200px] md:h-[280px] w-full shrink-0 overflow-hidden bg-[#F2F2F2]">
+           <!-- Product Image Header (also the drag handle: swipe down to close) -->
+           <div class="relative h-[200px] md:h-[280px] w-full shrink-0 overflow-hidden bg-[#F2F2F2] touch-none" v-on="dragHandlers">
               <img
                 :src="product.image"
                 :alt="lang === 'cn' ? product.nameCN : product.name"
                 class="w-full h-full object-cover animate-blur-in"
               />
-              <!-- Swipe Indicator (Mobile) -->
-              <div class="md:hidden absolute top-2.5 left-1/2 -translate-x-1/2 h-1.5 w-12 bg-white/80 rounded-full shadow-sm" aria-hidden="true"></div>
+              <!-- Swipe Indicator -->
+              <div class="absolute top-2.5 left-1/2 -translate-x-1/2 h-1.5 w-12 bg-white/80 rounded-full shadow-sm" aria-hidden="true"></div>
               <!-- Soft fade into the sheet -->
               <div class="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background-light to-transparent"></div>
            </div>

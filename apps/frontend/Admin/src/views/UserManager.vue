@@ -176,15 +176,16 @@ onMounted(fetchUsers);
                              <p class="font-mono font-bold text-gray-900">¥{{ user.balance.toFixed(2) }}</p>
                         </td>
                         <td class="px-8 py-5 text-right">
-                             <div v-if="user.role !== 'admin'" class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <button @click="handleEdit(user)" class="size-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
-                                     <span class="material-symbols-rounded text-sm">edit</span>
+                             <!-- Hidden until hover with a mouse; always shown on touch, where hover never happens -->
+                             <div v-if="user.role !== 'admin'" class="flex items-center justify-end gap-2 opacity-100 [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                 <button type="button" @click="handleEdit(user)" aria-label="编辑" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
+                                     <span class="material-symbols-rounded text-sm [@media(pointer:coarse)]:text-xl" aria-hidden="true">edit</span>
                                  </button>
-                                 <button @click="handleDepositOpen(user)" class="size-8 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 transition-colors" title="充值">
-                                     <span class="material-symbols-rounded text-sm">account_balance_wallet</span>
+                                 <button type="button" @click="handleDepositOpen(user)" aria-label="充值" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 transition-colors" title="充值">
+                                     <span class="material-symbols-rounded text-sm [@media(pointer:coarse)]:text-xl" aria-hidden="true">account_balance_wallet</span>
                                  </button>
-                                 <button @click="handleDelete(user.id)" class="size-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors">
-                                     <span class="material-symbols-rounded text-sm">delete</span>
+                                 <button type="button" @click="handleDelete(user.id)" aria-label="删除" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors">
+                                     <span class="material-symbols-rounded text-sm [@media(pointer:coarse)]:text-xl" aria-hidden="true">delete</span>
                                  </button>
                              </div>
                         </td>

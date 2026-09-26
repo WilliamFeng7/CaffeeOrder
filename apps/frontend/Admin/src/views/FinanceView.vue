@@ -220,7 +220,7 @@ onUnmounted(() => {
                          <td class="py-5 px-8">
                              <div class="flex flex-col">
                                  <span class="text-sm font-black text-primary">{{ row.user_name }}</span>
-                                 <span class="text-[10px] text-gray-400 font-bold opacity-0 group-hover:opacity-100 transition-opacity">{{ row.username }}</span>
+                                 <span class="text-[10px] text-gray-500 font-bold">{{ row.username }}</span>
                              </div>
                          </td>
                          <td class="py-5 px-8">

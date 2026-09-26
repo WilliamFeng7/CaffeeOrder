@@ -14,6 +14,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { CATEGORIES, PRODUCTS, TRANSLATIONS } from '../data';
 import type { CartItem, Product, Language } from '../types';
+import { useKeepScroll } from '../composables/useKeepScroll';
 
 // 定义 Props (Props Definition)
 const props = defineProps<{
@@ -45,6 +46,9 @@ const searchContainerRef = ref<HTMLElement | null>(null);
 
 // 计算属性: 获取当前语言包
 const t = computed(() => TRANSLATIONS[props.lang]);
+
+// 从别的标签页回来时停在原来的位置
+const { scroller, onScroll } = useKeepScroll();
 
 // --- 方法定义 (Methods) ---
 
@@ -246,7 +250,7 @@ const handleSuggestionClick = (p: Product) => {
              :key="cat.id"
              @click="handleCategoryClick(cat.id)"
              class="
-               flex-none px-4 py-2.5 rounded-full flex items-center gap-1.5 text-xs font-bold border
+               flex-none min-h-11 px-4 py-2.5 rounded-full flex items-center gap-1.5 text-xs font-bold border
              "
              :class="activeCategory === cat.id && !searchTerm
                 ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' 
@@ -290,8 +294,14 @@ const handleSuggestionClick = (p: Product) => {
                 <input 
                    type="text" 
                    v-model="searchTerm"
+                   enterkeyhint="search"
+                   autocomplete="off"
+                   autocorrect="off"
+                   autocapitalize="off"
+                   spellcheck="false"
                    @focus="showSuggestions = true"
                    @input="showSuggestions = true"
+                   @keydown.enter="($event.target as HTMLInputElement).blur()"
                    :placeholder="t.search"
                    class="w-full h-12 md:h-14 pl-12 pr-5 bg-white rounded-full text-sm font-bold outline-none shadow-[0_8px_20px_-8px_rgba(0,0,0,0.05)] border border-gray-100 focus:border-primary/20 transition-[border-color,box-shadow] duration-200 focus:shadow-xl focus:ring-4 focus:ring-primary/5 placeholder:text-gray-400 relative z-20"
                 />
@@ -325,7 +335,7 @@ const handleSuggestionClick = (p: Product) => {
        </header>
 
        <!-- Product Grid Main Area -->
-       <main class="flex-1 overflow-y-auto px-4 md:px-8 lg:px-10 pt-1 md:pt-2 pb-40 no-scrollbar">
+       <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto px-4 md:px-8 lg:px-10 pt-1 md:pt-2 pb-40 no-scrollbar">
           <!-- `.stagger-in` (packages/shared/styles/motion.css) cascades the card
                entrances and caps the delay, so a long menu is readable at once.
                Two columns on phones: one card per screen was mostly scrolling. -->

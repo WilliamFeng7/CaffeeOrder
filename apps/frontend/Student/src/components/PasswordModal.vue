@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import type { Language } from '../types';
 import { api } from '../api';
 import { useToastStore } from '../stores/toast';
+import { useSheetDrag } from '../composables/useSheetDrag';
 
 const props = defineProps<{
   lang: Language;
@@ -13,6 +14,15 @@ const emit = defineEmits<{
 }>();
 
 const toast = useToastStore();
+
+// 顶部的小横条可以往下拖来关闭
+const sheetEl = ref<HTMLElement | null>(null);
+const backdropEl = ref<HTMLElement | null>(null);
+const { handlers: dragHandlers } = useSheetDrag({
+  sheet: sheetEl,
+  backdrop: backdropEl,
+  onDismiss: () => emit('close'),
+});
 const passwordForm = ref({
    oldPassword: '',
    newPassword: '',
@@ -56,13 +66,15 @@ const handlePasswordChange = async () => {
   <Teleport to="body">
     <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
        <!-- Backdrop -->
-       <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="emit('close')"></div>
+       <div ref="backdropEl" class="absolute inset-0 bg-black/60 animate-fade-in" @click="emit('close')"></div>
        
        <!-- Modal Content -->
-       <div class="bg-white w-full max-w-md rounded-[32px] p-8 relative z-10 shadow-2xl animate-scale-in">
-          <div class="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-8"></div>
-          
-          <h3 class="text-2xl font-black text-[#103E32] mb-8">{{ lang === 'cn' ? '修改密码' : 'Change Password' }}</h3>
+       <div ref="sheetEl" role="dialog" aria-modal="true" class="bg-white w-full max-w-md rounded-[32px] px-8 pt-3 pb-8 relative z-10 shadow-2xl animate-scale-in">
+          <!-- Drag handle: swipe down to close -->
+          <div class="touch-none -mx-8 px-8 pt-2 pb-8" v-on="dragHandlers">
+             <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-7" aria-hidden="true"></div>
+             <h3 class="text-2xl font-black text-[#103E32]">{{ lang === 'cn' ? '修改密码' : 'Change Password' }}</h3>
+          </div>
           
           <div class="space-y-6">
              <!-- Old Password -->
@@ -72,7 +84,7 @@ const handlePasswordChange = async () => {
                    class="w-full h-14 px-6 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-[#103E32]/20 font-bold text-lg text-text-main"
                    v-model="passwordForm.oldPassword"
                    type="password"
-                   autocomplete="off"
+                   autocomplete="current-password"
                 />
              </div>
              <!-- New Password -->
@@ -101,14 +113,16 @@ const handlePasswordChange = async () => {
              <!-- Action Buttons -->
              <div class="flex flex-col gap-3 mt-6">
                 <button 
+                     type="button"
                      @click="handlePasswordChange" 
-                     class="w-full h-16 rounded-[24px] font-black text-white bg-[#103E32] shadow-xl shadow-[#103E32]/20 active:scale-[0.96] transition-all duration-300 text-lg tracking-wide"
+                     class="w-full h-16 rounded-[24px] font-black text-white bg-[#103E32] shadow-xl shadow-[#103E32]/20 text-lg tracking-wide"
                  >
                      {{ lang === 'cn' ? '更新密码' : 'Update Password' }}
                  </button>
                  <button 
+                     type="button"
                      @click="emit('close')" 
-                     class="w-full h-16 rounded-[24px] font-black text-[#103E32] bg-gray-100 active:scale-[0.96] transition-all duration-300 text-lg tracking-wide active:bg-gray-200"
+                     class="w-full h-16 rounded-[24px] font-black text-[#103E32] bg-gray-100 text-lg tracking-wide active:bg-gray-200"
                  >
                      {{ lang === 'cn' ? '取消' : 'Cancel' }}
                  </button>

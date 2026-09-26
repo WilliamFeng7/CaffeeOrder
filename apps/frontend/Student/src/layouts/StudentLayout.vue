@@ -292,10 +292,14 @@ watch(cartCount, (newCount, oldCount) => {
          so a single message appeared twice. -->
 
     <div class="flex-1 overflow-hidden relative w-full h-full z-0 transform-gpu pb-[80px]">
-      <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleQuickAdd" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" />
-      <MenuView v-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" @remove-product-instance="handleRemoveProductInstance" :lang="language" @toggle-lang="handleToggleLang" @go-checkout="isCheckoutOpen = true" />
-      <PickupView v-if="currentTab === 'pickup'" :orders="orders" :lang="language" />
-      <SettingsView v-if="currentTab === 'profile'" :lang="language" @toggle-lang="handleToggleLang" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" @sign-out="handleSignOut" />
+      <!-- KeepAlive: switching tabs keeps each tab's scroll position, category
+           and sub-view instead of rebuilding it from the top every time. -->
+      <KeepAlive>
+        <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleQuickAdd" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" />
+        <MenuView v-else-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" @remove-product-instance="handleRemoveProductInstance" :lang="language" @toggle-lang="handleToggleLang" @go-checkout="isCheckoutOpen = true" />
+        <PickupView v-else-if="currentTab === 'pickup'" :orders="orders" :lang="language" />
+        <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @toggle-lang="handleToggleLang" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" @sign-out="handleSignOut" />
+      </KeepAlive>
     </div>
 
     <div v-if="cartCount > 0 && !isCheckoutOpen && !selectedProduct && currentTab === 'order'" class="absolute bottom-[84px] md:bottom-[100px] left-0 right-0 z-50 pointer-events-none flex justify-center animate-slide-up-content">
@@ -331,7 +335,7 @@ watch(cartCount, (newCount, oldCount) => {
     </div>
 
     <Transition name="sheet">
-      <div v-if="isCheckoutOpen" class="absolute inset-0 z-[100] bg-white">
+      <div v-if="isCheckoutOpen" class="absolute inset-0 z-[100]">
          <CheckoutView @navigate="isCheckoutOpen = false" :cart="cart" :placing="placing" @place-order="handlePlaceOrder" @update-quantity="updateCartItemQuantity" :lang="language" />
       </div>
     </Transition>

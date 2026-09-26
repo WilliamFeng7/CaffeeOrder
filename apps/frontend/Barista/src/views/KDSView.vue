@@ -9,6 +9,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { api } from '../api';
 import { useToastStore } from '../stores/toast';
 import { useOrderPolling } from '../composables/useOrderPolling';
+import { useKitchenDevice } from '../composables/useKitchenDevice';
 import OrderCard from '../components/OrderCard.vue';
 import KDSLayout from '../components/KDSLayout.vue';
 
@@ -18,27 +19,8 @@ const toast = useToastStore();
 const globalTick = ref(0);
 let tickInterval: number | null = null;
 
-// Sound notification
-const playNotificationSound = () => {
-  try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-    
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
-    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-    
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.3);
-  } catch (e) {
-    // Audio not supported
-  }
-};
+// Screen stays awake, and the new-order beep works on the iPad (see the composable).
+const { soundReady, beep } = useKitchenDevice();
 
 // Polling is delegated to the shared composable. It replaces the ad-hoc 8s
 // setInterval this view used to run, which (a) could overlap when a request was
@@ -48,7 +30,7 @@ const playNotificationSound = () => {
 const { orders, loading, refreshing, refresh } = useOrderPolling({
     interval: 8000,
     onNewOrders: (count) => {
-        playNotificationSound();
+        beep();
         toast.info(`${count} new order(s)!`);
     },
 });
@@ -143,12 +125,12 @@ const manualRefresh = () => refresh();
 </script>
 
 <template>
-  <KDSLayout>
+  <KDSLayout :sound-ready="soundReady">
     <div class="flex flex-col h-full gap-3 md:gap-4">
 
       <!-- Stats + Refresh: one row instead of a hero title above a stats bar -->
       <div class="flex items-stretch gap-2 md:gap-3 animate-slide-up-content">
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 flex-1 min-w-0">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3 flex-1 min-w-0">
           <!-- Total Orders -->
           <div class="flex items-center gap-3 bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-50">
             <div class="size-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -219,22 +201,23 @@ const manualRefresh = () => refresh();
         </div>
       </div>
 
-      <!-- KDS Three-Column Grid -->
-      <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 flex-1 min-h-0">
+      <!-- KDS Three-Column Grid: side by side from iPad portrait up, so every
+           status stays in view (stacked, only one order card fitted on screen) -->
+      <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 flex-1 min-h-0">
         <div 
           v-for="(col, idx) in columns" 
           :key="col.title" 
-          class="flex flex-col h-full min-h-[320px] lg:min-h-0 bg-white rounded-[24px] md:rounded-[28px] p-3 md:p-4 border shadow-sm animate-slide-up-content"
+          class="flex flex-col h-full min-h-[320px] md:min-h-0 min-w-0 bg-white rounded-[24px] md:rounded-[28px] p-3 lg:p-4 border shadow-sm animate-slide-up-content"
           :class="col.borderColor"
           :style="{ animationDelay: `${40 + idx * 40}ms` }"
         >
           <!-- Column Header -->
           <div class="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-gray-100/80">
-            <div class="flex items-center gap-3">
-              <div class="size-9 md:size-10 rounded-xl flex items-center justify-center" :class="col.iconBg">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="size-9 lg:size-10 rounded-xl flex items-center justify-center shrink-0" :class="col.iconBg">
                 <span class="material-symbols-rounded text-xl filled" :class="col.iconColor" aria-hidden="true">{{ col.icon }}</span>
               </div>
-              <h2 class="text-lg font-black tracking-tight text-primary">{{ col.title }}</h2>
+              <h2 class="text-base lg:text-lg font-black tracking-tight text-primary truncate">{{ col.title }}</h2>
             </div>
             <span 
               class="min-w-8 h-8 px-2 rounded-xl flex items-center justify-center text-sm font-black text-white shadow-lg tabular-nums" 

@@ -12,6 +12,8 @@ import { useToastStore } from '../stores/toast';
 
 // 导入提取的子组件
 import OrderHistoryList from '../components/OrderHistoryList.vue';
+import { useSheetDrag } from '../composables/useSheetDrag';
+import { useKeepScroll } from '../composables/useKeepScroll';
 import PasswordModal from '../components/PasswordModal.vue';
 import { auth } from '@shared/auth';
 
@@ -48,6 +50,17 @@ const editForm = ref<UserProfile>({
 // --- 计算属性 (Computed Properties) ---
 
 const t = computed(() => TRANSLATIONS[props.lang]);
+
+const { scroller, onScroll } = useKeepScroll();
+
+// 编辑资料面板：按住顶部往下拖关闭
+const editSheetEl = ref<HTMLElement | null>(null);
+const editBackdropEl = ref<HTMLElement | null>(null);
+const { handlers: editDragHandlers } = useSheetDrag({
+  sheet: editSheetEl,
+  backdrop: editBackdropEl,
+  onDismiss: () => { isEditing.value = false; },
+});
 
 // 余额按位数缩小字号，长金额不再溢出会员卡
 const balanceText = computed(() => `¥${(props.userProfile.balance || 0).toFixed(2)}`);
@@ -123,7 +136,7 @@ const handleLogout = () => {
 
   <!-- MAIN VIEW: Profile & Settings -->
   <div v-else class="flex flex-col h-full bg-background-light animate-fade-in relative">
-     <main class="flex-1 overflow-y-auto px-5 pt-8 md:px-8 md:pt-12 space-y-6 pb-32 no-scrollbar">
+     <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto px-5 pt-8 md:px-8 md:pt-12 space-y-6 pb-32 no-scrollbar">
        <div class="max-w-3xl mx-auto space-y-6">
        
        <!-- Page Title -->
@@ -238,22 +251,25 @@ const handleLogout = () => {
 
      <!-- Edit Profile Modal -->
      <div v-if="isEditing" class="fixed inset-0 z-50 flex items-end md:items-center justify-center pointer-events-none">
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm pointer-events-auto transition-opacity" @click="isEditing = false"></div>
-        <div class="bg-white w-full md:w-[480px] rounded-t-[32px] md:rounded-[32px] p-8 relative z-10 pointer-events-auto animate-slide-up-modal md:animate-scale-in pb-10">
-           <div class="w-12 h-1 bg-gray-200 rounded-full mx-auto mb-8"></div>
-           <h3 class="text-2xl font-black text-text-main mb-8">{{ lang === 'cn' ? '修改信息' : 'Edit Profile' }}</h3>
+        <div ref="editBackdropEl" class="absolute inset-0 bg-black/40 pointer-events-auto animate-fade-in" @click="isEditing = false"></div>
+        <div ref="editSheetEl" role="dialog" aria-modal="true" class="bg-white w-full md:w-[480px] rounded-t-[32px] md:rounded-[32px] px-8 pt-3 relative z-10 pointer-events-auto animate-slide-up-modal md:animate-scale-in pb-[max(env(safe-area-inset-bottom),40px)] md:pb-10">
+           <!-- Drag handle: swipe down to close -->
+           <div class="touch-none -mx-8 px-8 pt-2 pb-8" v-on="editDragHandlers">
+              <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-7" aria-hidden="true"></div>
+              <h3 class="text-2xl font-black text-text-main">{{ lang === 'cn' ? '修改信息' : 'Edit Profile' }}</h3>
+           </div>
            <div class="space-y-6">
               <div class="space-y-2">
                  <label class="text-[10px] font-black text-gray-400 uppercase tracking-wider ml-4">{{ lang === 'cn' ? '昵称' : 'Nickname' }}</label>
-                 <input class="w-full h-14 px-6 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 font-bold text-lg" v-model="editForm.name" />
+                 <input class="w-full h-14 px-6 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 font-bold text-lg" v-model="editForm.name" autocomplete="nickname" enterkeyhint="next" />
               </div>
               <div class="space-y-2">
                  <label class="text-[10px] font-black text-gray-400 uppercase tracking-wider ml-4">{{ lang === 'cn' ? '手机号' : 'Phone' }}</label>
-                 <input class="w-full h-14 px-6 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 font-bold text-lg" v-model="editForm.phone" />
+                 <input class="w-full h-14 px-6 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 font-bold text-lg" v-model="editForm.phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="11" enterkeyhint="next" />
               </div>
               <div class="space-y-2">
                  <label class="text-[10px] font-black text-gray-400 uppercase tracking-wider ml-4">Email</label>
-                 <input class="w-full h-14 px-6 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 font-bold text-lg" v-model="editForm.email" />
+                 <input class="w-full h-14 px-6 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-primary/20 font-bold text-lg" v-model="editForm.email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" enterkeyhint="done" />
               </div>
               <button type="button" @click="handleSaveProfile" class="w-full h-16 rounded-[24px] font-black text-white bg-[#103E32] shadow-xl shadow-[#103E32]/20 mt-6 text-lg tracking-wide">
                    {{ lang === 'cn' ? '保存' : 'Save Changes' }}

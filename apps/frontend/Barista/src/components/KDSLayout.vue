@@ -9,6 +9,11 @@ import { useRouter } from 'vue-router';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { auth } from '@shared/auth';
 
+defineProps<{
+  // iOS keeps the new-order beep muted until the screen is tapped once.
+  soundReady?: boolean;
+}>();
+
 const router = useRouter();
 const currentTime = ref('');
 const currentDate = ref('');
@@ -18,6 +23,20 @@ const handleLogout = () => {
   // key here left the role behind and could re-authorize the next session).
   auth.clearToken();
   router.push('/login');
+};
+
+// On a shared kitchen iPad a stray tap in the corner used to sign everyone out.
+// The first tap arms the button, a second one within 3s signs out.
+const confirmingSignOut = ref(false);
+let confirmTimer: number | undefined;
+const handleSignOutTap = () => {
+  if (confirmingSignOut.value) {
+    window.clearTimeout(confirmTimer);
+    handleLogout();
+    return;
+  }
+  confirmingSignOut.value = true;
+  confirmTimer = window.setTimeout(() => { confirmingSignOut.value = false; }, 3000);
 };
 
 const updateTime = () => {
@@ -34,6 +53,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (timeInterval) clearInterval(timeInterval);
+  window.clearTimeout(confirmTimer);
 });
 </script>
 
@@ -53,6 +73,10 @@ onUnmounted(() => {
           <div class="flex items-center gap-2">
             <span class="size-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" aria-hidden="true"></span>
             <span class="text-[10px] md:text-xs font-bold text-text-sub uppercase tracking-widest">Live</span>
+            <span v-if="!soundReady" class="ml-1 flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] md:text-[11px] font-bold">
+              <span class="material-symbols-rounded text-sm" aria-hidden="true">volume_off</span>
+              Tap to enable sound
+            </span>
           </div>
         </div>
       </div>
@@ -76,11 +100,13 @@ onUnmounted(() => {
         
         <button 
           type="button"
-          @click="handleLogout"
-          class="flex items-center gap-2 px-4 py-2.5 rounded-xl md:rounded-2xl bg-white text-text-main font-bold text-xs md:text-sm shadow-sm border border-gray-100 hover:shadow-md hover:border-gray-200"
+          @click="handleSignOutTap"
+          :aria-label="confirmingSignOut ? 'Tap again to sign out' : 'Sign out'"
+          class="flex items-center gap-2 min-h-11 px-4 py-2.5 rounded-xl md:rounded-2xl font-bold text-xs md:text-sm shadow-sm border hover:shadow-md"
+          :class="confirmingSignOut ? 'bg-red-500 text-white border-red-500' : 'bg-white text-text-main border-gray-100 hover:border-gray-200'"
         >
-          <span class="material-symbols-rounded text-lg md:text-xl opacity-60" aria-hidden="true">logout</span>
-          <span class="hidden sm:inline">Sign Out</span>
+          <span class="material-symbols-rounded text-lg md:text-xl" :class="confirmingSignOut ? '' : 'opacity-60'" aria-hidden="true">logout</span>
+          <span class="hidden sm:inline">{{ confirmingSignOut ? 'Tap again to sign out' : 'Sign Out' }}</span>
         </button>
       </div>
     </header>

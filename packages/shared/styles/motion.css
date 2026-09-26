@@ -41,6 +41,30 @@ button:disabled {
   outline-offset: 2px;
 }
 
+/* --- Touch devices (iPad kiosk, KDS, phones) ------------------------------ */
+/* The apps are fixed full-screen layouts with their own scroll areas. Without
+   this, dragging anywhere outside those areas rubber-banded the whole app, and
+   iOS Safari's pull-to-refresh could reload the page mid-order. */
+html,
+body {
+  overscroll-behavior: none;
+}
+
+/* No double-tap-to-zoom anywhere (tapping "+" twice fast used to zoom the page
+   instead of adding twice). Pinch zoom and scrolling are untouched.
+   touch-action does not inherit into scroll containers, hence the universal
+   selector; a `.touch-none` handle still wins by specificity. */
+* {
+  touch-action: manipulation;
+}
+
+/* Long-pressing a product photo opened the iOS save/share callout, and on
+   iPadOS started a drag-and-drop of the image. */
+img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+}
+
 /* --- List entrance staggering -------------------------------------------- */
 /* Gives a container's children a cascading slide-up without any per-item inline
    `style="animation-delay: ..."` bookkeeping in the templates. */

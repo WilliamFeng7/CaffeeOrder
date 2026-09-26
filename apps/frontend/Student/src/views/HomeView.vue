@@ -11,9 +11,10 @@
  * 4. 快速导航 (Quick Nav): 跳转到完整菜单。
  */
 
-import { computed } from 'vue';
+import { computed, ref, onActivated } from 'vue';
 import { TRANSLATIONS, PRODUCTS } from '../data';
 import type { Product, Language, TabState } from '../types';
+import { useKeepScroll } from '../composables/useKeepScroll';
 
 // ...
 
@@ -66,20 +67,23 @@ const trending = computed(() => PRODUCTS.length > 2 ? PRODUCTS.slice(2, 5) : PRO
 // 计算显示的用户名，如果未登录或未传值，默认显示 'Otiaer'
 const displayName = computed(() => props.userName ? props.userName : 'Otiaer');
 
-// 问候语跟随时间 (下午不再显示「早上好」)
+// 问候语跟随时间 (下午不再显示「早上好」)；标签页被缓存，所以每次回到首页时刷新一下
+const hour = ref(new Date().getHours());
+onActivated(() => { hour.value = new Date().getHours(); });
 const greeting = computed(() => {
-  const hour = new Date().getHours();
-  if (hour < 11) return t.value.goodMorning;
-  if (hour < 18) return t.value.goodAfternoon;
+  if (hour.value < 11) return t.value.goodMorning;
+  if (hour.value < 18) return t.value.goodAfternoon;
   return t.value.goodEvening;
 });
 
 const isOpen = computed(() => props.shopOpen !== false);
 
+const { scroller, onScroll } = useKeepScroll();
+
 </script>
 
 <template>
-  <div class="flex-1 h-full bg-background-light overflow-y-auto scroll-smooth-touch no-scrollbar pb-32">
+  <div ref="scroller" @scroll.passive="onScroll" class="flex-1 h-full bg-background-light overflow-y-auto scroll-smooth-touch no-scrollbar pb-32">
     <div class="px-5 md:px-10 pt-8 md:pt-12 space-y-6 max-w-5xl mx-auto">
 
       <!-- Logo & Header Section -->
@@ -158,7 +162,7 @@ const isOpen = computed(() => props.shopOpen !== false);
             <!-- Section Header -->
             <div class="flex items-center justify-between mb-3 md:mb-4">
                <h2 class="text-2xl md:text-3xl font-black text-text-main tracking-tight">{{ t.trendingNow }}</h2>
-               <button type="button" @click="emit('navigate', 'order')" class="text-primary font-bold text-sm flex items-center gap-1 py-2.5 px-3 -mr-3 rounded-full active:bg-gray-100">
+               <button type="button" @click="emit('navigate', 'order')" class="text-primary font-bold text-sm flex items-center gap-1 min-h-11 py-2.5 px-3 -mr-3 rounded-full active:bg-gray-100">
                   {{ t.seeAll }}
                   <span class="material-symbols-rounded text-xl" aria-hidden="true">arrow_forward</span>
                </button>

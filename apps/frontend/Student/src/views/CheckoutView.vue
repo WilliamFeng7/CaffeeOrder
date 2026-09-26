@@ -11,10 +11,11 @@
  * 4. 支付 (Payment): 模拟支付流程，提交订单。
  */
 
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { TRANSLATIONS } from '../data';
 import { formatCents, toCents, sumCents } from '../utils/money';
 import type { CartItem, ViewState, Language } from '../types';
+import { useSheetDrag } from '../composables/useSheetDrag';
 
 // --- Props & Events ---
 const props = defineProps<{
@@ -46,13 +47,22 @@ const subtotalCents = computed(() => sumCents(props.cart));
  */
 const totalCents = computed(() => subtotalCents.value);
 
+// 按住顶部标题栏往下拖即可返回菜单 (和返回按钮一样)
+const rootEl = ref<HTMLElement | null>(null);
+const { handlers: dragHandlers } = useSheetDrag({
+  sheet: rootEl,
+  onDismiss: () => emit('navigate', 'order'),
+});
+
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-background-light relative z-40">
+  <div ref="rootEl" class="flex flex-col h-full bg-background-light relative z-40 shadow-[0_-20px_60px_rgba(0,0,0,0.12)]">
     <!-- Header Navigation -->
     <!-- 顶部导航: 返回按钮和标题 -->
-    <header class="flex items-center px-5 py-4 md:px-10 md:py-6 bg-white/90 backdrop-blur-md shadow-sm shrink-0 sticky top-0 z-20">
+    <header class="relative flex items-center px-5 py-4 md:px-10 md:py-6 bg-white/90 backdrop-blur-md shadow-sm shrink-0 sticky top-0 z-20 touch-none" v-on="dragHandlers">
+      <!-- Swipe Indicator -->
+      <div class="absolute top-1.5 left-1/2 -translate-x-1/2 h-1 w-10 bg-gray-200 rounded-full" aria-hidden="true"></div>
       <button 
         type="button"
         @click="emit('navigate', 'order')" 
@@ -119,26 +129,26 @@ const totalCents = computed(() => subtotalCents.value);
 
                      <!-- Quantity Controller -->
                      <div class="flex items-center justify-between mt-1">
-                        <div class="flex items-center bg-gray-50 rounded-full p-1 gap-3 shadow-inner">
+                        <div class="flex items-center bg-gray-50 rounded-full p-1 gap-2 shadow-inner">
                            <!-- Decrease -->
                            <button 
                               type="button"
                               @click="emit('update-quantity', item.cartId, -1)" 
                               :aria-label="lang === 'cn' ? '减少' : 'Decrease'"
-                              class="size-9 rounded-full bg-white text-text-main flex items-center justify-center shadow-sm outline-none"
+                              class="size-11 rounded-full bg-white text-text-main flex items-center justify-center shadow-sm outline-none"
                            >
-                              <span class="material-symbols-rounded text-sm font-bold" aria-hidden="true">remove</span>
+                              <span class="material-symbols-rounded text-lg font-bold" aria-hidden="true">remove</span>
                            </button>
                            <!-- Count -->
-                           <span class="font-black text-text-main text-sm w-4 text-center tabular-nums">{{ item.quantity }}</span>
+                           <span class="font-black text-text-main text-base w-6 text-center tabular-nums">{{ item.quantity }}</span>
                            <!-- Increase -->
                            <button 
                               type="button"
                               @click="emit('update-quantity', item.cartId, 1)" 
                               :aria-label="lang === 'cn' ? '增加' : 'Increase'"
-                              class="size-9 rounded-full bg-primary text-white flex items-center justify-center shadow-md outline-none"
+                              class="size-11 rounded-full bg-primary text-white flex items-center justify-center shadow-md outline-none"
                            >
-                              <span class="material-symbols-rounded text-sm font-bold" aria-hidden="true">add</span>
+                              <span class="material-symbols-rounded text-lg font-bold" aria-hidden="true">add</span>
                            </button>
                         </div>
                         <!-- Unit Price -->

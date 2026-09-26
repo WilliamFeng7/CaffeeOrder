@@ -39,6 +39,8 @@ const getClasses = (type: string) => {
 </script>
 
 <template>
+  <!-- Toasts have no controls, so taps go straight through them: a toast over
+       a header used to swallow the back button and the sheet's drag handle. -->
   <div
     class="fixed top-4 left-1/2 -translate-x-1/2 z-[99999] flex flex-col gap-2 w-full max-w-sm px-4 pointer-events-none"
     role="region"
@@ -50,7 +52,7 @@ const getClasses = (type: string) => {
         :key="toast.id"
         :aria-live="toast.type === 'error' || toast.type === 'warning' ? 'assertive' : 'polite'"
         role="status"
-        class="pointer-events-auto flex items-center p-4 rounded-[20px] shadow-lg border backdrop-blur-sm"
+        class="pointer-events-none flex items-center p-4 rounded-[20px] shadow-lg border backdrop-blur-sm"
         :class="getClasses(toast.type)"
       >
         <span class="material-symbols-rounded mr-3 text-xl" aria-hidden="true">{{ getIcon(toast.type) }}</span>

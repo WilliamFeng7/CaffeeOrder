@@ -159,12 +159,13 @@ onMounted(fetchProducts);
                          <span class="text-[10px] font-bold text-gray-400">库存: {{ prod.inventory_count }}</span>
                      </div>
                      
-                     <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <button @click="handleEdit(prod)" class="size-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100">
-                             <span class="material-symbols-rounded text-sm">edit</span>
+                     <!-- Hidden until hover with a mouse; always shown on touch, where hover never happens -->
+                     <div class="flex gap-2 opacity-100 [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                         <button type="button" @click="handleEdit(prod)" aria-label="编辑" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100">
+                             <span class="material-symbols-rounded text-sm [@media(pointer:coarse)]:text-xl" aria-hidden="true">edit</span>
                          </button>
-                         <button @click="handleDelete(prod.id)" class="size-8 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100">
-                             <span class="material-symbols-rounded text-sm">delete</span>
+                         <button type="button" @click="handleDelete(prod.id)" aria-label="删除" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100">
+                             <span class="material-symbols-rounded text-sm [@media(pointer:coarse)]:text-xl" aria-hidden="true">delete</span>
                          </button>
                      </div>
                  </div>

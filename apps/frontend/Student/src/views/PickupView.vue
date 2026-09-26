@@ -15,6 +15,7 @@
 import { ref, computed } from 'vue';
 import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Order, Language } from '../types';
+import { useKeepScroll } from '../composables/useKeepScroll';
 
 // --- Props & Events ---
 const props = defineProps<{
@@ -30,6 +31,8 @@ const activeTab = ref<'current' | 'history'>('current');
 
 // 计算属性: 获取翻译
 const t = computed(() => TRANSLATIONS[props.lang]);
+
+const { scroller, onScroll } = useKeepScroll();
 
 // --- 计算属性 (Computed Properties) ---
 
@@ -76,6 +79,25 @@ const stageChip = (order: Order) => {
   return { label: t.value.queued, icon: 'schedule', cls: 'bg-gray-50 text-text-sub border-gray-100' };
 };
 
+/**
+ * 左右滑动切换「当前订单 / 历史订单」(Swipe between the two tabs)
+ * The list is `touch-pan-y`: a vertical drag scrolls as usual (the browser
+ * cancels the pointer), a clearly horizontal one switches the tab.
+ */
+let swipe: { id: number; x: number; y: number } | null = null;
+const onSwipeStart = (e: PointerEvent) => {
+  if (e.pointerType === 'mouse' || swipe) return;
+  swipe = { id: e.pointerId, x: e.clientX, y: e.clientY };
+};
+const onSwipeEnd = (e: PointerEvent) => {
+  if (!swipe || e.pointerId !== swipe.id) return;
+  const dx = e.clientX - swipe.x;
+  const dy = e.clientY - swipe.y;
+  swipe = null;
+  if (e.type !== 'pointerup' || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  activeTab.value = dx < 0 ? 'history' : 'current';
+};
+
 const itemCount = (order: Order) => {
   const n = order.items.reduce((sum, item) => sum + item.quantity, 0);
   if (props.lang === 'cn') return `${n} 件`;
@@ -104,7 +126,7 @@ const specLine = (item: Order['items'][number]) => {
              type="button"
              @click="activeTab = 'current'"
              :aria-pressed="activeTab === 'current'"
-             class="flex-1 py-2.5 md:py-3 rounded-full text-xs md:text-sm font-black transition-colors duration-200 relative z-10 outline-none focus:outline-none"
+             class="flex-1 min-h-11 py-2.5 md:py-3 rounded-full text-xs md:text-sm font-black transition-colors duration-200 relative z-10 outline-none focus:outline-none"
              :class="activeTab === 'current' ? 'text-white' : 'text-text-sub'"
           >
              {{ t.currentOrders }}
@@ -113,7 +135,7 @@ const specLine = (item: Order['items'][number]) => {
              type="button"
              @click="activeTab = 'history'"
              :aria-pressed="activeTab === 'history'"
-             class="flex-1 py-2.5 md:py-3 rounded-full text-xs md:text-sm font-black transition-colors duration-200 relative z-10 outline-none focus:outline-none"
+             class="flex-1 min-h-11 py-2.5 md:py-3 rounded-full text-xs md:text-sm font-black transition-colors duration-200 relative z-10 outline-none focus:outline-none"
              :class="activeTab === 'history' ? 'text-white' : 'text-text-sub'"
           >
              {{ t.pastOrders }}
@@ -130,7 +152,7 @@ const specLine = (item: Order['items'][number]) => {
      </header>
 
      <!-- Main Content List -->
-     <main class="flex-1 overflow-y-auto no-scrollbar scroll-smooth-touch pb-40">
+     <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto no-scrollbar scroll-smooth-touch pb-40 touch-pan-y" @pointerdown="onSwipeStart" @pointerup="onSwipeEnd" @pointercancel="onSwipeEnd">
         <div class="px-4 md:px-8 pt-3 max-w-3xl mx-auto">
         
         <!-- Tab 1: Current Orders -->

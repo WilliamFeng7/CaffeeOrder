@@ -109,7 +109,7 @@ const runAction = () => {
       
       <!-- Item Count & Urgent Badge -->
       <div class="flex items-center gap-2 shrink-0">
-        <span class="text-[11px] font-bold text-text-sub bg-gray-100 px-2.5 py-1 rounded-lg">{{ itemCount }} {{ itemCount === 1 ? 'item' : 'items' }}</span>
+        <span class="hidden lg:inline text-[11px] font-bold text-text-sub bg-gray-100 px-2.5 py-1 rounded-lg">{{ itemCount }} {{ itemCount === 1 ? 'item' : 'items' }}</span>
         <div v-if="isUrgent" class="size-8 rounded-lg bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/30" aria-label="Waiting over 10 minutes">
           <span class="material-symbols-rounded text-white text-base filled" aria-hidden="true">priority_high</span>
         </div>
@@ -121,7 +121,7 @@ const runAction = () => {
       <div 
         v-for="(item, i) in order.items" 
         :key="i" 
-        class="flex items-center gap-2.5 py-2 px-3 bg-background-light rounded-xl border border-gray-50"
+        class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 py-2 px-3 bg-background-light rounded-xl border border-gray-50"
       >
         <!-- Quantity Badge -->
         <span class="size-7 rounded-lg bg-primary text-white text-xs font-black flex items-center justify-center shrink-0 shadow-sm">
@@ -129,7 +129,7 @@ const runAction = () => {
         </span>
         
         <!-- Item Name -->
-        <span class="text-sm font-bold text-text-main flex-1 truncate">{{ item.name }}</span>
+        <span class="text-sm font-bold text-text-main flex-1 min-w-[5rem] truncate">{{ item.name }}</span>
         
         <!-- Options Chips -->
         <div class="flex items-center gap-1.5 shrink-0">
