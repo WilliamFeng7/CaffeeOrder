@@ -53,7 +53,7 @@ const getClasses = (type: string) => {
         class="pointer-events-auto flex items-center p-4 rounded-[20px] shadow-lg border backdrop-blur-sm"
         :class="getClasses(toast.type)"
       >
-        <span class="material-symbols-rounded mr-3 text-xl">{{ getIcon(toast.type) }}</span>
+        <span class="material-symbols-rounded mr-3 text-xl" aria-hidden="true">{{ getIcon(toast.type) }}</span>
         <span class="font-bold text-sm">{{ toast.message }}</span>
       </div>
     </TransitionGroup>
@@ -63,22 +63,24 @@ const getClasses = (type: string) => {
 <style scoped>
 .toast-enter-active,
 .toast-leave-active {
-  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.3s cubic-bezier(0.23, 1, 0.32, 1),
+              transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .toast-move {
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .toast-enter-from,
 .toast-leave-to {
   opacity: 0;
-  transform: translateY(-20px) scale(0.9);
+  transform: translateY(-12px) scale(0.96);
 }
 
-/* Take the departing toast out of flow so the others slide up smoothly. */
+/* Take the departing toast out of flow so the others slide up smoothly;
+   leaving is quicker than arriving. */
 .toast-leave-active {
+  transition-duration: 0.2s;
   position: absolute;
   width: 100%;
 }

@@ -13,7 +13,7 @@
  */
 
 import { ref, computed } from 'vue';
-import { TRANSLATIONS } from '../data';
+import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Order, Language } from '../types';
 
 // --- Props & Events ---
@@ -62,53 +62,86 @@ const formatTime = (dateStr: string) => {
   });
 };
 
+/**
+ * 进行中订单的阶段标签 (Stage chip)
+ * 排队中 / 制作中 / 请取餐 —— 以前所有进行中的订单都显示「制作中」，做好了也看不出来。
+ */
+const stageChip = (order: Order) => {
+  if (order.stage === 'ready') {
+    return { label: t.value.ready, icon: 'notifications_active', cls: 'bg-[#DCCA98] text-[#2C2108] border-[#DCCA98]' };
+  }
+  if (order.stage === 'processing') {
+    return { label: t.value.preparing, icon: '', cls: 'bg-primary/5 text-primary border-primary/10' };
+  }
+  return { label: t.value.queued, icon: 'schedule', cls: 'bg-gray-50 text-text-sub border-gray-100' };
+};
+
+const itemCount = (order: Order) => {
+  const n = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  if (props.lang === 'cn') return `${n} 件`;
+  return `${n} ${n === 1 ? 'item' : 'items'}`;
+};
+
+const specLine = (item: Order['items'][number]) => {
+  const temp = item.temperature ? (item.temperature === 'Hot' ? t.value.hot : t.value.iced) : '';
+  const sugarLabels = OPTION_TRANSLATIONS.sugar as Record<string, { en: string; cn: string }>;
+  const sugar = item.sugar ? (sugarLabels[item.sugar]?.[props.lang] ?? item.sugar) : '';
+  return [temp, sugar].filter(Boolean).join(' · ');
+};
+
 </script>
 
 <template>
   <div class="flex flex-col h-full bg-background-light animate-fade-in">
      <!-- Top Header with Segmented Control -->
      <!-- 顶部导航栏: 包含分段控制器 (Segmented Control) -->
-     <header class="p-4 md:p-8 pb-2 md:pb-4 shrink-0">
-       <h1 class="text-2xl md:text-3xl font-[900] text-text-main mb-4 md:mb-6 animate-slide-down-content">{{ t.navPickup }}</h1>
+     <header class="px-4 pt-6 pb-2 md:px-8 md:pt-8 md:pb-4 shrink-0 max-w-3xl w-full mx-auto">
+       <h1 class="text-2xl md:text-3xl font-[900] text-text-main mb-4 md:mb-5 animate-slide-down-content">{{ t.navPickup }}</h1>
        
        <!-- Tab Switcher -->
-       <div class="flex bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-1.5 md:p-2 rounded-full relative animate-scale-up w-full md:w-auto max-w-md mx-auto md:mx-0 border border-gray-100">
+       <div class="flex bg-white shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] p-1.5 rounded-full relative w-full md:max-w-md border border-gray-100">
           <button 
+             type="button"
              @click="activeTab = 'current'"
-             class="flex-1 py-2 md:py-3 rounded-full text-xs md:text-sm font-black transition-all duration-500 ease-luxury relative z-10 active:scale-90 outline-none focus:outline-none"
-             :class="activeTab === 'current' ? 'text-white' : 'text-gray-400'"
+             :aria-pressed="activeTab === 'current'"
+             class="flex-1 py-2.5 md:py-3 rounded-full text-xs md:text-sm font-black transition-colors duration-200 relative z-10 outline-none focus:outline-none"
+             :class="activeTab === 'current' ? 'text-white' : 'text-text-sub'"
           >
              {{ t.currentOrders }}
           </button>
           <button 
+             type="button"
              @click="activeTab = 'history'"
-             class="flex-1 py-2 md:py-3 rounded-full text-xs md:text-sm font-black transition-all duration-500 ease-luxury relative z-10 active:scale-90 outline-none focus:outline-none"
-             :class="activeTab === 'history' ? 'text-white' : 'text-gray-400'"
+             :aria-pressed="activeTab === 'history'"
+             class="flex-1 py-2.5 md:py-3 rounded-full text-xs md:text-sm font-black transition-colors duration-200 relative z-10 outline-none focus:outline-none"
+             :class="activeTab === 'history' ? 'text-white' : 'text-text-sub'"
           >
              {{ t.pastOrders }}
           </button>
           
-          <!-- Sliding Background Indicator (Pill) -->
+          <!-- Sliding Background Indicator (Pill): moved with transform, not `left` -->
           <!-- 动态滑块背景 -->
           <div 
-            class="absolute top-1.5 bottom-1.5 md:top-2 md:bottom-2 rounded-full bg-primary shadow-lg shadow-primary/25 transition-all duration-500 ease-luxury z-0 w-[calc(50%_-_10px)] md:w-[calc(50%_-_12px)]"
-            :class="activeTab === 'current' ? 'left-2 md:left-[10px]' : 'left-[calc(50%_+_2px)]'"
+            class="absolute top-1.5 bottom-1.5 left-1.5 w-[calc(50%_-_6px)] rounded-full bg-primary shadow-lg shadow-primary/25 transition-transform duration-300 ease-out z-0"
+            :class="activeTab === 'current' ? 'translate-x-0' : 'translate-x-full'"
+            aria-hidden="true"
           ></div>
        </div>
      </header>
 
      <!-- Main Content List -->
-     <main class="flex-1 overflow-y-auto p-4 md:p-8 pt-4 no-scrollbar scroll-smooth-touch pb-40">
+     <main class="flex-1 overflow-y-auto no-scrollbar scroll-smooth-touch pb-40">
+        <div class="px-4 md:px-8 pt-3 max-w-3xl mx-auto">
         
         <!-- Tab 1: Current Orders -->
         <!-- 标签页 1: 当前订单 -->
-        <div v-if="activeTab === 'current'" class="space-y-6">
+        <div v-if="activeTab === 'current'" class="space-y-4">
            <!-- Empty State -->
-           <div v-if="currentOrders.length === 0" class="flex flex-col items-center justify-center h-80 text-gray-400 animate-fade-in">
-              <div class="bg-white p-8 rounded-full shadow-sm mb-6">
-                <span class="material-symbols-rounded text-6xl opacity-30 text-primary">coffee_maker</span>
+           <div v-if="currentOrders.length === 0" class="flex flex-col items-center justify-center h-72 text-text-sub animate-fade-in">
+              <div class="bg-white p-7 rounded-full shadow-sm mb-5">
+                <span class="material-symbols-rounded text-5xl opacity-40 text-primary" aria-hidden="true">coffee_maker</span>
               </div>
-              <p class="font-bold text-sm uppercase tracking-widest opacity-50">{{ t.noOrders }}</p>
+              <p class="font-bold text-sm uppercase tracking-widest">{{ t.noOrders }}</p>
            </div>
            
            <!-- Active Order Cards -->
@@ -116,58 +149,54 @@ const formatTime = (dateStr: string) => {
               v-else 
               v-for="(order, idx) in currentOrders" 
               :key="order.id" 
-              class="bg-white rounded-[40px] p-8 shadow-[0_15px_40px_-5px_rgba(0,0,0,0.06)] transition-all duration-500 ease-luxury flex flex-col items-center text-center relative overflow-hidden animate-slide-up-content border border-gray-50 transform-gpu" 
-              :style="{ animationDelay: `${idx * 100}ms` }"
+              class="bg-white rounded-[28px] p-5 md:p-6 shadow-[0_15px_40px_-5px_rgba(0,0,0,0.06)] border relative overflow-hidden animate-slide-up-content transition-[box-shadow,border-color] duration-300" 
+              :class="order.stage === 'ready' ? 'border-[#DCCA98] ring-2 ring-[#DCCA98]/60' : 'border-gray-50'"
+              :style="{ animationDelay: `${Math.min(idx, 6) * 40}ms` }"
            >
-              <!-- Status Tag (Top Right) -->
-              <div class="absolute top-4 right-4 md:top-6 md:right-6 bg-primary/5 text-primary px-4 py-1.5 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-inner border border-primary/10">
-                 <span class="size-2 bg-primary rounded-full animate-pulse"></span>
-                 {{ t.preparing }}
+              <!-- Pickup Number + Stage -->
+              <div class="flex items-start justify-between gap-3">
+                 <div>
+                    <div class="text-text-sub text-[10px] md:text-xs font-black uppercase tracking-[0.2em]">{{ t.pickupNum }}</div>
+                    <div class="text-6xl md:text-7xl font-[900] text-primary tracking-tighter leading-none mt-1.5 tabular-nums">{{ order.dailyNumber }}</div>
+                 </div>
+                 <!-- Keyed by stage so the chip pops once when the order moves on -->
+                 <div :key="order.stage" class="px-3.5 py-1.5 rounded-full text-[11px] md:text-xs font-black uppercase tracking-wider flex items-center gap-1.5 border shrink-0 animate-scale-in" :class="stageChip(order).cls">
+                    <span v-if="stageChip(order).icon" class="material-symbols-rounded text-base filled" aria-hidden="true">{{ stageChip(order).icon }}</span>
+                    <span v-else class="size-2 bg-primary rounded-full animate-pulse" aria-hidden="true"></span>
+                    {{ stageChip(order).label }}
+                 </div>
               </div>
-              
-              <!-- Time Stamp (Top Left) -->
-              <div class="absolute top-4 left-4 md:top-6 md:left-6 text-gray-300 text-[10px] md:text-xs font-black tracking-widest font-mono">{{ formatTime(order.date) }}</div>
 
-              <!-- Big Pickup Number Display -->
-              <div class="text-gray-300 text-[10px] md:text-xs font-black uppercase tracking-[0.2em] mb-2 mt-4">{{ t.pickupNum }}</div>
-              <div class="text-7xl md:text-9xl font-[900] text-primary tracking-tighter mb-4 scale-110 drop-shadow-sm animate-scale-up" :style="{ animationDelay: `${idx * 100 + 150}ms` }">{{ order.dailyNumber }}</div>
-              
-              
-              <!-- UUID for verification (No QR) -->
-              <div class="flex flex-col items-center mb-6 p-4 bg-white rounded-2xl shadow-sm border border-gray-100 w-full">
-                  <p class="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">ORDER ID</p>
-                  <p class="text-xs font-mono text-text-main break-all max-w-[200px] leading-tight font-bold">{{ order.order_no }}</p>
-              </div>
+              <!-- Time + order number for the counter -->
+              <p class="mt-3 text-[11px] md:text-xs text-text-sub font-bold tracking-wide">
+                 {{ formatTime(order.date) }}
+                 <span class="mx-1.5 text-gray-300" aria-hidden="true">·</span>
+                 <span class="font-mono">{{ order.order_no }}</span>
+              </p>
 
               <!-- Order Summary List -->
-              <div class="w-full bg-background-light rounded-3xl p-5 mb-4 text-left space-y-3 shadow-inner">
-                 <div v-for="(item, i) in order.items" :key="i" class="flex justify-between items-start text-xs md:text-sm">
-                    <div class="flex items-start gap-3">
-                       <span class="font-black text-primary whitespace-nowrap">{{ item.quantity }}x</span>
-                       <div class="flex flex-col">
-                           <span class="font-bold text-text-main text-base leading-none">
-                              {{ lang === 'cn' ? item.nameCN : item.name }}
-                           </span>
-
-                       </div>
-                    </div>
+              <div class="mt-4 bg-background-light rounded-2xl px-4 py-3 space-y-2.5">
+                 <div v-for="(item, i) in order.items" :key="i" class="flex items-baseline gap-3 text-sm">
+                    <span class="font-black text-primary whitespace-nowrap tabular-nums">{{ item.quantity }}×</span>
+                    <span class="font-bold text-text-main min-w-0 truncate">{{ lang === 'cn' ? item.nameCN : item.name }}</span>
+                    <span v-if="specLine(item)" class="ml-auto text-[11px] font-bold text-text-sub whitespace-nowrap">{{ specLine(item) }}</span>
                  </div>
               </div>
               
               <!-- Footer Info -->
-              <div class="flex items-center justify-between w-full px-4 text-[10px] md:text-xs text-text-main font-bold uppercase tracking-wider">
-                 <span>{{ order.items.length }} {{ t.items }}</span>
-                 <span class="font-mono bg-gray-50 px-2 py-0.5 rounded text-gray-400">#{{ order.id ? order.id.slice(0,6).toUpperCase() : '...' }}</span>
+              <div class="flex items-center justify-between mt-3 px-1 text-xs font-bold text-text-sub">
+                 <span>{{ itemCount(order) }}</span>
+                 <span class="text-text-main font-black tabular-nums">¥{{ order.total.toFixed(2) }}</span>
               </div>
            </div>
         </div>
 
         <!-- Tab 2: Past Orders -->
         <!-- 标签页 2: 历史订单 -->
-        <div v-if="activeTab === 'history'" class="space-y-4">
+        <div v-if="activeTab === 'history'" class="space-y-3">
            <!-- Empty State -->
-           <div v-if="pastOrders.length === 0" class="flex flex-col items-center justify-center h-80 text-gray-400 animate-fade-in">
-               <p class="font-bold opacity-50">{{ t.noOrders }}</p>
+           <div v-if="pastOrders.length === 0" class="flex flex-col items-center justify-center h-72 text-text-sub animate-fade-in">
+               <p class="font-bold">{{ t.noOrders }}</p>
            </div>
            
            <!-- History Cards -->
@@ -175,37 +204,40 @@ const formatTime = (dateStr: string) => {
               v-else 
               v-for="(order, idx) in pastOrders" 
               :key="order.id" 
-              class="bg-white p-6 rounded-[32px] flex flex-col gap-3 shadow-[0_4px_25px_rgba(0,0,0,0.03)] transition-all duration-500 ease-luxury active:scale-[0.96] animate-slide-up-content border border-gray-50"  
-              :style="{ animationDelay: `${idx * 40}ms` }"
+              class="bg-white p-5 rounded-[24px] flex flex-col gap-3 shadow-[0_4px_25px_rgba(0,0,0,0.03)] animate-slide-up-content border border-gray-50"  
+              :style="{ animationDelay: `${Math.min(idx, 8) * 30}ms` }"
            >
               <!-- Order Header -->
-              <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-4 md:gap-5">
-                     <div class="size-12 md:size-14 bg-background-light rounded-2xl flex items-center justify-center font-black text-gray-500 text-lg transition-all duration-500">
+              <div class="flex items-center justify-between gap-3">
+                  <div class="flex items-center gap-4 min-w-0">
+                     <div class="size-12 bg-background-light rounded-2xl flex items-center justify-center font-black text-text-sub text-lg shrink-0 tabular-nums">
                         {{ order.dailyNumber }}
                      </div>
-                     <div>
+                     <div class="min-w-0">
                         <p class="font-black text-sm md:text-base text-text-main">{{ formatTime(order.date) }}</p>
-                        <p class="text-[10px] md:text-xs text-gray-400 font-bold">{{ order.items.length }} {{ t.items }}</p>
+                        <p class="text-[11px] md:text-xs text-text-sub font-bold">{{ itemCount(order) }} · ¥{{ order.total.toFixed(2) }}</p>
                      </div>
                   </div>
                   <!-- Completion Tag -->
-                  <div class="flex items-center gap-1 md:gap-2 text-green-700 bg-green-50 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wide">
-                     <span class="material-symbols-rounded text-sm">check_circle</span>
+                  <div v-if="order.stage === 'refunded'" class="flex items-center gap-1 text-text-sub bg-gray-100 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wide shrink-0">
+                     <span class="material-symbols-rounded text-sm" aria-hidden="true">undo</span>
+                     {{ lang === 'cn' ? '已退款' : 'Refunded' }}
+                  </div>
+                  <div v-else class="flex items-center gap-1 text-green-700 bg-green-50 px-3 py-1.5 rounded-full text-[10px] md:text-xs font-black uppercase tracking-wide shrink-0">
+                     <span class="material-symbols-rounded text-sm" aria-hidden="true">check_circle</span>
                      {{ t.completed }}
                   </div>
               </div>
               
               <!-- Items Summary -->
-              <div class="text-[10px] md:text-xs text-text-sub border-t border-gray-100 pt-3 line-clamp-2 leading-relaxed font-medium">
+              <div class="text-xs text-text-sub border-t border-gray-100 pt-3 line-clamp-2 leading-relaxed font-medium">
                  {{ order.items.map(i => `${i.quantity}x ${lang === 'cn' ? i.nameCN : i.name}`).join(', ') }}
               </div>
 
-               <!-- Mini UUID footer -->
-               <div class="mt-2 pt-2 border-t border-dashed border-gray-100 flex items-center gap-2">
-                   <p class="text-[9px] font-mono text-gray-300 truncate w-full">{{ order.order_no }}</p>
-               </div>
+               <!-- Mini order number footer -->
+               <p class="text-[10px] font-mono text-gray-400 truncate">{{ order.order_no }}</p>
            </div>
+        </div>
         </div>
      </main>
   </div>

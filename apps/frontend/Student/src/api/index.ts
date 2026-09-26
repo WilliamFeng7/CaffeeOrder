@@ -141,8 +141,11 @@ export const api = {
                     const specKey = JSON.stringify(backendItem.spec);
                     const key = `${backendItem.item_name}-${specKey}`;
 
+                    // Each line carries its own quantity; counting lines as 1 showed
+                    // "1x" for a line ordered three times.
+                    const quantity = Number(backendItem.quantity) || 1;
                     if (itemMap.has(key)) {
-                        itemMap.get(key).quantity += 1;
+                        itemMap.get(key).quantity += quantity;
                     } else {
                         itemMap.set(key, {
                             id: 'backend-item',
@@ -150,7 +153,7 @@ export const api = {
                             nameCN: backendItem.item_name,
                             price: backendItem.price_snap / 100,
                             image: backendItem.image_url, // Added mapping for image
-                            quantity: 1,
+                            quantity,
                             size: backendItem.spec.size,
                             temperature: backendItem.spec.temp,
                             sugar: backendItem.spec.sugar
@@ -169,6 +172,7 @@ export const api = {
                     pickupNumber: o.pickup_number,
                     dailyNumber: o.pickup_number,
                     status: ['completed', 'refunded'].includes(o.status) ? 'completed' : 'active',
+                    stage: o.status,
                     isCompleted: o.is_completed,
                     pointsEarned: 0
                 };

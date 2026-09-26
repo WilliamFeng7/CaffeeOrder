@@ -129,7 +129,7 @@ const formatPercent = (val: number) => {
               <h3 class="text-3xl font-black text-white tracking-tight mb-1 relative z-10">{{ stats.overview.pending_orders_count }}</h3>
               <div class="flex items-center gap-1.5 relative z-10">
                    <div class="px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5 bg-white/20">
-                       <span class="material-symbols-rounded text-sm animate-spin">sync</span>
+                       <span class="material-symbols-rounded text-sm" aria-hidden="true">sync</span>
                        需关注
                    </div>
               </div>

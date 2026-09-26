@@ -12,6 +12,9 @@ setUnauthorizedHandler(() => {
   void router.replace('/login');
 });
 
+// iOS Safari only applies :active styles once a touch listener exists.
+document.addEventListener('touchstart', () => {}, { passive: true });
+
 const app = createApp(App)
 
 app.use(createPinia())

@@ -117,6 +117,16 @@ const suggestions = computed(() => {
   ).slice(0, 5);
 });
 
+/**
+ * 每个商品在购物车中的数量 (Quantity per product)
+ * 一次遍历算好，卡片角标直接查表，而不是每张卡片各自 filter + reduce 两遍。
+ */
+const cartCounts = computed(() => {
+  const counts = new Map<string, number>();
+  for (const item of props.cart) counts.set(item.id, (counts.get(item.id) ?? 0) + item.quantity);
+  return counts;
+});
+
 // --- 事件监听 (Event Listeners) ---
 
 /**
@@ -175,8 +185,8 @@ const handleSuggestionClick = (p: Product) => {
 
        <!-- Category Icons List -->
        <!-- 分类图标列表，垂直排列 -->
-       <div class="flex-1 w-full px-2 flex flex-col items-center gap-4 my-4 overflow-y-auto no-scrollbar scroll-smooth">
-          <div v-for="(cat, idx) in CATEGORIES" :key="cat.id" class="animate-slide-up-content shrink-0" :style="{ animationDelay: `${idx * 60}ms` }">
+       <div class="flex-1 w-full px-2 flex flex-col items-center gap-2 my-4 overflow-y-auto no-scrollbar scroll-smooth">
+          <div v-for="(cat, idx) in CATEGORIES" :key="cat.id" class="animate-slide-up-content shrink-0" :style="{ animationDelay: `${idx * 30}ms` }">
              <button 
                @click="handleCategoryClick(cat.id)"
                data-testid="category-nav"
@@ -184,17 +194,17 @@ const handleSuggestionClick = (p: Product) => {
              >
                 <!-- Icon Container with Active State Styles -->
                 <div class="
-                   relative size-[60px] rounded-[24px] flex items-center justify-center transition-all duration-500 ease-luxury
-                   transform-gpu
+                   relative size-[56px] rounded-[22px] flex items-center justify-center transition-[background-color,color,box-shadow,transform] duration-200 ease-out
                 "
                 :class="activeCategory === cat.id && !searchTerm
-                  ? 'bg-primary text-white shadow-[0_15px_30px_-10px_rgba(16,62,50,0.4)] scale-100 rotate-0' 
-                  : 'bg-transparent text-gray-300 scale-90'
+                  ? 'bg-primary text-white shadow-[0_15px_30px_-10px_rgba(16,62,50,0.4)] scale-100' 
+                  : 'bg-transparent text-text-sub scale-95'
                 ">
                     <span class="
-                       material-symbols-rounded text-[28px] transition-all duration-500 ease-luxury
+                       material-symbols-rounded text-[28px]
                     "
-                    :class="{ 'filled': activeCategory === cat.id && !searchTerm }">
+                    :class="{ 'filled': activeCategory === cat.id && !searchTerm }"
+                    aria-hidden="true">
                        {{ cat.icon }}
                     </span>
 
@@ -203,11 +213,11 @@ const handleSuggestionClick = (p: Product) => {
                 
                 <!-- Category Name -->
                 <span class="
-                   text-[10px] font-black uppercase tracking-[0.15em] text-center transition-all duration-500 ease-luxury max-w-full truncate px-1
+                   text-[10px] font-black uppercase tracking-[0.15em] text-center transition-colors duration-200 max-w-full truncate px-1
                 "
                 :class="activeCategory === cat.id && !searchTerm
-                  ? 'text-primary opacity-100 translate-y-0' 
-                  : 'text-gray-300 opacity-60'
+                  ? 'text-primary' 
+                  : 'text-text-sub'
                 ">
                    {{ lang === 'cn' ? cat.nameCN : cat.name }}
                 </span>
@@ -218,7 +228,7 @@ const handleSuggestionClick = (p: Product) => {
        <!-- Language Switcher -->
        <button 
           @click="emit('toggle-lang')"
-          class="mb-2 size-12 rounded-full border border-gray-100 flex items-center justify-center text-[10px] font-black text-gray-400 bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] transition-all duration-500 ease-luxury active:scale-90 shrink-0"
+          class="mb-2 size-12 rounded-full border border-gray-100 flex items-center justify-center text-[10px] font-black text-text-sub bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] shrink-0"
        >
           {{ lang === 'en' ? 'EN' : 'CN' }}
        </button>
@@ -230,30 +240,30 @@ const handleSuggestionClick = (p: Product) => {
        
        <!-- Mobile Category Header (Horizontal Scroll) -->
        <!-- 移动端分类导航头 -->
-       <div class="md:hidden flex overflow-x-auto no-scrollbar p-4 gap-3 bg-white/80 backdrop-blur-md shrink-0 z-20 sticky top-0 border-b border-gray-50">
+       <div class="md:hidden flex overflow-x-auto no-scrollbar px-4 py-3 gap-2 bg-white/90 backdrop-blur-md shrink-0 z-20 sticky top-0 border-b border-gray-100">
            <button 
              v-for="cat in CATEGORIES"
              :key="cat.id"
              @click="handleCategoryClick(cat.id)"
              class="
-               flex-none px-5 py-2.5 rounded-full flex items-center gap-2 text-xs font-bold shadow-sm transition-all duration-500 ease-luxury active:scale-95 border
+               flex-none px-4 py-2.5 rounded-full flex items-center gap-1.5 text-xs font-bold border
              "
-             :class="activeCategory === cat.id 
+             :class="activeCategory === cat.id && !searchTerm
                 ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' 
-                : 'bg-gray-50 text-gray-400 border-transparent'
+                : 'bg-white text-text-sub border-gray-100'
              "
            >
-              <span class="material-symbols-rounded text-lg" :class="{ 'filled': activeCategory === cat.id }">{{ cat.icon }}</span>
+              <span class="material-symbols-rounded text-lg" :class="{ 'filled': activeCategory === cat.id && !searchTerm }" aria-hidden="true">{{ cat.icon }}</span>
               <span>{{ lang === 'cn' ? cat.nameCN : cat.name }}</span>
            </button>
        </div>
 
        <!-- Header & Search Bar -->
-       <header class="px-6 md:px-12 pt-4 md:pt-8 shrink-0 animate-slide-down-content z-30">
-          <div class="flex items-center justify-between mb-4 md:mb-8">
+       <header class="px-4 md:px-8 lg:px-10 pt-4 md:pt-6 shrink-0 animate-slide-down-content z-30">
+          <div class="flex items-center justify-between gap-4 mb-3 md:mb-5">
              <!-- Title Section -->
-             <div class="flex flex-col gap-2">
-                <h1 class="text-2xl md:text-4xl lg:text-6xl font-sans font-black text-[#103E32] tracking-tighter leading-none">
+             <div class="flex flex-col gap-1.5 min-w-0">
+                <h1 class="text-2xl md:text-4xl font-sans font-black text-[#103E32] tracking-tighter leading-none truncate">
                    <!-- Dynamic Title: Shows Category Name or 'Search' -->
                    <template v-if="searchTerm">
                       {{ lang === 'cn' ? '搜索结果' : 'Search' }}
@@ -266,7 +276,7 @@ const handleSuggestionClick = (p: Product) => {
                    </template>
                 </h1>
                 <!-- Product Count -->
-                <p class="text-xs font-black text-gray-400 uppercase tracking-[0.2em] animate-fade-in flex items-center gap-2 pl-1">
+                <p class="text-[11px] font-black text-text-sub uppercase tracking-[0.2em] flex items-center gap-2 pl-0.5">
                    <span class="size-2 rounded-full bg-[#DCCA98]"></span>
                    {{ filteredProducts.length }} {{ t.itemsAvailable }}
                 </p>
@@ -275,7 +285,7 @@ const handleSuggestionClick = (p: Product) => {
              <!-- Search Input Container -->
              <div 
                ref="searchContainerRef"
-               class="relative group w-40 md:w-72"
+               class="relative group w-40 md:w-72 shrink-0"
              >
                 <input 
                    type="text" 
@@ -283,17 +293,17 @@ const handleSuggestionClick = (p: Product) => {
                    @focus="showSuggestions = true"
                    @input="showSuggestions = true"
                    :placeholder="t.search"
-                   class="w-full h-12 md:h-14 pl-12 pr-6 bg-white rounded-full text-sm font-bold outline-none shadow-[0_8px_20px_-8px_rgba(0,0,0,0.05)] border border-transparent focus:border-primary/10 transition-all duration-300 focus:shadow-xl focus:ring-4 focus:ring-primary/5 placeholder:text-gray-300 relative z-20"
+                   class="w-full h-12 md:h-14 pl-12 pr-5 bg-white rounded-full text-sm font-bold outline-none shadow-[0_8px_20px_-8px_rgba(0,0,0,0.05)] border border-gray-100 focus:border-primary/20 transition-[border-color,box-shadow] duration-200 focus:shadow-xl focus:ring-4 focus:ring-primary/5 placeholder:text-gray-400 relative z-20"
                 />
-                <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 transition-colors duration-300 group-focus-within:text-primary scale-90 group-focus-within:scale-100 z-20">search</span>
+                <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-200 group-focus-within:text-primary z-20" aria-hidden="true">search</span>
 
                 <!-- Suggestions Dropdown (Autocomplete) -->
                 <div 
-                   class="absolute top-full left-0 w-full mt-3 bg-white rounded-[24px] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-50 overflow-hidden transition-all duration-300 origin-top z-10"
+                   class="absolute top-full left-0 w-full md:w-80 md:left-auto md:right-0 mt-3 bg-white rounded-[24px] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-50 overflow-hidden transition-[opacity,transform] duration-200 ease-out origin-top z-10"
                    :class="showSuggestions && suggestions.length > 0 ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'"
                 >
                    <div class="px-3 py-2">
-                     <p class="text-[9px] font-black text-gray-300 uppercase tracking-widest px-3 py-2">{{ lang === 'cn' ? '建议' : 'Suggestions' }}</p>
+                     <p class="text-[9px] font-black text-text-sub uppercase tracking-widest px-3 py-2">{{ lang === 'cn' ? '建议' : 'Suggestions' }}</p>
                      <button
                        v-for="p in suggestions"
                        :key="p.id"
@@ -315,65 +325,67 @@ const handleSuggestionClick = (p: Product) => {
        </header>
 
        <!-- Product Grid Main Area -->
-       <main class="flex-1 overflow-y-auto p-6 md:p-12 pt-2 pb-40 no-scrollbar">
+       <main class="flex-1 overflow-y-auto px-4 md:px-8 lg:px-10 pt-1 md:pt-2 pb-40 no-scrollbar">
           <!-- `.stagger-in` (packages/shared/styles/motion.css) cascades the card
-               entrances and caps the delay at 300ms; the previous inline
-               `animationDelay: idx * 60ms` had no ceiling, so a long menu made the
-               last cards wait seconds, and it ignored prefers-reduced-motion. -->
-          <div class="stagger-in grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+               entrances and caps the delay, so a long menu is readable at once.
+               Two columns on phones: one card per screen was mostly scrolling. -->
+          <div class="stagger-in grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
              <!-- Product Card -->
              <div
                 v-for="product in filteredProducts"
                 :key="product.id"
-                @click="emit('select-product', product)"
+                @click="product.inventoryCount !== 0 && emit('select-product', product)"
                 data-testid="product-card"
-                class="group bg-white rounded-[40px] p-4 pb-6 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.02)] transition-[transform,box-shadow,border-color] duration-500 ease-luxury active:scale-[0.96] border border-transparent relative transform-gpu overflow-hidden"
+                class="group bg-white rounded-[24px] md:rounded-[32px] p-2 md:p-3 pb-3 md:pb-4 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.04)] transition-transform duration-200 ease-out active:scale-[0.97] border border-transparent relative overflow-hidden flex flex-col"
+                :class="{ 'opacity-60 pointer-events-none': product.inventoryCount === 0 }"
              >
                 <!-- Image Section -->
-                <div class="aspect-[4/3] rounded-[32px] overflow-hidden mb-5 relative bg-[#F2F2F2] shadow-inner">
+                <div class="aspect-square md:aspect-[4/3] rounded-[18px] md:rounded-[24px] overflow-hidden mb-2.5 md:mb-4 relative bg-[#F2F2F2]">
                    <img 
                       :src="product.image" 
                       :alt="product.name" 
-                      class="w-full h-full object-cover transition-transform duration-1000 ease-luxury mix-blend-multiply opacity-90" 
+                      loading="lazy"
+                      class="w-full h-full object-cover mix-blend-multiply opacity-90" 
+                      :class="{ 'grayscale': product.inventoryCount === 0 }"
                    />
                    
                    <!-- Floating Add Button -->
-                   <div class="absolute bottom-3 right-3 size-14 rounded-[20px] bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg transition-all duration-500 ease-luxury group-active:scale-90 group-active:bg-[#103E32] group-active:text-white">
-                      <span class="material-symbols-rounded text-[#103E32] font-medium group-active:text-white transition-colors text-2xl">add</span>
+                   <div v-if="product.inventoryCount !== 0" class="absolute bottom-2 right-2 md:bottom-3 md:right-3 size-9 md:size-12 rounded-[14px] md:rounded-[18px] bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg transition-colors duration-150 group-active:bg-[#103E32]" aria-hidden="true">
+                      <span class="material-symbols-rounded text-[#103E32] font-medium group-active:text-white text-xl md:text-2xl">add</span>
                    </div>
 
                    <!-- Badges -->
-                   <div v-if="product.isPopular" class="absolute top-4 left-4 bg-white/90 backdrop-blur text-primary px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm flex items-center gap-1">
-                      <span class="material-symbols-rounded text-[10px] filled text-secondary">star</span>
+                   <div v-if="product.inventoryCount === 0" class="absolute top-2 left-2 md:top-3 md:left-3 bg-red-500 text-white px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm">
+                      Sold Out
+                   </div>
+                   <div v-else-if="product.isPopular" class="absolute top-2 left-2 md:top-3 md:left-3 bg-white/90 backdrop-blur text-primary px-2 py-1 md:px-3 md:py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm flex items-center gap-1">
+                      <span class="material-symbols-rounded text-[10px] filled text-secondary" aria-hidden="true">star</span>
                       {{ t.bestSeller }}
                    </div>
                    
-                   <!-- Quantity Counter Badge (if in cart) -->
-                   <div v-if="cart.filter(item => item.id === product.id).reduce((sum, i) => sum + i.quantity, 0) > 0" class="absolute top-4 right-4 bg-primary text-white size-8 rounded-full flex items-center justify-center text-xs font-black shadow-[0_4px_12px_rgba(16,62,50,0.3)] animate-scale-in border-2 border-white">
-                      {{ cart.filter(item => item.id === product.id).reduce((sum, i) => sum + i.quantity, 0) }}
+                   <!-- Quantity Counter Badge (if in cart); keyed by count so it pops on every add -->
+                   <div v-if="cartCounts.get(product.id)" :key="cartCounts.get(product.id)" class="absolute top-2 right-2 md:top-3 md:right-3 bg-primary text-white size-7 md:size-8 rounded-full flex items-center justify-center text-xs font-black shadow-[0_4px_12px_rgba(16,62,50,0.3)] animate-cart-bump border-2 border-white">
+                      {{ cartCounts.get(product.id) }}
                    </div>
                 </div>
 
                 <!-- Text Content -->
-                <div class="px-3">
-                   <h3 class="text-lg md:text-xl font-[800] text-text-main leading-tight mb-2 line-clamp-1 transition-colors">
+                <div class="px-1.5 md:px-2 flex flex-col flex-1">
+                   <h3 class="text-[15px] md:text-lg font-[800] text-text-main leading-snug mb-1 line-clamp-1">
                       {{ lang === 'cn' ? product.nameCN : product.name }}
                    </h3>
-                   <p class="text-text-sub text-xs line-clamp-2 mb-4 leading-relaxed opacity-60 font-medium min-h-[2.5em]">
+                   <p class="hidden md:block text-text-sub text-xs line-clamp-2 mb-3 leading-relaxed font-medium min-h-[2.5em]">
                       {{ lang === 'cn' ? product.descriptionCN : product.description }}
                    </p>
                    
                    <div class="flex items-center justify-between mt-auto">
-                      <span class="text-2xl font-[900] text-text-main tracking-tight">¥{{ Number(product.price).toFixed(2) }}</span>
-                      <span class="text-[10px] font-black text-gray-300 bg-gray-50 px-3 py-1.5 rounded-full uppercase tracking-widest transition-all duration-300">
+                      <span class="text-lg md:text-2xl font-[900] text-text-main tracking-tight">¥{{ Number(product.price).toFixed(2) }}</span>
+                      <span class="hidden md:inline-flex text-[10px] font-black text-text-sub bg-background-light px-3 py-1.5 rounded-full uppercase tracking-widest">
                          {{ lang === 'cn' ? '选规格' : 'Customize' }}
                       </span>
                    </div>
                 </div>
              </div>
-             
-             <!-- Spacer for Bottom Navigation -->
-             <div class="h-24 w-full col-span-full"></div>
           </div>
        </main>
     </div>

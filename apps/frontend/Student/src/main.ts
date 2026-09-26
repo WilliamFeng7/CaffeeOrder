@@ -17,6 +17,10 @@ setUnauthorizedHandler(() => {
   void router.replace('/login');
 });
 
+// iOS Safari only applies :active styles once a touch listener exists, so
+// without this the press feedback never shows on iPhone / iPad.
+document.addEventListener('touchstart', () => {}, { passive: true })
+
 // 创建 Vue 应用实例
 const app = createApp(App)
 

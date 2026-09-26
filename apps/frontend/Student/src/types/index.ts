@@ -67,6 +67,12 @@ export interface CartItem extends Product {
 export type OrderStatus = 'active' | 'completed';
 
 /**
+ * 后端原始状态 (Backend lifecycle stage)
+ * `status` 只区分进行中/已结束；取餐页要区分「排队 / 制作中 / 请取餐」就看这个。
+ */
+export type OrderStage = 'created' | 'processing' | 'ready' | 'completed' | 'refunded';
+
+/**
  * 订单接口定义 (Order Interface)
  * 包含订单的基础元数据和包含的商品列表。
  */
@@ -92,6 +98,8 @@ export interface Order {
   isCompleted: boolean;
   // 订单状态 (枚举值)
   status: OrderStatus;
+  // 后端原始状态
+  stage: OrderStage;
   // 获得的积分 (预留字段)
   pointsEarned?: number;
 }

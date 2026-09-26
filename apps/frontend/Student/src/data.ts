@@ -28,6 +28,10 @@ export const TRANSLATIONS = {
 
     // 首页 (HomeView)
     goodMorning: "Good Morning,",
+    goodAfternoon: "Good Afternoon,",
+    goodEvening: "Good Evening,",
+    open: "Open",
+    closed: "Closed",
     buyAgain: "Buy Again",
     addToOrder: "Add to Order",
     availableCoupons: "3 Available Coupons",
@@ -78,8 +82,11 @@ export const TRANSLATIONS = {
     // 取餐页 (PickupView)
     currentOrders: "Current Orders",
     pastOrders: "Past Orders",
+    queued: "In Queue",
     preparing: "Preparing",
     ready: "Ready",
+    orderReady: "Your order is ready — pickup number",
+    placing: "Placing order…",
     orderId: "Order ID",
     detailedHistory: "View Detailed History",
 
@@ -114,6 +121,10 @@ export const TRANSLATIONS = {
 
     // 首页
     goodMorning: "早上好，",
+    goodAfternoon: "下午好，",
+    goodEvening: "晚上好，",
+    open: "营业中",
+    closed: "休息中",
     buyAgain: "再次购买",
     addToOrder: "加入订单",
     availableCoupons: "3张可用优惠券",
@@ -164,8 +175,11 @@ export const TRANSLATIONS = {
     // 取餐页
     currentOrders: "当前订单",
     pastOrders: "历史订单",
+    queued: "排队中",
     preparing: "制作中",
     ready: "请取餐",
+    orderReady: "您的饮品做好了，取餐号",
+    placing: "正在下单…",
     orderId: "订单号",
     detailedHistory: "查看详细历史",
 

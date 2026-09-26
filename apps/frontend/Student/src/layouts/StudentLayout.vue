@@ -27,6 +27,8 @@ const cart = ref<CartItem[]>([]);
 const selectedProduct = ref<Product | null>(null);
 const language = ref<Language>('en');
 const orders = ref<Order[]>([]);
+const shopOpen = ref(true);
+const placing = ref(false);
 const toastStore = useToastStore();
 const userProfile = ref<UserProfile>({
   name: '',
@@ -88,7 +90,8 @@ const loadProfile = async () => {
 
 const checkShopStatus = async () => {
     const status = await api.getShopStatus();
-    if (status && !status.is_open) {
+    shopOpen.value = !(status && status.is_open === false);
+    if (!shopOpen.value) {
         addToast(language.value === 'cn' ? '店铺已打烊' : 'Shop is currently closed', 'info');
     }
 };
@@ -170,7 +173,7 @@ const handleAddToCart = (options: { size: string; temp: string; sugar: string })
       sugar: options.sugar,
     };
     cart.value = [...cart.value, newItem];
-    addToast(language.value === 'cn' ? '已成功加入购物车' : 'Added to cart successfully');
+    addToast(language.value === 'cn' ? '已成功加入购物车' : 'Added to cart successfully', 'success');
     currentTab.value = 'order';
   }
 };
@@ -204,9 +207,21 @@ const stopPolling = () => {
 // Never leak the polling interval when the layout unmounts
 // (e.g. router-guard redirect on expired token)
 onUnmounted(stopPolling);
+// Stage of each order at the previous poll, so an order that turns "ready"
+// raises one notice instead of relying on the student watching the card.
+let lastStages: Map<string, string> | null = null;
 const fetchOrders = async () => {
   try {
      const fetchedOrders = await api.getMyOrders();
+     if (lastStages) {
+       for (const o of fetchedOrders) {
+         const before = lastStages.get(o.id);
+         if (o.stage === 'ready' && before && before !== 'ready') {
+           addToast(`${t.value.orderReady} ${o.dailyNumber}`, 'success');
+         }
+       }
+     }
+     lastStages = new Map(fetchedOrders.map(o => [o.id, o.stage]));
      orders.value = fetchedOrders;
   } catch {
      console.error("Failed to fetch orders");
@@ -222,19 +237,24 @@ watch(currentTab, (newTab) => {
 });
 
 const handlePlaceOrder = async () => {
+  // A second tap while the first request is in flight used to place (and
+  // charge) the same cart twice.
+  if (placing.value || cart.value.length === 0) return;
+  placing.value = true;
   try {
-    if (cart.value.length === 0) return; 
     await api.createOrder(cart.value);
     await fetchOrders();
     await loadProfile(); // Refresh balance
     cart.value = [];
     isCheckoutOpen.value = false;
     currentTab.value = 'pickup';
-    addToast(language.value === 'cn' ? '下单成功!' : 'Order placed successfully!');
+    addToast(language.value === 'cn' ? '下单成功!' : 'Order placed successfully!', 'success');
   } catch (e: any) {
     const errorMsg = e.response?.data?.detail || e.message || 'Order failed';
     const displayMsg = language.value === 'cn' && errorMsg === 'Insufficient funds' ? '余额不足 (Insufficient Funds)' : errorMsg;
     addToast(displayMsg, 'info');
+  } finally {
+    placing.value = false;
   }
 };
 
@@ -257,10 +277,10 @@ const handleUpdateProfile = async (p: UserProfile) => {
 const cartTotalCents = computed(() => sumCents(cart.value));
 const cartCount = computed(() => cart.value.reduce((sum, item) => sum + item.quantity, 0));
 const cartBump = ref(false);
-watch(cartCount, (newCount) => {
-  if (newCount > 0) {
+watch(cartCount, (newCount, oldCount) => {
+  if (newCount > oldCount) {
     cartBump.value = true;
-    setTimeout(() => cartBump.value = false, 300);
+    setTimeout(() => cartBump.value = false, 200);
   }
 });
 </script>
@@ -272,48 +292,49 @@ watch(cartCount, (newCount) => {
          so a single message appeared twice. -->
 
     <div class="flex-1 overflow-hidden relative w-full h-full z-0 transform-gpu pb-[80px]">
-      <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleQuickAdd" :lang="language" :user-name="userProfile.name" />
+      <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleQuickAdd" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" />
       <MenuView v-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" @remove-product-instance="handleRemoveProductInstance" :lang="language" @toggle-lang="handleToggleLang" @go-checkout="isCheckoutOpen = true" />
       <PickupView v-if="currentTab === 'pickup'" :orders="orders" :lang="language" />
       <SettingsView v-if="currentTab === 'profile'" :lang="language" @toggle-lang="handleToggleLang" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" @sign-out="handleSignOut" />
     </div>
 
-    <div v-if="cartCount > 0 && !isCheckoutOpen && !selectedProduct && currentTab === 'order'" class="absolute bottom-[88px] md:bottom-[96px] left-0 right-0 z-50 pointer-events-none flex justify-center animate-slide-up-content transform-gpu">
-       <div @click="isCheckoutOpen = true" data-testid="checkout-bar" class="pointer-events-auto bg-[#103E32] h-[56px] md:h-[68px] w-[90%] md:w-[600px] rounded-[32px] flex items-center justify-between p-1.5 pl-6 shadow-[0_30px_80px_-20px_rgba(16,62,50,0.6)] border border-[#ffffff10] transition-all duration-500 active:duration-300 ease-silk backdrop-blur-md relative overflow-hidden active:scale-[0.96]" :class="{ 'scale-[1.03]': cartBump }">
-          <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12 translate-x-[-200%] animate-shimmer"></div>
+    <div v-if="cartCount > 0 && !isCheckoutOpen && !selectedProduct && currentTab === 'order'" class="absolute bottom-[84px] md:bottom-[100px] left-0 right-0 z-50 pointer-events-none flex justify-center animate-slide-up-content">
+       <div @click="isCheckoutOpen = true" data-testid="checkout-bar" class="pointer-events-auto bg-[#103E32] h-[56px] md:h-[64px] w-[calc(100%-32px)] max-w-[560px] rounded-[32px] flex items-center justify-between p-1.5 pl-6 shadow-[0_24px_60px_-20px_rgba(16,62,50,0.6)] border border-[#ffffff10] transition-transform duration-200 ease-out relative overflow-hidden active:scale-[0.97]" :class="{ 'scale-[1.02]': cartBump }">
           <div class="flex items-center gap-5 relative z-10">
              <div class="relative mt-0.5">
-                <span class="material-symbols-rounded text-white text-[28px] md:text-[32px] font-light opacity-90 transition-transform duration-500 ease-silk">shopping_bag</span>
-                <span class="absolute -top-1 -right-1.5 bg-[#EF4444] text-white text-[10px] font-bold size-4 md:size-5 rounded-full flex items-center justify-center border-[2px] border-[#103E32] shadow-sm animate-cart-bump">{{ cartCount }}</span>
+                <span class="material-symbols-rounded text-white text-[28px] md:text-[30px] font-light opacity-90" aria-hidden="true">shopping_bag</span>
+                <span :key="cartCount" class="absolute -top-1 -right-1.5 bg-[#EF4444] text-white text-[10px] font-bold size-4 md:size-5 rounded-full flex items-center justify-center border-[2px] border-[#103E32] shadow-sm animate-cart-bump">{{ cartCount }}</span>
              </div>
              <div class="flex flex-col justify-center">
                 <span class="text-[20px] md:text-[24px] font-[800] text-white leading-none tracking-tight font-sans">¥{{ formatCents(cartTotalCents) }}</span>
                 <span class="text-[9px] text-white/50 font-bold uppercase tracking-[0.2em] mt-0.5">Total</span>
              </div>
           </div>
-          <button class="h-[44px] md:h-[52px] px-6 md:px-8 rounded-[26px] bg-white text-[#103E32] font-black text-sm md:text-base flex items-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.1)] transition-all duration-500 ease-silk active:scale-[0.94] active:bg-[#f2f2f2] relative z-10">
+          <button type="button" class="h-[44px] md:h-[52px] px-6 md:px-8 rounded-[26px] bg-white text-[#103E32] font-black text-sm md:text-base flex items-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.1)] active:bg-[#f2f2f2] relative z-10">
             {{ t.checkout }}
-            <span class="material-symbols-rounded text-xl md:text-2xl font-bold mt-0.5 transition-transform duration-500 ease-silk">arrow_forward</span>
+            <span class="material-symbols-rounded text-xl md:text-2xl font-bold mt-0.5" aria-hidden="true">arrow_forward</span>
           </button>
        </div>
     </div>
 
     <div class="absolute bottom-0 left-0 w-full z-30 pointer-events-auto bg-white border-t border-gray-100 shadow-[0_-5px_40px_rgba(0,0,0,0.02)] h-[72px] md:h-[88px] pb-[env(safe-area-inset-bottom,12px)] flex items-center justify-center md:rounded-b-[32px] transform-gpu">
       <div class="flex items-center justify-between px-6 w-full max-w-lg h-full">
-        <button v-for="tab in (['home', 'order', 'pickup', 'profile'] as TabState[])" :key="tab" @click="currentTab = tab" class="relative flex items-center justify-center gap-2 rounded-full transition-[flex-grow,background-color,padding,width,transform] duration-700 active:duration-300 ease-silk outline-none transform-gpu will-change-[flex-grow, transform] active:scale-[0.88]" :class="currentTab === tab ? 'bg-primary text-white pl-6 pr-6 py-3.5 grow-[1.5] shadow-lg shadow-primary/20' : 'bg-transparent text-gray-300 w-16 py-3 grow-0 active:bg-gray-50'">
-            <span class="material-symbols-rounded text-[28px] md:text-[30px] shrink-0 transition-all duration-700 active:duration-300 ease-silk" :class="{ 'filled': currentTab === tab }">
+        <button v-for="tab in (['home', 'order', 'pickup', 'profile'] as TabState[])" :key="tab" type="button" @click="currentTab = tab" :aria-current="currentTab === tab ? 'page' : undefined" class="relative flex items-center justify-center gap-2 rounded-full transition-[flex-grow,background-color,padding,width,transform] duration-300 ease-silk outline-none" :class="currentTab === tab ? 'bg-primary text-white pl-6 pr-6 py-3.5 grow-[1.5] shadow-lg shadow-primary/20' : 'bg-transparent text-gray-400 w-16 py-3 grow-0 active:bg-gray-50'">
+            <span class="material-symbols-rounded text-[28px] md:text-[30px] shrink-0" :class="{ 'filled': currentTab === tab }" aria-hidden="true">
               {{ tab === 'home' ? 'storefront' : tab === 'order' ? 'local_cafe' : tab === 'pickup' ? 'shopping_bag' : 'person' }}
             </span>
-            <span class="text-xs font-[800] uppercase tracking-widest whitespace-nowrap overflow-hidden transition-[max-width,opacity,transform] duration-700 active:duration-300 ease-silk" :class="currentTab === tab ? 'max-w-[100px] opacity-100 ml-1 translate-x-0' : 'max-w-0 opacity-0 ml-0 -translate-x-2'">
+            <span class="text-xs font-[800] uppercase tracking-widest whitespace-nowrap overflow-hidden transition-[max-width,opacity,transform] duration-300 ease-silk" :class="currentTab === tab ? 'max-w-[100px] opacity-100 ml-1 translate-x-0' : 'max-w-0 opacity-0 ml-0 -translate-x-2'">
               {{ t[`nav${tab.charAt(0).toUpperCase() + tab.slice(1)}` as keyof typeof t] }}
             </span>
         </button>
       </div>
     </div>
 
-    <div v-if="isCheckoutOpen" class="absolute inset-0 z-[100] bg-white animate-slide-up-modal">
-       <CheckoutView @navigate="isCheckoutOpen = false" :cart="cart" @place-order="handlePlaceOrder" @update-quantity="updateCartItemQuantity" :lang="language" />
-    </div>
+    <Transition name="sheet">
+      <div v-if="isCheckoutOpen" class="absolute inset-0 z-[100] bg-white">
+         <CheckoutView @navigate="isCheckoutOpen = false" :cart="cart" :placing="placing" @place-order="handlePlaceOrder" @update-quantity="updateCartItemQuantity" :lang="language" />
+      </div>
+    </Transition>
 
     <ProductModal v-if="selectedProduct" :product="selectedProduct" @close="handleCloseProductModal" @add-to-cart="handleAddToCart" :lang="language" />
   </div>

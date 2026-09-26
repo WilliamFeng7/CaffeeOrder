@@ -38,6 +38,8 @@ const chartData = computed(() => ({
             backgroundColor: 'rgba(16, 62, 50, 0.1)',
             fill: true,
             tension: 0.4,
+            // Smooth without overshooting below zero between hours.
+            cubicInterpolationMode: 'monotone' as const,
             yAxisID: 'y'
         },
         {
@@ -47,21 +49,29 @@ const chartData = computed(() => ({
             backgroundColor: 'transparent',
             borderDash: [5, 5],
             tension: 0.4,
+            cubicInterpolationMode: 'monotone' as const,
             yAxisID: 'y1'
         }
     ]
 }));
 
+// The dashboard refreshes every few seconds, so the chart must not replay a
+// long entrance on each update: 300ms, and none at all under reduced motion.
+const reduceMotion = typeof window !== 'undefined'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: reduceMotion ? (false as const) : { duration: 300 },
     interaction: {
       mode: 'index' as const,
       intersect: false,
     },
     plugins: {
+        // The card header already carries the legend.
         legend: {
-            position: 'top' as const,
+            display: false,
         },
         tooltip: {
             backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -79,10 +89,17 @@ const chartOptions = {
                 display: false
             }
         },
+        // Counts and money never go below zero; without a floor an empty day
+        // was drawn in the middle of a -1..1 axis.
         y: {
             type: 'linear' as const,
             display: true,
             position: 'left' as const,
+            beginAtZero: true,
+            suggestedMax: 5,
+            ticks: {
+                precision: 0
+            },
             grid: {
                 color: '#f0f0f0'
             },
@@ -95,6 +112,8 @@ const chartOptions = {
             type: 'linear' as const,
             display: true,
             position: 'right' as const,
+            beginAtZero: true,
+            suggestedMax: 100,
             grid: {
                 drawOnChartArea: false,
             },

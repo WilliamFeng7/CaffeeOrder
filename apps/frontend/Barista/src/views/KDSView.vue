@@ -54,9 +54,12 @@ const { orders, loading, refreshing, refresh } = useOrderPolling({
 });
 
 const handleStatusUpdate = async (orderId: number, status: string) => {
+    // Staff call orders by pickup number, not by database id.
+    const order = orders.value.find(o => o.id === orderId);
+    const label = order?.pickup_number != null ? `#${order.pickup_number}` : `#${orderId}`;
     try {
         await api.updateOrderStatus(orderId, status);
-        toast.success(`Order #${orderId} → ${status}`);
+        toast.success(`Order ${label} → ${status}`);
         await refresh();
     } catch (e) {
         toast.error('Failed to update status');
@@ -69,12 +72,17 @@ const processingOrders = computed(() => orders.value.filter(o => o.status.toLowe
 const completedOrders = computed(() => orders.value.filter(o => o.status.toLowerCase() === 'ready'));
 
 // Stats
-const totalOrders = computed(() => orders.value.length);
+// The feed also carries older orders (finished ones, and any backlog left from
+// previous days), so "today" is filtered on the order date. Counting the whole
+// feed showed every order ever loaded, and averaging a months-old backlog into
+// the wait time produced hundreds of thousands of minutes.
+const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
+const totalOrders = computed(() => orders.value.filter(o => isToday(o.created_at)).length);
 const avgWaitTime = computed(() => {
-  const activeTimes = [...pendingOrders.value, ...processingOrders.value].map(o => 
-    Math.floor((Date.now() - new Date(o.created_at).getTime()) / 60000)
-  );
-  if (activeTimes.length === 0) return 0;
+  const activeTimes = [...pendingOrders.value, ...processingOrders.value]
+    .filter(o => isToday(o.created_at))
+    .map(o => Math.floor((Date.now() - new Date(o.created_at).getTime()) / 60000));
+  if (activeTimes.length === 0) return null;
   return Math.round(activeTimes.reduce((a, b) => a + b, 0) / activeTimes.length);
 });
 
@@ -136,78 +144,71 @@ const manualRefresh = () => refresh();
 
 <template>
   <KDSLayout>
-    <div class="flex flex-col h-full gap-5 md:gap-6">
-      
-      <!-- Hero Section -->
-      <div class="flex flex-wrap items-end justify-between gap-4 px-1">
-        <div class="animate-slide-up-content">
-          <h1 class="text-4xl md:text-5xl lg:text-6xl font-sans font-black text-primary leading-[0.95] tracking-tighter">
-            Order Board
-          </h1>
-          <p class="text-sm md:text-base font-serif italic text-text-sub ml-0.5 mt-2 flex items-center gap-2">
-            <span>Real-time order management</span>
-            <kbd class="px-2 py-1 bg-white rounded-lg text-[10px] font-mono font-bold not-italic text-gray-400 border border-gray-100 shadow-sm">R</kbd>
-            <span class="text-gray-300">to refresh</span>
-          </p>
+    <div class="flex flex-col h-full gap-3 md:gap-4">
+
+      <!-- Stats + Refresh: one row instead of a hero title above a stats bar -->
+      <div class="flex items-stretch gap-2 md:gap-3 animate-slide-up-content">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3 flex-1 min-w-0">
+          <!-- Total Orders -->
+          <div class="flex items-center gap-3 bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-50">
+            <div class="size-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <span class="material-symbols-rounded text-primary text-xl" aria-hidden="true">receipt_long</span>
+            </div>
+            <div class="min-w-0">
+              <div class="text-xl font-black text-primary leading-none tabular-nums">{{ totalOrders }}</div>
+              <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-1">Total Today</div>
+            </div>
+          </div>
+          
+          <!-- Active Orders -->
+          <div class="flex items-center gap-3 bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-50">
+            <div class="size-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
+              <span class="material-symbols-rounded text-amber-500 text-xl" aria-hidden="true">pending</span>
+            </div>
+            <div class="min-w-0">
+              <div class="text-xl font-black text-primary leading-none tabular-nums">{{ pendingOrders.length + processingOrders.length }}</div>
+              <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-1">Active</div>
+            </div>
+          </div>
+          
+          <!-- Average Wait -->
+          <div class="flex items-center gap-3 bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-50">
+            <div class="size-9 rounded-xl bg-secondary/30 flex items-center justify-center shrink-0">
+              <span class="material-symbols-rounded text-secondary-content text-xl" aria-hidden="true">timer</span>
+            </div>
+            <div class="min-w-0">
+              <div class="text-xl font-black text-primary leading-none tabular-nums">
+                <template v-if="avgWaitTime !== null">{{ avgWaitTime }}<span class="text-sm font-bold text-text-sub ml-0.5">min</span></template>
+                <template v-else>—</template>
+              </div>
+              <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-1">Avg Wait</div>
+            </div>
+          </div>
+          
+          <!-- Ready Orders -->
+          <div class="flex items-center gap-3 bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-50">
+            <div class="size-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
+              <span class="material-symbols-rounded text-emerald-500 text-xl filled" aria-hidden="true">check_circle</span>
+            </div>
+            <div class="min-w-0">
+              <div class="text-xl font-black text-primary leading-none tabular-nums">{{ completedOrders.length }}</div>
+              <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-1">Ready</div>
+            </div>
+          </div>
         </div>
-        
-        <!-- Refresh Button -->
+
+        <!-- Refresh Button (R on a keyboard does the same) -->
         <button 
+          type="button"
           @click="manualRefresh"
           :disabled="refreshing"
-          class="flex items-center gap-2.5 px-5 py-3 bg-white rounded-2xl shadow-sm border border-gray-100 text-sm font-bold text-text-main hover:shadow-md active:scale-95 transition-all duration-300 disabled:opacity-50 animate-slide-up-content"
-          style="animation-delay: 100ms"
+          aria-label="Refresh"
+          title="Refresh (R)"
+          class="shrink-0 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-4 md:px-5 bg-white rounded-2xl shadow-sm border border-gray-100 text-sm font-bold text-text-main hover:shadow-md disabled:opacity-50"
         >
-          <span class="material-symbols-rounded text-xl" :class="{ 'animate-spin': refreshing }">refresh</span>
+          <span class="material-symbols-rounded text-xl" :class="{ 'animate-spin': refreshing }" aria-hidden="true">refresh</span>
           <span class="hidden sm:inline">Refresh</span>
         </button>
-      </div>
-
-      <!-- Quick Stats Bar -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 animate-slide-up-content" style="animation-delay: 150ms">
-        <!-- Total Orders -->
-        <div class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-50">
-          <div class="size-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-            <span class="material-symbols-rounded text-primary text-xl">receipt_long</span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-2xl font-black text-primary leading-none">{{ totalOrders }}</div>
-            <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-0.5">Total Today</div>
-          </div>
-        </div>
-        
-        <!-- Active Orders -->
-        <div class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-50">
-          <div class="size-11 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-            <span class="material-symbols-rounded text-amber-500 text-xl">pending</span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-2xl font-black text-primary leading-none">{{ pendingOrders.length + processingOrders.length }}</div>
-            <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-0.5">Active</div>
-          </div>
-        </div>
-        
-        <!-- Average Wait -->
-        <div class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-50">
-          <div class="size-11 rounded-xl bg-secondary/30 flex items-center justify-center shrink-0">
-            <span class="material-symbols-rounded text-secondary-content text-xl">timer</span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-2xl font-black text-primary leading-none">{{ avgWaitTime }}<span class="text-sm font-bold text-text-sub ml-0.5">min</span></div>
-            <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-0.5">Avg Wait</div>
-          </div>
-        </div>
-        
-        <!-- Ready Orders -->
-        <div class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 shadow-sm border border-gray-50">
-          <div class="size-11 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
-            <span class="material-symbols-rounded text-emerald-500 text-xl filled">check_circle</span>
-          </div>
-          <div class="min-w-0">
-            <div class="text-2xl font-black text-primary leading-none">{{ completedOrders.length }}</div>
-            <div class="text-[10px] font-bold text-text-sub uppercase tracking-widest mt-0.5">Ready</div>
-          </div>
-        </div>
       </div>
 
       <!-- Loading State -->
@@ -219,24 +220,24 @@ const manualRefresh = () => refresh();
       </div>
 
       <!-- KDS Three-Column Grid -->
-      <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5 flex-1 min-h-0 pb-4">
+      <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 flex-1 min-h-0">
         <div 
           v-for="(col, idx) in columns" 
           :key="col.title" 
-          class="flex flex-col h-full min-h-[320px] lg:min-h-0 bg-white rounded-[28px] md:rounded-[32px] p-4 md:p-5 border shadow-sm transition-all duration-500 ease-luxury hover:shadow-md animate-slide-up-content"
+          class="flex flex-col h-full min-h-[320px] lg:min-h-0 bg-white rounded-[24px] md:rounded-[28px] p-3 md:p-4 border shadow-sm animate-slide-up-content"
           :class="col.borderColor"
-          :style="{ animationDelay: `${200 + idx * 80}ms` }"
+          :style="{ animationDelay: `${40 + idx * 40}ms` }"
         >
           <!-- Column Header -->
-          <div class="flex items-center justify-between gap-3 mb-4 pb-4 border-b border-gray-100/80">
+          <div class="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-gray-100/80">
             <div class="flex items-center gap-3">
-              <div class="size-10 md:size-11 rounded-xl flex items-center justify-center" :class="col.iconBg">
-                <span class="material-symbols-rounded text-xl md:text-2xl filled" :class="col.iconColor">{{ col.icon }}</span>
+              <div class="size-9 md:size-10 rounded-xl flex items-center justify-center" :class="col.iconBg">
+                <span class="material-symbols-rounded text-xl filled" :class="col.iconColor" aria-hidden="true">{{ col.icon }}</span>
               </div>
-              <h2 class="text-lg md:text-xl font-black tracking-tight text-primary">{{ col.title }}</h2>
+              <h2 class="text-lg font-black tracking-tight text-primary">{{ col.title }}</h2>
             </div>
             <span 
-              class="size-8 md:size-9 rounded-xl flex items-center justify-center text-sm font-black text-white shadow-lg" 
+              class="min-w-8 h-8 px-2 rounded-xl flex items-center justify-center text-sm font-black text-white shadow-lg tabular-nums" 
               :class="col.countBg"
             >
               {{ col.orders.value.length }}
@@ -254,11 +255,11 @@ const manualRefresh = () => refresh();
             />
 
             <!-- Empty State -->
-            <div v-if="col.orders.value.length === 0" key="empty" class="h-40 md:h-48 flex flex-col items-center justify-center text-gray-300 animate-fade-in">
-              <div class="size-20 md:size-24 rounded-[24px] bg-gray-50 flex items-center justify-center mb-3 shadow-inner">
-                <span class="material-symbols-rounded text-4xl md:text-5xl opacity-30">coffee</span>
+            <div v-if="col.orders.value.length === 0" key="empty" class="h-40 md:h-48 flex flex-col items-center justify-center text-gray-400 animate-fade-in">
+              <div class="size-20 rounded-[24px] bg-gray-50 flex items-center justify-center mb-3 shadow-inner">
+                <span class="material-symbols-rounded text-4xl opacity-40" aria-hidden="true">coffee</span>
               </div>
-              <span class="text-xs font-bold uppercase tracking-widest opacity-50">No orders</span>
+              <span class="text-xs font-bold uppercase tracking-widest">No orders</span>
             </div>
           </TransitionGroup>
         </div>
@@ -271,14 +272,16 @@ const manualRefresh = () => refresh();
 .list-move,
 .list-enter-active,
 .list-leave-active {
-  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.3s cubic-bezier(0.23, 1, 0.32, 1);
 }
 .list-enter-from,
 .list-leave-to {
   opacity: 0;
-  transform: scale(0.95) translateY(10px);
+  transform: scale(0.97) translateY(8px);
 }
+/* A card that moves on leaves a little faster than new ones arrive. */
 .list-leave-active {
+  transition-duration: 0.2s;
   position: absolute;
   width: calc(100% - 0.25rem);
 }

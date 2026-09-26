@@ -57,11 +57,15 @@ const t = computed(() => TRANSLATIONS[props.lang]);
 /**
  * 处理关闭弹窗
  */
+// Exit runs faster than the entrance (240ms vs 360ms); the unmount waits for it.
+const EXIT_MS = 240;
+
 const handleClose = () => {
+  if (isClosing.value) return;
   isClosing.value = true;
   setTimeout(() => {
     emit('close');
-  }, 600);
+  }, EXIT_MS);
 };
 
 const calculateTotal = computed(() => {
@@ -78,20 +82,14 @@ const handleAddToCartClick = () => {
     sugar: sugar.value
   });
   
-  // 动画序列
+  // 动画序列: 按钮弹一下并变成「已添加」，停留片刻让用户看清，再收起面板
   isJelly.value = true;
   isSuccess.value = true;
   
   setTimeout(() => {
     isJelly.value = false;
-    // 延迟关闭，让用户看到成功状态
-    setTimeout(() => {
-      isClosing.value = true;
-      setTimeout(() => {
-        emit('close');
-      }, 500);
-    }, 500);
-  }, 200);
+  }, 300);
+  setTimeout(handleClose, 450);
 };
 
 /**
@@ -105,121 +103,115 @@ const handleContentClick = (e: MouseEvent) => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[110] flex items-end justify-center">
+  <div class="fixed inset-0 z-[110] flex items-end md:items-center justify-center md:p-8">
      <!-- Backdrop (Click to close) -->
-     <!-- 背景遮罩 (点击空白处关闭) -->
+     <!-- 背景遮罩 (点击空白处关闭)；不做模糊：面板滑动时每一帧都要重算整屏模糊 -->
      <div 
-        class="absolute inset-0 bg-black/40 backdrop-blur-md transition-all duration-600 ease-luxury" 
+        class="absolute inset-0 bg-black/45 transition-opacity duration-200 ease-out" 
         :class="isClosing ? 'opacity-0' : 'opacity-100 animate-fade-in'"
         @click="handleClose"
      ></div>
      
      <!-- Modal Sheet Panel -->
-     <!-- 弹窗主体面板 -->
+     <!-- 弹窗主体面板：手机为底部抽屉，iPad 为居中卡片；高度随内容，不再留一大片空白 -->
      <div
        @click="handleContentClick"
        role="dialog"
        aria-modal="true"
        aria-labelledby="modal-title"
-       class="bg-background-light w-full h-[75%] md:h-[80%] md:max-w-2xl md:rounded-t-[40px] md:mx-auto md:mb-8 md:rounded-b-[40px] rounded-t-[36px] overflow-hidden flex flex-col shadow-2xl relative z-10 transform-gpu transition-all duration-700 ease-luxury"
-       :class="isClosing ? 'translate-y-[110%] opacity-0' : 'translate-y-0 animate-slide-up-modal'"
+       class="bg-background-light w-full max-h-[88%] md:max-h-full md:max-w-2xl rounded-t-[32px] md:rounded-[40px] overflow-hidden flex flex-col shadow-2xl relative z-10 transition-[transform,opacity] duration-200 ease-out"
+       :class="isClosing ? 'translate-y-full md:translate-y-6 md:scale-95 opacity-0' : 'animate-slide-up-modal md:animate-scale-in'"
      >
-        <!-- Swipe Indicator (Mobile) -->
-        <div class="md:hidden flex-none h-1.5 w-12 bg-gray-200/80 rounded-full mx-auto my-3"></div>
-
         <!-- Close Button (Floating) -->
         <button
+          type="button"
           @click="handleClose"
           :aria-label="lang === 'cn' ? '关闭' : 'Close'"
-          class="absolute top-4 right-4 z-30 size-12 rounded-full bg-white/60 backdrop-blur-lg flex items-center justify-center border border-white/50 shadow-sm transition-all duration-500 ease-luxury active:scale-75 active:rotate-90 active:bg-white"
+          class="absolute top-4 right-4 z-30 size-11 rounded-full bg-white/80 backdrop-blur-lg flex items-center justify-center border border-white/60 shadow-sm active:bg-white"
         >
            <span class="material-symbols-rounded text-2xl text-gray-800" aria-hidden="true">close</span>
         </button>
 
         <!-- Scrollable Content Area -->
-        <div class="flex-1 overflow-y-auto no-scrollbar scroll-smooth-touch pb-4">
+        <div class="flex-1 min-h-0 overflow-y-auto no-scrollbar scroll-smooth-touch">
            <!-- Product Image Header -->
-           <div class="relative h-[180px] md:h-[260px] w-full shrink-0 overflow-hidden">
+           <div class="relative h-[200px] md:h-[280px] w-full shrink-0 overflow-hidden bg-[#F2F2F2]">
               <img
                 :src="product.image"
                 :alt="lang === 'cn' ? product.nameCN : product.name"
-                class="w-full h-full object-cover animate-blur-in origin-bottom"
-                style="animation-duration: 0.8s"
+                class="w-full h-full object-cover animate-blur-in"
               />
-              <!-- Gradient Overlay for text readability -->
-              <div class="absolute inset-0 bg-gradient-to-t from-background-light via-background-light/20 to-transparent"></div>
+              <!-- Swipe Indicator (Mobile) -->
+              <div class="md:hidden absolute top-2.5 left-1/2 -translate-x-1/2 h-1.5 w-12 bg-white/80 rounded-full shadow-sm" aria-hidden="true"></div>
+              <!-- Soft fade into the sheet -->
+              <div class="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background-light to-transparent"></div>
+           </div>
 
-              <!-- Title & Description -->
-              <div class="absolute bottom-0 left-0 right-0 px-8 md:px-12 pb-8">
-                 <h1
-                   id="modal-title"
-                   class="text-4xl md:text-6xl font-sans font-black text-[#103E32] mb-3 tracking-tighter leading-none drop-shadow-sm animate-slide-up-content"
-                   style="animation-delay: 100ms"
-                 >
-                   {{ lang === 'cn' ? product.nameCN : product.name }}
-                 </h1>
-                 <p class="text-text-sub font-medium text-base md:text-lg line-clamp-2 opacity-80 max-w-lg animate-slide-up-content leading-relaxed" style="animation-delay: 200ms">
-                   {{ lang === 'cn' ? product.descriptionCN : product.description }}
-                 </p>
-              </div>
+           <!-- Title & Description: on the sheet itself, not over the photo -->
+           <div class="px-6 md:px-10 -mt-2 relative">
+              <h1
+                id="modal-title"
+                class="text-3xl md:text-5xl font-sans font-black text-[#103E32] tracking-tighter leading-none animate-slide-up-content"
+                style="animation-delay: 60ms"
+              >
+                {{ lang === 'cn' ? product.nameCN : product.name }}
+              </h1>
+              <p class="text-text-sub font-medium text-sm md:text-base line-clamp-3 max-w-lg leading-relaxed mt-2 animate-slide-up-content" style="animation-delay: 90ms">
+                {{ lang === 'cn' ? product.descriptionCN : product.description }}
+              </p>
            </div>
 
            <!-- Options Selection Section -->
-           <div class="p-5 md:p-10 space-y-6 md:space-y-10">
-               <!-- Size Selection Removed -->
-               
-               <!-- 2. Sugar Level Selection -->
-               <div class="space-y-4 animate-slide-up-content" style="animation-delay: 400ms">
-                <label class="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">{{ t.sweetness }}</label>
-                <div class="flex bg-gray-100/50 p-2 rounded-[24px] gap-2 border border-gray-100 overflow-x-auto no-scrollbar">
+           <div class="px-6 md:px-10 pt-6 pb-6 md:pb-8 space-y-6">
+               <!-- Sugar Level Selection -->
+               <div class="space-y-3 animate-slide-up-content" style="animation-delay: 120ms">
+                <label class="text-xs font-black text-text-sub uppercase tracking-widest ml-1">{{ t.sweetness }}</label>
+                <div class="flex bg-gray-100/70 p-1.5 rounded-[22px] gap-1.5 border border-gray-100 overflow-x-auto no-scrollbar">
                    <button
                      v-for="s in (['0%', '50%', 'Regular', '120%'] as const)"
                      :key="s"
                      @click="sugar = s"
                      type="button"
                      :aria-pressed="sugar === s"
-                     class="flex-1 py-4 px-4 min-w-[70px] rounded-2xl text-xs md:text-sm font-bold transition-all duration-500 active:duration-300 ease-luxury active:scale-90"
-                     :class="sugar === s ? 'bg-white text-primary shadow-md scale-100' : 'text-gray-400 active:bg-white/50 scale-95'"
+                     class="flex-1 py-3.5 px-3 min-w-[70px] rounded-2xl text-xs md:text-sm font-bold transition-[background-color,color,box-shadow] duration-150 ease-out"
+                     :class="sugar === s ? 'bg-white text-primary shadow-md' : 'text-text-sub active:bg-white/60'"
                    >
                       {{ OPTION_TRANSLATIONS.sugar[s][lang] || s }}
                    </button>
                 </div>
               </div>
-
-
            </div>
         </div>
 
         <!-- Sticky Footer: Total & Add Button -->
-        <div class="flex-none p-4 md:p-8 pt-3 bg-white border-t border-gray-50 pb-[env(safe-area-inset-bottom,16px)] shadow-[0_-10px_60px_rgba(0,0,0,0.04)] z-20">
-           <div class="flex items-center gap-6 animate-slide-up-content" style="animation-delay: 500ms">
+        <div class="flex-none px-5 md:px-8 pt-3 pb-[max(env(safe-area-inset-bottom),16px)] md:pb-6 bg-white border-t border-gray-50 shadow-[0_-10px_60px_rgba(0,0,0,0.04)] z-20">
+           <div class="flex items-center gap-6">
               
               <!-- Total Price Display -->
-              <div class="flex items-center gap-6">
-                 <div class="flex flex-col">
-                    <span class="text-[10px] font-black text-gray-300 tracking-widest uppercase mb-1">Total</span>
-                    <span class="text-3xl font-[900] text-primary tracking-tighter leading-none">¥{{ calculateTotal.toFixed(2) }}</span>
-                 </div>
+              <div class="flex flex-col">
+                 <span class="text-[10px] font-black text-text-sub tracking-widest uppercase mb-1">{{ t.total }}</span>
+                 <span class="text-3xl font-[900] text-primary tracking-tighter leading-none tabular-nums">¥{{ calculateTotal.toFixed(2) }}</span>
               </div>
 
               <!-- Action Button -->
               <button 
                  data-testid="add-to-cart-btn"
+                 type="button"
                  @click="handleAddToCartClick"
                  :disabled="isSuccess"
-                 class="flex-1 h-[56px] md:h-[72px] rounded-[28px] md:rounded-[36px] font-sans font-black text-lg md:text-xl flex items-center justify-center gap-3 shadow-[0_20px_50px_-10px_rgba(16,62,50,0.4)] transition-all duration-500 ease-luxury outline-none relative overflow-hidden active:scale-[0.96]"
+                 class="flex-1 h-[56px] md:h-[64px] rounded-[28px] md:rounded-[32px] font-sans font-black text-lg md:text-xl flex items-center justify-center gap-3 shadow-[0_20px_50px_-10px_rgba(16,62,50,0.4)] outline-none relative overflow-hidden"
                  :class="isSuccess 
-                   ? 'bg-green-600 text-white scale-100' 
-                   : isJelly ? 'animate-jelly bg-[#103E32] text-white' : 'bg-[#103E32] text-white'
+                   ? 'bg-green-600 text-white' 
+                   : 'bg-[#103E32] text-white'
                  "
               >  
-                 <div class="relative flex items-center gap-3">
+                 <div class="relative flex items-center gap-3" :class="{ 'animate-jelly': isJelly }">
                    <template v-if="isSuccess">
-                      <span class="material-symbols-rounded text-2xl animate-scale-up">check_circle</span>
+                      <span class="material-symbols-rounded text-2xl animate-scale-up" aria-hidden="true">check_circle</span>
                       {{ lang === 'cn' ? '已添加' : 'Added' }}
                    </template>
                    <template v-else>
-                      <span class="material-symbols-rounded text-2xl">shopping_bag</span>
+                      <span class="material-symbols-rounded text-2xl" aria-hidden="true">shopping_bag</span>
                       {{ t.addToCart }}
                    </template>
                  </div>

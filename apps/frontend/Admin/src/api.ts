@@ -185,6 +185,8 @@ export const api = {
         return res.data.map((o: any) => ({
             id: o.id,
             user: o.user_id,
+            order_no: o.order_no,
+            pickup_number: o.pickup_number,
             total: o.total_amount / 100,
             status: o.status,
             created_at: o.created_at,

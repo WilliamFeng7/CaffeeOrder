@@ -38,6 +38,8 @@ const chartData = computed(() => ({
             backgroundColor: 'rgba(16, 185, 129, 0.1)',
             fill: true,
             tension: 0.4,
+            // Smooth, but never overshooting the data (no dips below zero between days).
+            cubicInterpolationMode: 'monotone' as const,
         },
         {
             label: '消费',
@@ -46,20 +48,26 @@ const chartData = computed(() => ({
             backgroundColor: 'rgba(248, 113, 113, 0.1)',
             fill: true,
             tension: 0.4,
+            cubicInterpolationMode: 'monotone' as const,
         }
     ]
 }));
 
+const reduceMotion = typeof window !== 'undefined'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: reduceMotion ? (false as const) : { duration: 300 },
     interaction: {
       mode: 'index' as const,
       intersect: false,
     },
     plugins: {
+        // The card header already carries the legend.
         legend: {
-            position: 'top' as const,
+            display: false,
         },
         tooltip: {
             backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -81,6 +89,8 @@ const chartOptions = {
             type: 'linear' as const,
             display: true,
             position: 'left' as const,
+            beginAtZero: true,
+            suggestedMax: 100,
             grid: {
                 color: '#f0f0f0'
             },

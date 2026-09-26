@@ -25,6 +25,7 @@ import type { Product, Language, TabState } from '../types';
 const props = defineProps<{
   lang: Language; // 当前语言环境
   userName?: string; // 当前登录用户名 (用于个性化问候)
+  shopOpen?: boolean; // 店铺是否营业 (来自 /shop/status)
 }>();
 
 // 定义组件 Events (Events Definition)
@@ -65,122 +66,133 @@ const trending = computed(() => PRODUCTS.length > 2 ? PRODUCTS.slice(2, 5) : PRO
 // 计算显示的用户名，如果未登录或未传值，默认显示 'Otiaer'
 const displayName = computed(() => props.userName ? props.userName : 'Otiaer');
 
+// 问候语跟随时间 (下午不再显示「早上好」)
+const greeting = computed(() => {
+  const hour = new Date().getHours();
+  if (hour < 11) return t.value.goodMorning;
+  if (hour < 18) return t.value.goodAfternoon;
+  return t.value.goodEvening;
+});
+
+const isOpen = computed(() => props.shopOpen !== false);
+
 </script>
 
 <template>
-  <div class="flex-1 h-full bg-background-light overflow-y-auto scroll-smooth-touch no-scrollbar pb-40">
-    <div class="p-6 md:p-12 space-y-6 pt-12 md:pt-20 max-w-5xl mx-auto">
-      
+  <div class="flex-1 h-full bg-background-light overflow-y-auto scroll-smooth-touch no-scrollbar pb-32">
+    <div class="px-5 md:px-10 pt-8 md:pt-12 space-y-6 max-w-5xl mx-auto">
+
       <!-- Logo & Header Section -->
-      <div class="flex flex-col gap-1">
+      <header class="flex flex-col gap-1">
          <!-- Brand Status -->
-         <div class="flex items-center gap-3 mb-2 opacity-0 animate-slide-down-content transform-gpu" style="animation-delay: 0ms">
-            <span class="material-symbols-rounded text-primary text-3xl">storefront</span>
+         <div class="flex items-center gap-3 mb-3 animate-slide-down-content">
+            <span class="material-symbols-rounded text-primary text-[28px]" aria-hidden="true">storefront</span>
             <span class="text-[12px] font-black text-text-sub uppercase tracking-[0.3em]">{{ t.downtownCafe }}</span>
-            <span class="ml-auto bg-primary text-white text-[10px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg shadow-primary/20 animate-scale-in select-none" style="animation-delay: 800ms">
-               <span class="size-1.5 rounded-full bg-white animate-pulse"></span>
-               OPEN
+            <span
+               class="ml-auto text-[10px] font-black uppercase tracking-wider px-3.5 py-1.5 rounded-full flex items-center gap-2 select-none animate-scale-in"
+               :class="isOpen ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-gray-200 text-gray-600'"
+               style="animation-delay: 120ms"
+            >
+               <span class="size-1.5 rounded-full" :class="isOpen ? 'bg-emerald-300' : 'bg-gray-400'" aria-hidden="true"></span>
+               {{ isOpen ? t.open : t.closed }}
             </span>
          </div>
-         
+
          <!-- Welcome Title -->
-         <div class="relative overflow-hidden pb-4">
-           <h1 class="text-6xl md:text-8xl font-sans font-black text-[#103E32] leading-[0.95] tracking-tighter animate-text-reveal transform-gpu mb-2" style="animation-delay: 300ms">
-              {{ t.goodMorning }}
-           </h1>
-         </div>
-         
+         <h1 class="text-[44px] md:text-7xl font-sans font-black text-[#103E32] leading-[0.95] tracking-tighter animate-text-reveal" style="animation-delay: 60ms">
+            {{ greeting }}
+         </h1>
+
          <!-- Username Display -->
-         <div class="relative overflow-hidden pb-2">
-           <h1 class="text-4xl md:text-5xl font-bold text-[#103E32] italic font-serif leading-[1.05] tracking-wide animate-text-reveal transform-gpu" style="animation-delay: 450ms">
-              {{ displayName }}
-           </h1>
-         </div>
-      </div>
+         <p class="text-3xl md:text-4xl font-bold text-[#103E32] italic font-serif leading-tight tracking-wide pb-1 animate-text-reveal" style="animation-delay: 120ms">
+            {{ displayName }}
+         </p>
+      </header>
 
-      <!-- Featured Product Card -->
-      <div 
-         class="relative h-[280px] md:h-[380px] lg:h-[440px] rounded-[36px] md:rounded-[48px] overflow-hidden shadow-[0_30px_80px_-20px_rgba(0,0,0,0.2)] animate-slide-up-content active:scale-[0.98] transition-all duration-700 ease-luxury transform-gpu group cursor-pointer"
-         style="animation-delay: 600ms"
-         @click="featuredProduct.inventoryCount !== 0 && emit('quick-add', featuredProduct)"
-      >
-         <!-- Sold Out Overlay -->
-         <div v-if="featuredProduct.inventoryCount === 0" class="absolute inset-0 z-50 bg-black/40 backdrop-blur-[2px] flex items-center justify-center pointer-events-none">
-            <div class="bg-red-500 text-white px-6 py-2 rounded-full font-black uppercase tracking-widest shadow-xl rotate-[-10deg] border-4 border-white">Sold Out</div>
-         </div>
+      <!-- Featured + Trending: stacked on phones, side by side on iPad landscape -->
+      <div class="grid gap-6 lg:grid-cols-5 lg:items-start">
 
-         <!-- Image Container ... -->
-         <div class="absolute inset-0 w-full h-full overflow-hidden rounded-[48px] bg-gray-900">
-            <img 
-               :src="featuredProduct.image" 
-               class="w-full h-full object-cover opacity-90 transition-transform duration-[1.5s] ease-luxury" 
+         <!-- Featured Product Card -->
+         <div
+            class="lg:col-span-3 relative h-[220px] md:h-[300px] lg:h-[400px] rounded-[32px] md:rounded-[40px] overflow-hidden bg-gray-900 shadow-[0_24px_60px_-20px_rgba(0,0,0,0.3)] cursor-pointer transition-transform duration-200 ease-out active:scale-[0.98] animate-slide-up-content"
+            style="animation-delay: 160ms"
+            @click="featuredProduct.inventoryCount !== 0 && emit('quick-add', featuredProduct)"
+         >
+            <!-- Sold Out Overlay -->
+            <div v-if="featuredProduct.inventoryCount === 0" class="absolute inset-0 z-50 bg-black/40 flex items-center justify-center pointer-events-none">
+               <div class="bg-red-500 text-white px-6 py-2 rounded-full font-black uppercase tracking-widest shadow-xl rotate-[-10deg] border-4 border-white">Sold Out</div>
+            </div>
+
+            <img
+               :src="featuredProduct.image"
+               class="absolute inset-0 w-full h-full object-cover opacity-90"
                :class="{'grayscale': featuredProduct.inventoryCount === 0}"
                :alt="featuredProduct.name"
             />
-         </div>
-         
-         <!-- Gradient Overlays ... -->
-         <div class="absolute inset-0 bg-gradient-to-t from-[#0A2921] via-transparent to-transparent opacity-90"></div>
-         <div class="absolute inset-0 bg-gradient-to-b from-[#0A2921]/10 to-transparent"></div>
-         
-         <!-- Content Info -->
-         <div class="absolute bottom-6 left-6 right-6 md:bottom-10 md:left-10 md:right-10 flex justify-between items-end z-10">
-            <div class="max-w-xl">
-               <span class="bg-[#DCCA98] text-[#0C1F1A] text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full mb-4 inline-block shadow-lg shadow-black/20 animate-fade-in backdrop-blur-sm" style="animation-delay: 1000ms">{{ t.bestSeller }}</span>
-               <h2 class="text-3xl md:text-5xl font-sans font-black text-white leading-[1.1] mb-2 md:mb-3 tracking-tighter drop-shadow-lg">{{ lang === 'cn' ? featuredProduct.nameCN : featuredProduct.name }}</h2>
-               <p class="text-white/80 text-base font-medium line-clamp-2 leading-relaxed opacity-0 animate-slide-up-content max-w-sm" style="animation-delay: 1100ms">{{ lang === 'cn' ? featuredProduct.descriptionCN : featuredProduct.description }}</p>
+
+            <!-- Gradient Overlay -->
+            <div class="absolute inset-0 bg-gradient-to-t from-[#0A2921] via-[#0A2921]/20 to-transparent"></div>
+
+            <!-- Content Info -->
+            <div class="absolute bottom-5 left-5 right-5 md:bottom-8 md:left-8 md:right-8 flex justify-between items-end gap-4 z-10">
+               <div class="min-w-0">
+                  <span class="bg-[#DCCA98] text-[#0C1F1A] text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-full mb-3 inline-block shadow-lg shadow-black/20 animate-fade-in" style="animation-delay: 240ms">{{ t.bestSeller }}</span>
+                  <h2 class="text-3xl md:text-5xl font-sans font-black text-white leading-[1.05] tracking-tighter drop-shadow-lg line-clamp-2">{{ lang === 'cn' ? featuredProduct.nameCN : featuredProduct.name }}</h2>
+                  <p class="text-white/80 text-sm md:text-base font-medium line-clamp-1 md:line-clamp-2 leading-relaxed mt-1.5 max-w-sm animate-slide-up-content" style="animation-delay: 240ms">{{ lang === 'cn' ? featuredProduct.descriptionCN : featuredProduct.description }}</p>
+               </div>
+
+               <!-- Quick Add Button -->
+               <button
+                  v-if="featuredProduct.inventoryCount !== 0"
+                  type="button"
+                  :aria-label="t.addToCart"
+                  class="size-14 md:size-16 rounded-[22px] md:rounded-[26px] bg-white text-[#103E32] flex items-center justify-center shadow-2xl shrink-0"
+               >
+                  <span class="material-symbols-rounded text-3xl md:text-4xl font-light" aria-hidden="true">add</span>
+               </button>
             </div>
-            
-            <!-- Quick Add Button -->
-            <button class="size-14 md:size-20 rounded-[24px] md:rounded-[32px] bg-white text-[#103E32] flex items-center justify-center shadow-2xl transition-all duration-500 ease-luxury active:scale-90 active:rotate-90 group-hover:scale-110 shrink-0">
-               <span class="material-symbols-rounded text-4xl font-light">add</span>
-            </button>
          </div>
-      </div>
 
-      <!-- Trending Section -->
-      <div class="animate-fade-in" style="animation-delay: 800ms">
-         <!-- Section Header -->
-         <div class="flex items-center justify-between mb-6">
-            <h2 class="text-3xl font-black text-text-main tracking-tight animate-slide-up-content" style="animation-delay: 900ms">{{ t.trendingNow }}</h2>
-            <button @click="emit('navigate', 'order')" class="text-primary font-bold text-sm flex items-center gap-1 py-3 px-4 -mr-4 active:bg-gray-100 rounded-full transition-all duration-500 ease-luxury animate-slide-up-content active:scale-90" style="animation-delay: 1000ms">
-               {{ t.seeAll }}
-               <span class="material-symbols-rounded text-xl">arrow_forward</span>
-            </button>
-         </div>
-         
-         <!-- Trending Grid -->
-         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div 
-               v-for="(p, i) in trending"
-               :key="p.id" 
-               @click="p.inventoryCount !== 0 && emit('quick-add', p)"
-               data-testid="product-card"
-               class="bg-white p-4 pb-5 rounded-[40px] shadow-sm active:scale-[0.96] transition-all duration-500 ease-luxury animate-slide-up-content transform-gpu border border-white cursor-pointer relative overflow-hidden"
-               :class="{'opacity-70 pointer-events-none': p.inventoryCount === 0}"
-               :style="{ animationDelay: `${1000 + i * 120}ms` }"
-            >
-               <!-- Sold Out Badge -->
-               <div v-if="p.inventoryCount === 0" class="absolute top-4 left-4 z-20 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg">SOLD OUT</div>
+         <!-- Trending Section -->
+         <section class="lg:col-span-2 animate-fade-in" style="animation-delay: 200ms">
+            <!-- Section Header -->
+            <div class="flex items-center justify-between mb-3 md:mb-4">
+               <h2 class="text-2xl md:text-3xl font-black text-text-main tracking-tight">{{ t.trendingNow }}</h2>
+               <button type="button" @click="emit('navigate', 'order')" class="text-primary font-bold text-sm flex items-center gap-1 py-2.5 px-3 -mr-3 rounded-full active:bg-gray-100">
+                  {{ t.seeAll }}
+                  <span class="material-symbols-rounded text-xl" aria-hidden="true">arrow_forward</span>
+               </button>
+            </div>
 
-               <!-- Card Image -->
-               <div class="aspect-square rounded-[32px] overflow-hidden mb-4 bg-background-light relative shadow-inner group">
-                  <img :src="p.image" class="w-full h-full object-cover transition-transform duration-700 ease-luxury group-hover:scale-110" :class="{'grayscale': p.inventoryCount === 0}" :alt="p.name" />
-                  
-                  <!-- Floating Add Icon -->
-                  <div v-if="p.inventoryCount !== 0" class="absolute top-3 right-3 size-10 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center shadow-sm transition-transform duration-500 ease-luxury active:scale-75 active:rotate-90 group-active:scale-90">
-                     <span class="material-symbols-rounded text-primary font-bold">add</span>
+            <!-- Trending List: compact rows on phones and beside the featured card, tiles on iPad portrait -->
+            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-1 gap-3">
+               <div
+                  v-for="(p, i) in trending"
+                  :key="p.id"
+                  @click="p.inventoryCount !== 0 && emit('quick-add', p)"
+                  data-testid="product-card"
+                  class="bg-white p-3 rounded-[24px] shadow-sm flex items-center gap-4 md:flex-col md:items-stretch md:gap-3 lg:flex-row lg:items-center lg:gap-4 cursor-pointer relative transition-transform duration-200 ease-out active:scale-[0.98] animate-slide-up-content"
+                  :class="{'opacity-60 pointer-events-none': p.inventoryCount === 0}"
+                  :style="{ animationDelay: `${240 + i * 40}ms` }"
+               >
+                  <!-- Card Image -->
+                  <div class="w-16 h-16 md:w-full md:h-auto md:aspect-[4/3] lg:w-20 lg:h-20 lg:aspect-auto rounded-[18px] overflow-hidden bg-background-light shrink-0">
+                     <img :src="p.image" class="w-full h-full object-cover" :class="{'grayscale': p.inventoryCount === 0}" :alt="p.name" loading="lazy" />
                   </div>
-               </div>
-               
-               <!-- Card Info -->
-               <h3 class="text-lg font-black text-text-main leading-tight mb-1 line-clamp-1 px-1">{{ lang === 'cn' ? p.nameCN : p.name }}</h3>
-               <div class="flex items-center justify-between px-1">
-                  <!-- Price formatted to 2 decimals -->
-                  <span class="text-xl font-black text-primary">¥{{ Number(p.price).toFixed(2) }}</span>
+
+                  <!-- Card Info -->
+                  <div class="min-w-0 flex-1 md:px-1 lg:px-0">
+                     <h3 class="text-base md:text-lg font-black text-text-main leading-tight line-clamp-1">{{ lang === 'cn' ? p.nameCN : p.name }}</h3>
+                     <p v-if="p.inventoryCount === 0" class="text-[11px] font-black text-red-500 uppercase tracking-wider mt-1">Sold Out</p>
+                     <p v-else class="text-lg font-black text-primary mt-0.5">¥{{ Number(p.price).toFixed(2) }}</p>
+                  </div>
+
+                  <span v-if="p.inventoryCount !== 0" class="size-10 rounded-full bg-primary/10 text-primary flex md:hidden lg:flex items-center justify-center shrink-0" aria-hidden="true">
+                     <span class="material-symbols-rounded font-bold">add</span>
+                  </span>
                </div>
             </div>
-         </div>
+         </section>
       </div>
     </div>
   </div>
