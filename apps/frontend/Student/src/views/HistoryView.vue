@@ -13,6 +13,7 @@
  * 部分历史记录查看功能已整合至 SettingsView，本组件保留作为独立入口或备用视图。
  */
 
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, computed, onMounted } from 'vue';
 import { TRANSLATIONS } from '../data';
 import type { Order, ViewState, Language } from '../types';
@@ -64,7 +65,7 @@ onMounted(() => {
      <!-- 顶部导航栏 -->
      <header class="flex items-center p-6 pb-2 shrink-0">
        <button @click="emit('navigate', 'order')" class="flex items-center justify-center size-12 rounded-full bg-white shadow-sm active:bg-gray-50 active:scale-75 transition-all duration-500 ease-luxury outline-none">
-          <span class="material-symbols-rounded text-text-main">arrow_back</span>
+          <AppIcon name="arrow-left" class="text-text-main" />
        </button>
        <h1 class="text-xl font-bold ml-4 text-text-main">{{ t.orderHistory }}</h1>
      </header>
@@ -76,7 +77,7 @@ onMounted(() => {
        <!-- 空状态展示 -->
        <div v-if="orders.length === 0" class="flex flex-col items-center justify-center h-64 text-text-sub">
           <div class="size-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-             <span class="material-symbols-rounded text-3xl opacity-50">receipt_long</span>
+             <AppIcon name="receipt" class="text-3xl opacity-50" />
           </div>
           <p class="font-medium">{{ t.noOrders }}</p>
           <button 
@@ -109,7 +110,7 @@ onMounted(() => {
                 <div class="text-right">
                    <span class="block text-xl font-bold text-text-main">¥{{ order.total.toFixed(2) }}</span>
                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full mt-1">
-                      <span class="material-symbols-rounded text-[12px] filled">check_circle</span>
+                      <AppIcon name="check-circle" weight="fill" class="text-[12px]" />
                       {{ t.completed }}
                    </span>
                 </div>

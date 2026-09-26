@@ -11,6 +11,7 @@
  * 4. 界面交互: 加载状态动画，平滑过渡效果。
  */
 
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api';
@@ -197,39 +198,42 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[200] bg-gradient-to-br from-[#F5F7F6] to-[#E6EBE9] flex items-center justify-center p-6">
-    <!-- Login Card Container -->
-    <div class="w-full max-w-md bg-white/80 backdrop-blur-xl rounded-[48px] shadow-[0_40px_100px_-20px_rgba(16,62,50,0.15)] p-10 md:p-14 animate-slide-up-content transform-gpu border border-white/60">
-      
-      <!-- Header / Logo Area -->
-      <div class="text-center mb-10">
-        <div class="size-24 bg-gradient-to-tr from-primary/10 to-primary/5 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner rotate-3 hover:rotate-6 transition-transform duration-500">
-           <span class="material-symbols-rounded text-primary text-5xl drop-shadow-sm" aria-hidden="true">local_cafe</span>
-        </div>
-        <h1 class="text-4xl font-serif font-bold text-text-main mb-3 tracking-tight">Welcome Back</h1>
-        <p class="text-text-sub/80 text-sm font-medium tracking-wide">Sign in to continue to OTIA Café</p>
+  <div class="fixed inset-0 z-[200] bg-background-light flex items-center justify-center p-5 overflow-y-auto">
+    <!-- Soft brand glow behind the card -->
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_0%,rgba(27,94,71,0.10),transparent_70%)]" aria-hidden="true"></div>
+
+    <div class="relative w-full max-w-[420px] bg-white rounded-[28px] shadow-card p-7 md:p-10 animate-slide-up-content">
+
+      <!-- Brand -->
+      <div class="flex flex-col items-center text-center mb-8">
+        <span class="size-16 rounded-[20px] bg-primary text-white flex items-center justify-center mb-5 shadow-float">
+           <AppIcon name="coffee" weight="fill" class="text-[32px]" />
+        </span>
+        <h1 class="font-serif text-[32px] font-semibold text-text-main leading-tight">OTIA Café</h1>
+        <p class="mt-1.5 text-[15px] text-text-sub">{{ lang === 'cn' ? '登录后开始点单' : 'Sign in to start your order' }}</p>
       </div>
 
       <!-- Login Form -->
-      <form @submit.prevent="handleLogin" class="space-y-6">
-        <!-- Account Input -->
-        <div>
-          <label for="username" class="block text-xs font-bold uppercase text-text-sub tracking-widest mb-2 ml-4">Account</label>
-          <input 
+      <form @submit.prevent="handleLogin" class="space-y-4">
+        <div class="space-y-1.5">
+          <label for="username" class="block text-[13px] font-semibold text-text-sub">{{ lang === 'cn' ? '账号' : 'Account' }}</label>
+          <input
             id="username"
             name="username"
             v-model="username"
-            type="text" 
+            type="text"
             autocomplete="username"
-            class="w-full bg-background-light border-none rounded-[24px] h-[64px] px-8 font-bold text-lg text-text-main focus:ring-2 focus:ring-[#103E32]/20 transition-all duration-300 ease-out outline-none placeholder:text-gray-300"
-            :placeholder="lang === 'cn' ? '用户名 / 手机号 / 邮箱' : 'Username / Phone / Email'"
+            autocapitalize="off"
+            spellcheck="false"
+            enterkeyhint="next"
+            class="w-full h-13 min-h-[52px] px-4 rounded-tile bg-background-light border border-line text-[16px] font-medium text-text-main outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary/40 focus:ring-4 focus:ring-primary/10 placeholder:text-text-sub/60"
+            :placeholder="lang === 'cn' ? '用户名 / 手机号 / 邮箱' : 'Username, phone or email'"
           />
-          <p v-if="inputError" class="text-xs text-red-500 font-bold ml-4 mt-2 animate-fade-in">{{ inputError }}</p>
+          <p v-if="inputError" class="text-[13px] text-[#B42318] font-medium animate-fade-in">{{ inputError }}</p>
         </div>
 
-        <!-- Password Input -->
-        <div>
-          <label for="password" class="block text-xs font-bold uppercase text-text-sub tracking-widest mb-2 ml-4">Password</label>
+        <div class="space-y-1.5">
+          <label for="password" class="block text-[13px] font-semibold text-text-sub">{{ lang === 'cn' ? '密码' : 'Password' }}</label>
           <div class="relative">
             <input
               id="password"
@@ -237,32 +241,28 @@ const handleLogin = async () => {
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
               autocomplete="current-password"
-              class="w-full bg-background-light border-none rounded-[24px] h-[64px] px-8 pr-14 font-bold text-lg text-text-main focus:ring-2 focus:ring-[#103E32]/20 transition-all duration-300 ease-out outline-none placeholder:text-gray-300"
-              placeholder="Enter your password"
+              enterkeyhint="go"
+              class="w-full min-h-[52px] pl-4 pr-14 rounded-tile bg-background-light border border-line text-[16px] font-medium text-text-main outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary/40 focus:ring-4 focus:ring-primary/10 placeholder:text-text-sub/60"
+              :placeholder="lang === 'cn' ? '输入密码' : 'Enter your password'"
             />
             <button
               type="button"
               @click="showPassword = !showPassword"
-              class="absolute right-6 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#103E32] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#103E32]/20 rounded-full p-1"
+              class="absolute right-1.5 top-1/2 -translate-y-1/2 size-11 rounded-full text-text-sub flex items-center justify-center active:bg-cream/70"
               :aria-label="showPassword ? (lang === 'cn' ? '隐藏密码' : 'Hide password') : (lang === 'cn' ? '显示密码' : 'Show password')"
             >
-              <span class="material-symbols-rounded text-2xl select-none">
-                {{ showPassword ? 'visibility_off' : 'visibility' }}
-              </span>
+              <AppIcon :name="showPassword ? 'eye-slash' : 'eye'" class="text-xl" />
             </button>
           </div>
         </div>
 
-        <!-- Error Message Display Removed -->
-
-        <!-- Submit Button -->
-        <button 
-          type="submit" 
+        <button
+          type="submit"
           :disabled="isLoading"
-          class="w-full bg-[#103E32] text-white h-[72px] rounded-[32px] font-sans font-black text-xl shadow-xl shadow-[#103E32]/30 active:scale-[0.96] transition-all duration-500 ease-luxury flex items-center justify-center gap-2"
+          class="w-full h-14 mt-2 rounded-full bg-primary text-white font-semibold text-[17px] flex items-center justify-center gap-2 active:bg-primary-dark disabled:opacity-70"
         >
-          <span v-if="isLoading" class="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-          <span v-else>Sign In</span>
+          <span v-if="isLoading" class="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
+          <span v-else>{{ lang === 'cn' ? '登录' : 'Sign In' }}</span>
         </button>
       </form>
     </div>

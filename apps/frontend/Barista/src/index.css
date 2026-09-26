@@ -23,22 +23,6 @@ body {
     overflow: hidden;
 }
 
-/* Material Icons (Same as Student App) */
-.material-symbols-rounded {
-    font-family: 'Material Symbols Rounded';
-    font-weight: normal;
-    font-style: normal;
-    font-size: 24px;
-    line-height: 1;
-    display: inline-block;
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
-    /* No will-change: it gave every icon on the board its own compositor layer. */
-    transition: font-variation-settings 200ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-
-.material-symbols-rounded.filled {
-    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-}
 
 /* NOTE: no custom .transform-gpu here — a plain `transform: translate3d(0,0,0)`
    rule after @tailwind utilities would clobber Tailwind translate/scale/rotate

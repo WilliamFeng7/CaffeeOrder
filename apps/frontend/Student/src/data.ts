@@ -30,6 +30,7 @@ export const TRANSLATIONS = {
     goodMorning: "Good Morning,",
     goodAfternoon: "Good Afternoon,",
     goodEvening: "Good Evening,",
+    homeSubtitle: "What are you having today?",
     open: "Open",
     closed: "Closed",
     buyAgain: "Buy Again",
@@ -123,6 +124,7 @@ export const TRANSLATIONS = {
     goodMorning: "早上好，",
     goodAfternoon: "下午好，",
     goodEvening: "晚上好，",
+    homeSubtitle: "今天想喝点什么？",
     open: "营业中",
     closed: "休息中",
     buyAgain: "再次购买",
@@ -226,12 +228,12 @@ export const OPTION_TRANSLATIONS = {
  * 定义了菜单的类别结构。
  */
 export const CATEGORIES: Category[] = [
-  { id: 'top', name: 'Top Picks', nameCN: '店长推荐', icon: 'favorite' },
-  { id: 'seasonal', name: 'Seasonal', nameCN: '当季新品', icon: 'auto_awesome' },
-  { id: 'coffee', name: 'Coffee', nameCN: '现磨咖啡', icon: 'local_cafe' },
-  { id: 'fruit', name: 'Fruit Tea', nameCN: '鲜果茶', icon: 'local_drink' },
+  { id: 'top', name: 'Top Picks', nameCN: '店长推荐', icon: 'star' },
+  { id: 'seasonal', name: 'Seasonal', nameCN: '当季新品', icon: 'sparkle' },
+  { id: 'coffee', name: 'Coffee', nameCN: '现磨咖啡', icon: 'coffee' },
+  { id: 'fruit', name: 'Fruit Tea', nameCN: '鲜果茶', icon: 'orange' },
   { id: 'bakery', name: 'Bakery', nameCN: '烘焙轻食', icon: 'cookie' },
-  { id: 'all', name: 'Total', nameCN: '全部', icon: 'apps' },
+  { id: 'all', name: 'All', nameCN: '全部', icon: 'grid' },
 ];
 
 /**

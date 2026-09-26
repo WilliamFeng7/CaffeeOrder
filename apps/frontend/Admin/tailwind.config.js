@@ -1,4 +1,5 @@
 import motion from '../../../packages/shared/tailwind-motion.mjs';
+import fonts from '../../../packages/shared/tailwind-fonts.mjs';
 
 export default {
   // Hover styles only on devices that can hover: taps on iPad/phones no longer leave stuck hover states.
@@ -6,7 +7,7 @@ export default {
     // The admin console previously had no motion tokens at all, so it could not
     // use the same easing/animation vocabulary as Student and Barista. Wiring the
     // shared preset here makes the three apps move identically.
-    presets: [motion],
+    presets: [motion, fonts],
     content: [
         "./index.html",
         "./src/**/*.{vue,js,ts,jsx,tsx}",

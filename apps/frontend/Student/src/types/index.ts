@@ -9,6 +9,8 @@
  * 3. 辅助接口 (Helper Interfaces): 语言 (Language), 购物车项 (CartItem).
  */
 
+import type { IconName } from '@shared/icons';
+
 // 语言类型：支持英文 ('en') 和中文 ('cn')
 export type Language = 'en' | 'cn';
 
@@ -127,8 +129,8 @@ export interface Category {
   name: string;
   // 类别中文名称
   nameCN: string;
-  // 类别图标 (Material Symbols 图标名)
-  icon: string;
+  // 类别图标 (packages/shared/src/icons.ts 中的图标名)
+  icon: IconName;
 }
 
 /**

@@ -11,6 +11,7 @@
  * 4. 购物车角标 (Badges): 在商品卡片上显示已添加数量。
  */
 
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { CATEGORIES, PRODUCTS, TRANSLATIONS } from '../data';
 import type { CartItem, Product, Language } from '../types';
@@ -49,6 +50,27 @@ const t = computed(() => TRANSLATIONS[props.lang]);
 
 // 从别的标签页回来时停在原来的位置
 const { scroller, onScroll } = useKeepScroll();
+
+// 首次进入时卡片依次出现；之后切换分类只做淡入淡出
+const firstPaint = ref(true);
+
+// 切换分类时整块网格淡入淡出；搜索时每打一个字不重新淡入
+const gridKey = computed(() => (searchTerm.value.trim() ? 'search' : activeCategory.value));
+
+const activeCategoryInfo = computed(() => CATEGORIES.find(c => c.id === activeCategory.value));
+
+const pageTitle = computed(() => {
+  if (searchTerm.value.trim()) return props.lang === 'cn' ? '搜索结果' : 'Search';
+  const cat = activeCategoryInfo.value;
+  return props.lang === 'cn' ? cat?.nameCN : cat?.name;
+});
+
+const countLabel = computed(() => {
+  const n = filteredProducts.value.length;
+  return props.lang === 'cn' ? `${n} 款` : `${n} ${n === 1 ? 'item' : 'items'}`;
+});
+
+const isSoldOut = (p: Product) => p.inventoryCount === 0;
 
 // --- 方法定义 (Methods) ---
 
@@ -145,6 +167,8 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('mousedown', handleClickOutside);
+  // Cards cascade in on the first visit only; switching category just crossfades.
+  window.setTimeout(() => { firstPaint.value = false; }, 600);
 });
 
 onUnmounted(() => {
@@ -160,6 +184,8 @@ onUnmounted(() => {
 const handleCategoryClick = (id: string) => {
   activeCategory.value = id;
   searchTerm.value = '';
+  // A new category starts at its first item, not wherever the last one was scrolled to.
+  if (scroller.value) scroller.value.scrollTop = 0;
 };
 
 /**
@@ -174,228 +200,175 @@ const handleSuggestionClick = (p: Product) => {
 </script>
 
 <template>
-  <div class="flex flex-col md:flex-row h-full bg-[#F5F7F6] relative z-0">
-    
-    <!-- Sidebar (Desktop/iPad) -->
-    <!-- 左侧导航栏 (仅在大屏显示) -->
-    <aside class="hidden md:flex flex-col w-[128px] shrink-0 bg-white/80 backdrop-blur-xl border-r border-white/40 py-6 z-20 items-center h-full shadow-[4px_0_30px_rgba(0,0,0,0.02)] justify-between">
-       
-       <!-- Brand Logo -->
-       <div class="relative group mt-2">
-          <div class="size-16 rounded-[24px] bg-gradient-to-br from-primary to-[#0A2921] flex items-center justify-center shadow-lg shadow-primary/20 transition-transform duration-500 ease-luxury group-active:scale-95">
-             <span class="material-symbols-rounded text-white text-3xl">local_cafe</span>
-          </div>
-       </div>
+  <div class="flex flex-col md:flex-row h-full bg-background-light relative z-0">
 
-       <!-- Category Icons List -->
-       <!-- 分类图标列表，垂直排列 -->
-       <div class="flex-1 w-full px-2 flex flex-col items-center gap-2 my-4 overflow-y-auto no-scrollbar scroll-smooth">
-          <div v-for="(cat, idx) in CATEGORIES" :key="cat.id" class="animate-slide-up-content shrink-0" :style="{ animationDelay: `${idx * 30}ms` }">
-             <button 
-               @click="handleCategoryClick(cat.id)"
-               data-testid="category-nav"
-               class="group relative w-full flex flex-col items-center gap-2 py-2 outline-none"
-             >
-                <!-- Icon Container with Active State Styles -->
-                <div class="
-                   relative size-[56px] rounded-[22px] flex items-center justify-center transition-[background-color,color,box-shadow,transform] duration-200 ease-out
-                "
-                :class="activeCategory === cat.id && !searchTerm
-                  ? 'bg-primary text-white shadow-[0_15px_30px_-10px_rgba(16,62,50,0.4)] scale-100' 
-                  : 'bg-transparent text-text-sub scale-95'
-                ">
-                    <span class="
-                       material-symbols-rounded text-[28px]
-                    "
-                    :class="{ 'filled': activeCategory === cat.id && !searchTerm }"
-                    aria-hidden="true">
-                       {{ cat.icon }}
-                    </span>
-
-
-                </div>
-                
-                <!-- Category Name -->
-                <span class="
-                   text-[10px] font-black uppercase tracking-[0.15em] text-center transition-colors duration-200 max-w-full truncate px-1
-                "
-                :class="activeCategory === cat.id && !searchTerm
-                  ? 'text-primary' 
-                  : 'text-text-sub'
-                ">
-                   {{ lang === 'cn' ? cat.nameCN : cat.name }}
-                </span>
-             </button>
-          </div>
-       </div>
+    <!-- Sidebar (iPad): categories as a quiet list; the selected one is tinted, not a dark block -->
+    <aside class="hidden md:flex flex-col w-[104px] lg:w-[112px] shrink-0 bg-white border-r border-line h-full">
+       <nav class="flex-1 overflow-y-auto no-scrollbar px-2 py-4 flex flex-col gap-1" :aria-label="lang === 'cn' ? '商品分类' : 'Categories'">
+          <button
+            v-for="cat in CATEGORIES"
+            :key="cat.id"
+            type="button"
+            @click="handleCategoryClick(cat.id)"
+            data-testid="category-nav"
+            :aria-pressed="activeCategory === cat.id && !searchTerm"
+            class="relative flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-1 rounded-tile transition-colors duration-150"
+            :class="activeCategory === cat.id && !searchTerm ? 'bg-primary-soft text-primary' : 'text-text-sub active:bg-cream/70'"
+          >
+             <AppIcon :name="cat.icon" :weight="activeCategory === cat.id && !searchTerm ? 'fill' : 'regular'" class="text-[26px]" />
+             <span class="text-[12px] leading-tight text-center" :class="activeCategory === cat.id && !searchTerm ? 'font-semibold' : 'font-medium'">
+                {{ lang === 'cn' ? cat.nameCN : cat.name }}
+             </span>
+          </button>
+       </nav>
 
        <!-- Language Switcher -->
-       <button 
-          @click="emit('toggle-lang')"
-          class="mb-2 size-12 rounded-full border border-gray-100 flex items-center justify-center text-[10px] font-black text-text-sub bg-white shadow-[0_4px_12px_rgba(0,0,0,0.05)] shrink-0"
-       >
-          {{ lang === 'en' ? 'EN' : 'CN' }}
-       </button>
+       <div class="p-3 border-t border-line">
+          <button
+            type="button"
+            @click="emit('toggle-lang')"
+            class="w-full h-11 rounded-full border border-line text-text-sub text-[13px] font-semibold flex items-center justify-center gap-1.5 active:bg-cream/70"
+          >
+             <AppIcon name="translate" class="text-base" />
+             {{ lang === 'en' ? '中文' : 'EN' }}
+          </button>
+       </div>
     </aside>
 
     <!-- Main Content Area -->
-    <!-- 右侧主内容区域 -->
-    <div class="flex-1 flex flex-col h-full overflow-hidden relative bg-background-light">
-       
-       <!-- Mobile Category Header (Horizontal Scroll) -->
-       <!-- 移动端分类导航头 -->
-       <div class="md:hidden flex overflow-x-auto no-scrollbar px-4 py-3 gap-2 bg-white/90 backdrop-blur-md shrink-0 z-20 sticky top-0 border-b border-gray-100">
-           <button 
+    <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+
+       <!-- Categories (phone): one scrollable row of chips -->
+       <div class="md:hidden flex overflow-x-auto no-scrollbar px-4 pt-3 pb-1 gap-2 shrink-0">
+           <button
              v-for="cat in CATEGORIES"
              :key="cat.id"
+             type="button"
              @click="handleCategoryClick(cat.id)"
-             class="
-               flex-none min-h-11 px-4 py-2.5 rounded-full flex items-center gap-1.5 text-xs font-bold border
-             "
+             :aria-pressed="activeCategory === cat.id && !searchTerm"
+             class="flex-none min-h-10 px-3.5 rounded-full flex items-center gap-1.5 text-[13px] font-medium border transition-colors duration-150"
              :class="activeCategory === cat.id && !searchTerm
-                ? 'bg-primary text-white border-primary shadow-lg shadow-primary/20' 
-                : 'bg-white text-text-sub border-gray-100'
-             "
+                ? 'bg-primary border-primary text-white'
+                : 'bg-white border-line text-text-sub'"
            >
-              <span class="material-symbols-rounded text-lg" :class="{ 'filled': activeCategory === cat.id && !searchTerm }" aria-hidden="true">{{ cat.icon }}</span>
-              <span>{{ lang === 'cn' ? cat.nameCN : cat.name }}</span>
+              <AppIcon :name="cat.icon" :weight="activeCategory === cat.id && !searchTerm ? 'fill' : 'regular'" class="text-base" />
+              {{ lang === 'cn' ? cat.nameCN : cat.name }}
            </button>
        </div>
 
        <!-- Header & Search Bar -->
-       <header class="px-4 md:px-8 lg:px-10 pt-4 md:pt-6 shrink-0 animate-slide-down-content z-30">
-          <div class="flex items-center justify-between gap-4 mb-3 md:mb-5">
-             <!-- Title Section -->
-             <div class="flex flex-col gap-1.5 min-w-0">
-                <h1 class="text-2xl md:text-4xl font-sans font-black text-[#103E32] tracking-tighter leading-none truncate">
-                   <!-- Dynamic Title: Shows Category Name or 'Search' -->
-                   <template v-if="searchTerm">
-                      {{ lang === 'cn' ? '搜索结果' : 'Search' }}
-                   </template>
-                   <template v-else>
-                      {{ lang === 'cn' 
-                         ? CATEGORIES.find(c => c.id === activeCategory)?.nameCN 
-                         : CATEGORIES.find(c => c.id === activeCategory)?.name
-                      }}
-                   </template>
-                </h1>
-                <!-- Product Count -->
-                <p class="text-[11px] font-black text-text-sub uppercase tracking-[0.2em] flex items-center gap-2 pl-0.5">
-                   <span class="size-2 rounded-full bg-[#DCCA98]"></span>
-                   {{ filteredProducts.length }} {{ t.itemsAvailable }}
-                </p>
-             </div>
-             
-             <!-- Search Input Container -->
-             <div 
-               ref="searchContainerRef"
-               class="relative group w-40 md:w-72 shrink-0"
-             >
-                <input 
-                   type="text" 
-                   v-model="searchTerm"
-                   enterkeyhint="search"
-                   autocomplete="off"
-                   autocorrect="off"
-                   autocapitalize="off"
-                   spellcheck="false"
-                   @focus="showSuggestions = true"
-                   @input="showSuggestions = true"
-                   @keydown.enter="($event.target as HTMLInputElement).blur()"
-                   :placeholder="t.search"
-                   class="w-full h-12 md:h-14 pl-12 pr-5 bg-white rounded-full text-sm font-bold outline-none shadow-[0_8px_20px_-8px_rgba(0,0,0,0.05)] border border-gray-100 focus:border-primary/20 transition-[border-color,box-shadow] duration-200 focus:shadow-xl focus:ring-4 focus:ring-primary/5 placeholder:text-gray-400 relative z-20"
-                />
-                <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-200 group-focus-within:text-primary z-20" aria-hidden="true">search</span>
+       <header class="px-4 md:px-8 pt-3 md:pt-7 pb-3 md:pb-5 flex items-end justify-between gap-4 shrink-0 z-30">
+          <div class="min-w-0">
+             <h1 class="font-display text-[26px] md:text-[32px] font-bold tracking-tight leading-tight text-text-main truncate">{{ pageTitle }}</h1>
+             <p class="text-[13px] text-text-sub mt-0.5">{{ countLabel }}</p>
+          </div>
 
-                <!-- Suggestions Dropdown (Autocomplete) -->
-                <div 
-                   class="absolute top-full left-0 w-full md:w-80 md:left-auto md:right-0 mt-3 bg-white rounded-[24px] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.1)] border border-gray-50 overflow-hidden transition-[opacity,transform] duration-200 ease-out origin-top z-10"
-                   :class="showSuggestions && suggestions.length > 0 ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'"
+          <!-- Search Input Container -->
+          <div ref="searchContainerRef" class="relative w-44 md:w-72 shrink-0">
+             <AppIcon name="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-text-sub pointer-events-none z-10" />
+             <input
+                type="text"
+                v-model="searchTerm"
+                enterkeyhint="search"
+                autocomplete="off"
+                autocorrect="off"
+                autocapitalize="off"
+                spellcheck="false"
+                @focus="showSuggestions = true"
+                @input="showSuggestions = true"
+                @keydown.enter="($event.target as HTMLInputElement).blur()"
+                :placeholder="t.search"
+                class="w-full h-11 md:h-12 pl-10 pr-4 rounded-full bg-white border border-line text-[15px] text-text-main placeholder:text-text-sub/70 outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+             />
+
+             <!-- Suggestions Dropdown (Autocomplete) -->
+             <div
+                class="absolute top-full right-0 mt-2 w-full md:w-80 bg-white rounded-card shadow-float border border-line p-1.5 origin-top transition-[opacity,transform] duration-150 ease-out z-40"
+                :class="showSuggestions && suggestions.length > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'"
+             >
+                <button
+                  v-for="p in suggestions"
+                  :key="p.id"
+                  type="button"
+                  @click="handleSuggestionClick(p)"
+                  class="w-full min-h-[52px] flex items-center gap-3 p-2 rounded-tile text-left active:bg-cream/70"
                 >
-                   <div class="px-3 py-2">
-                     <p class="text-[9px] font-black text-text-sub uppercase tracking-widest px-3 py-2">{{ lang === 'cn' ? '建议' : 'Suggestions' }}</p>
-                     <button
-                       v-for="p in suggestions"
-                       :key="p.id"
-                       @click="handleSuggestionClick(p)"
-                       class="w-full flex items-center gap-3 p-2 rounded-2xl transition-colors duration-200 group/item text-left"
-                     >
-                        <img :src="p.image" class="size-10 rounded-xl object-cover bg-gray-100 shrink-0" alt="" />
-                        <div class="min-w-0">
-                           <p class="text-sm font-bold text-text-main truncate transition-colors">
-                              {{ lang === 'cn' ? p.nameCN : p.name }}
-                           </p>
-                           <p class="text-[10px] font-bold text-gray-400">¥{{ Number(p.price).toFixed(2) }}</p>
-                        </div>
-                     </button>
-                   </div>
-                </div>
+                   <img :src="p.image" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" alt="" decoding="async" />
+                   <span class="min-w-0 flex-1">
+                      <span class="block text-[14px] font-medium text-text-main truncate">{{ lang === 'cn' ? p.nameCN : p.name }}</span>
+                      <span class="block text-[12px] text-text-sub tabular-nums">¥{{ Number(p.price).toFixed(2) }}</span>
+                   </span>
+                </button>
              </div>
           </div>
        </header>
 
        <!-- Product Grid Main Area -->
-       <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto px-4 md:px-8 lg:px-10 pt-1 md:pt-2 pb-40 no-scrollbar">
-          <!-- `.stagger-in` (packages/shared/styles/motion.css) cascades the card
-               entrances and caps the delay, so a long menu is readable at once.
-               Two columns on phones: one card per screen was mostly scrolling. -->
-          <div class="stagger-in grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
-             <!-- Product Card -->
-             <div
-                v-for="product in filteredProducts"
-                :key="product.id"
-                @click="product.inventoryCount !== 0 && emit('select-product', product)"
-                data-testid="product-card"
-                class="group bg-white rounded-[24px] md:rounded-[32px] p-2 md:p-3 pb-3 md:pb-4 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.04)] transition-transform duration-200 ease-out active:scale-[0.97] border border-transparent relative overflow-hidden flex flex-col"
-                :class="{ 'opacity-60 pointer-events-none': product.inventoryCount === 0 }"
-             >
-                <!-- Image Section -->
-                <div class="aspect-square md:aspect-[4/3] rounded-[18px] md:rounded-[24px] overflow-hidden mb-2.5 md:mb-4 relative bg-[#F2F2F2]">
-                   <img 
-                      :src="product.image" 
-                      :alt="product.name" 
-                      loading="lazy"
-                      class="w-full h-full object-cover mix-blend-multiply opacity-90" 
-                      :class="{ 'grayscale': product.inventoryCount === 0 }"
-                   />
-                   
-                   <!-- Floating Add Button -->
-                   <div v-if="product.inventoryCount !== 0" class="absolute bottom-2 right-2 md:bottom-3 md:right-3 size-9 md:size-12 rounded-[14px] md:rounded-[18px] bg-white/90 backdrop-blur-md flex items-center justify-center shadow-lg transition-colors duration-150 group-active:bg-[#103E32]" aria-hidden="true">
-                      <span class="material-symbols-rounded text-[#103E32] font-medium group-active:text-white text-xl md:text-2xl">add</span>
-                   </div>
+       <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto no-scrollbar px-4 md:px-8 pt-1 pb-40">
+          <Transition name="grid-fade" mode="out-in">
+             <div :key="gridKey" class="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4" :class="{ 'stagger-in': firstPaint }">
+                <!-- Product Card -->
+                <article
+                   v-for="product in filteredProducts"
+                   :key="product.id"
+                   @click="!isSoldOut(product) && emit('select-product', product)"
+                   data-testid="product-card"
+                   class="group relative bg-white rounded-card shadow-card overflow-hidden flex flex-col transition-transform duration-150 ease-out active:scale-[0.98]"
+                   :class="{ 'opacity-60 pointer-events-none': isSoldOut(product) }"
+                >
+                   <!-- Image -->
+                   <div class="relative aspect-[4/3] bg-cream overflow-hidden">
+                      <img
+                         :src="product.image"
+                         :alt="lang === 'cn' ? product.nameCN : product.name"
+                         loading="lazy"
+                         decoding="async"
+                         class="w-full h-full object-cover"
+                         :class="{ 'grayscale': isSoldOut(product) }"
+                      />
 
-                   <!-- Badges -->
-                   <div v-if="product.inventoryCount === 0" class="absolute top-2 left-2 md:top-3 md:left-3 bg-red-500 text-white px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm">
-                      Sold Out
-                   </div>
-                   <div v-else-if="product.isPopular" class="absolute top-2 left-2 md:top-3 md:left-3 bg-white/90 backdrop-blur text-primary px-2 py-1 md:px-3 md:py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm flex items-center gap-1">
-                      <span class="material-symbols-rounded text-[10px] filled text-secondary" aria-hidden="true">star</span>
-                      {{ t.bestSeller }}
-                   </div>
-                   
-                   <!-- Quantity Counter Badge (if in cart); keyed by count so it pops on every add -->
-                   <div v-if="cartCounts.get(product.id)" :key="cartCounts.get(product.id)" class="absolute top-2 right-2 md:top-3 md:right-3 bg-primary text-white size-7 md:size-8 rounded-full flex items-center justify-center text-xs font-black shadow-[0_4px_12px_rgba(16,62,50,0.3)] animate-cart-bump border-2 border-white">
-                      {{ cartCounts.get(product.id) }}
-                   </div>
-                </div>
-
-                <!-- Text Content -->
-                <div class="px-1.5 md:px-2 flex flex-col flex-1">
-                   <h3 class="text-[15px] md:text-lg font-[800] text-text-main leading-snug mb-1 line-clamp-1">
-                      {{ lang === 'cn' ? product.nameCN : product.name }}
-                   </h3>
-                   <p class="hidden md:block text-text-sub text-xs line-clamp-2 mb-3 leading-relaxed font-medium min-h-[2.5em]">
-                      {{ lang === 'cn' ? product.descriptionCN : product.description }}
-                   </p>
-                   
-                   <div class="flex items-center justify-between mt-auto">
-                      <span class="text-lg md:text-2xl font-[900] text-text-main tracking-tight">¥{{ Number(product.price).toFixed(2) }}</span>
-                      <span class="hidden md:inline-flex text-[10px] font-black text-text-sub bg-background-light px-3 py-1.5 rounded-full uppercase tracking-widest">
-                         {{ lang === 'cn' ? '选规格' : 'Customize' }}
+                      <!-- Badges -->
+                      <span v-if="isSoldOut(product)" class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-text-main/85 text-white text-[11px] font-semibold">
+                         {{ lang === 'cn' ? '已售罄' : 'Sold out' }}
                       </span>
+                      <span v-else-if="product.isPopular && activeCategory !== 'top'" class="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-1 rounded-full bg-white text-secondary-content text-[11px] font-semibold shadow-sm">
+                         <AppIcon name="star" weight="fill" class="text-secondary text-xs" />
+                         {{ t.bestSeller }}
+                      </span>
+
+                      <!-- Quantity in cart; keyed by count so it pops on every add -->
+                      <span
+                         v-if="cartCounts.get(product.id)"
+                         :key="cartCounts.get(product.id)"
+                         class="absolute top-2.5 right-2.5 min-w-6 h-6 px-1.5 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center tabular-nums ring-2 ring-white animate-cart-bump"
+                      >{{ cartCounts.get(product.id) }}</span>
                    </div>
-                </div>
+
+                   <!-- Text -->
+                   <div class="flex flex-col flex-1 p-3 md:p-4">
+                      <h3 class="text-[15px] md:text-[17px] font-semibold text-text-main leading-snug line-clamp-1">
+                         {{ lang === 'cn' ? product.nameCN : product.name }}
+                      </h3>
+                      <p class="hidden md:block mt-1 text-[13px] text-text-sub leading-relaxed line-clamp-2">
+                         {{ lang === 'cn' ? product.descriptionCN : product.description }}
+                      </p>
+                      <div class="mt-auto pt-3 flex items-center justify-between gap-2">
+                         <span class="text-[17px] md:text-xl font-bold text-text-main tabular-nums">
+                            <span class="text-[13px] md:text-sm font-semibold mr-0.5">¥</span>{{ Number(product.price).toFixed(2) }}
+                         </span>
+                         <span v-if="!isSoldOut(product)" class="size-9 md:size-10 rounded-full bg-primary text-white flex items-center justify-center transition-colors duration-150 group-active:bg-primary-dark" aria-hidden="true">
+                            <AppIcon name="plus" weight="bold" class="text-base md:text-lg" />
+                         </span>
+                      </div>
+                   </div>
+                </article>
              </div>
+          </Transition>
+
+          <!-- Nothing found -->
+          <div v-if="filteredProducts.length === 0" class="py-24 flex flex-col items-center text-text-sub">
+             <AppIcon name="search" class="text-4xl mb-3 opacity-60" />
+             <p class="text-[15px] font-medium">{{ lang === 'cn' ? '没有找到相关商品' : 'Nothing matches that' }}</p>
           </div>
        </main>
     </div>

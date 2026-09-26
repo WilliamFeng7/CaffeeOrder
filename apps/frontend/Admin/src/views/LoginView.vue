@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, computed, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api';
@@ -113,7 +114,7 @@ const handleLogin = async () => {
     <div class="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[40px] shadow-2xl relative z-10 animate-fade-in">
          <div class="text-center mb-10">
             <div class="size-20 bg-[#103E32] rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-[#103E32]/40 mb-6">
-                <span class="material-symbols-rounded text-[#DCCA98] text-4xl">admin_panel_settings</span>
+                <AppIcon name="shield" class="text-[#DCCA98] text-4xl" />
             </div>
             <h1 class="text-3xl font-black text-white tracking-tight">管理员登录</h1>
             <p class="text-white/40 mt-2 font-bold text-sm tracking-widest uppercase">系统后台</p>

@@ -5,6 +5,7 @@
  * Premium Kitchen Display System layout - matching Student app aesthetic.
  * Features: Glass-morphism header, elegant brand, live clock, toast system.
  */
+import AppIcon from '@shared/components/AppIcon.vue';
 import { useRouter } from 'vue-router';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { auth } from '@shared/auth';
@@ -66,7 +67,7 @@ onUnmounted(() => {
       <!-- Left: Brand -->
       <div class="flex items-center gap-3">
         <div class="size-10 md:size-11 bg-gradient-to-br from-primary to-[#0A2921] rounded-[14px] md:rounded-[16px] flex items-center justify-center shadow-lg shadow-primary/25">
-          <span class="material-symbols-rounded text-secondary text-2xl" aria-hidden="true">coffee_maker</span>
+          <AppIcon name="coffee" class="text-secondary text-2xl" />
         </div>
         <div class="flex flex-col">
           <span class="text-base md:text-lg font-black text-primary leading-tight tracking-tight">Kitchen Display</span>
@@ -74,7 +75,7 @@ onUnmounted(() => {
             <span class="size-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" aria-hidden="true"></span>
             <span class="text-[10px] md:text-xs font-bold text-text-sub uppercase tracking-widest">Live</span>
             <span v-if="!soundReady" class="ml-1 flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] md:text-[11px] font-bold">
-              <span class="material-symbols-rounded text-sm" aria-hidden="true">volume_off</span>
+              <AppIcon name="speaker-slash" class="text-sm" />
               Tap to enable sound
             </span>
           </div>
@@ -105,7 +106,7 @@ onUnmounted(() => {
           class="flex items-center gap-2 min-h-11 px-4 py-2.5 rounded-xl md:rounded-2xl font-bold text-xs md:text-sm shadow-sm border hover:shadow-md"
           :class="confirmingSignOut ? 'bg-red-500 text-white border-red-500' : 'bg-white text-text-main border-gray-100 hover:border-gray-200'"
         >
-          <span class="material-symbols-rounded text-lg md:text-xl" :class="confirmingSignOut ? '' : 'opacity-60'" aria-hidden="true">logout</span>
+          <AppIcon name="sign-out" class="text-lg md:text-xl" :class="confirmingSignOut ? '' : 'opacity-60'" />
           <span class="hidden sm:inline">{{ confirmingSignOut ? 'Tap again to sign out' : 'Sign Out' }}</span>
         </button>
       </div>

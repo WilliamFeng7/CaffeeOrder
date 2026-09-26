@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, onMounted } from 'vue';
 import { api } from '../api';
 import { useToastStore } from '../stores/toast';
@@ -136,7 +137,7 @@ onMounted(fetchUsers);
      <div class="flex justify-between items-center">
          <h1 class="text-3xl font-black text-primary tracking-tight">用户管理</h1>
          <button @click="() => { editingUser = { name: '', username: '', password: '', role: 'student', balance: 0 }; showModal = true; }" class="px-6 py-3 bg-[#103E32] text-white rounded-2xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 transition-transform flex items-center gap-2">
-             <span class="material-symbols-rounded">person_add</span>
+             <AppIcon name="user-plus" />
              添加用户
          </button>
      </div>
@@ -179,13 +180,13 @@ onMounted(fetchUsers);
                              <!-- Hidden until hover with a mouse; always shown on touch, where hover never happens -->
                              <div v-if="user.role !== 'admin'" class="flex items-center justify-end gap-2 opacity-100 [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                                  <button type="button" @click="handleEdit(user)" aria-label="编辑" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
-                                     <span class="material-symbols-rounded text-sm [@media(pointer:coarse)]:text-xl" aria-hidden="true">edit</span>
+                                     <AppIcon name="edit" class="text-sm [@media(pointer:coarse)]:text-xl" />
                                  </button>
                                  <button type="button" @click="handleDepositOpen(user)" aria-label="充值" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 transition-colors" title="充值">
-                                     <span class="material-symbols-rounded text-sm [@media(pointer:coarse)]:text-xl" aria-hidden="true">account_balance_wallet</span>
+                                     <AppIcon name="wallet" class="text-sm [@media(pointer:coarse)]:text-xl" />
                                  </button>
                                  <button type="button" @click="handleDelete(user.id)" aria-label="删除" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors">
-                                     <span class="material-symbols-rounded text-sm [@media(pointer:coarse)]:text-xl" aria-hidden="true">delete</span>
+                                     <AppIcon name="trash" class="text-sm [@media(pointer:coarse)]:text-xl" />
                                  </button>
                              </div>
                         </td>
@@ -201,7 +202,7 @@ onMounted(fetchUsers);
          <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showDeleteModal = false"></div>
          <div class="bg-white w-full max-w-sm rounded-[32px] p-8 relative z-10 shadow-2xl animate-scale-in text-center">
              <div class="size-16 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
-                 <span class="material-symbols-rounded text-3xl">delete_forever</span>
+                 <AppIcon name="trash" class="text-3xl" />
              </div>
              <h3 class="text-xl font-black text-gray-900 mb-2">确认删除?</h3>
              <p class="text-gray-500 text-sm font-bold mb-6">此操作不可逆，用户数据将被永久移除。</p>
@@ -270,7 +271,7 @@ onMounted(fetchUsers);
          <div class="bg-white w-full max-w-sm rounded-[32px] p-8 relative z-10 shadow-2xl animate-scale-in">
              <div class="mb-6 flex flex-col items-center">
                  <div class="size-16 rounded-full bg-green-50 text-green-600 flex items-center justify-center mb-4">
-                     <span class="material-symbols-rounded text-3xl">add_card</span>
+                     <AppIcon name="card" class="text-3xl" />
                  </div>
                  <h3 class="text-xl font-black text-primary">账户充值 (Top Up)</h3>
                  <p class="text-gray-400 text-sm font-bold mt-1">为 {{ depositUser?.name }} 充值</p>

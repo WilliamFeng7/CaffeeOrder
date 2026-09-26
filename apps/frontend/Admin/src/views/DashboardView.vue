@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { api, type DashboardStats } from '../api';
 import TrendChart from '../components/charts/TrendChart.vue';
@@ -52,7 +53,7 @@ const formatPercent = (val: number) => {
   </div>
   
   <div v-else-if="error" class="flex flex-col items-center justify-center h-[500px] text-center">
-      <span class="material-symbols-rounded text-6xl text-red-500 mb-4">error_outline</span>
+      <AppIcon name="warning-circle" class="text-6xl text-red-500 mb-4" />
       <h3 class="text-xl font-bold text-gray-800">加载数据失败</h3>
       <button @click="refreshPage" class="mt-4 px-6 py-2 bg-primary text-white rounded-xl font-bold">重试</button>
   </div>
@@ -67,7 +68,7 @@ const formatPercent = (val: number) => {
               </p>
           </div>
           <button @click="refreshPage" class="px-5 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm">
-              <span class="material-symbols-rounded text-lg">refresh</span>
+              <AppIcon name="refresh" class="text-lg" />
               刷新数据
           </button>
       </div>
@@ -78,13 +79,13 @@ const formatPercent = (val: number) => {
           <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 relative overflow-hidden group">
               <div class="flex justify-between items-start mb-2">
                   <p class="text-gray-400 font-bold text-xs uppercase tracking-widest">今日营业额</p>
-                  <span class="material-symbols-rounded text-primary/20 p-1.5 bg-primary/5 rounded-lg">payments</span>
+                  <AppIcon name="money" class="text-primary/20 p-1.5 bg-primary/5 rounded-lg" />
               </div>
               <h3 class="text-2xl font-black text-primary tracking-tight mb-1">{{ formatCurrency(stats.overview.total_revenue_today) }}</h3>
               <div class="flex items-center gap-1.5">
                    <div class="px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5"
                         :class="stats.overview.revenue_growth >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'">
-                       <span class="material-symbols-rounded text-sm">{{ stats.overview.revenue_growth >= 0 ? 'trending_up' : 'trending_down' }}</span>
+                       <AppIcon :name="stats.overview.revenue_growth >= 0 ? 'trend-up' : 'trend-down'" class="text-sm" />
                        {{ formatPercent(stats.overview.revenue_growth) }}
                    </div>
                    <span class="text-[10px] text-gray-400">较昨日</span>
@@ -95,7 +96,7 @@ const formatPercent = (val: number) => {
           <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 relative overflow-hidden group">
               <div class="flex justify-between items-start mb-2">
                   <p class="text-gray-400 font-bold text-xs uppercase tracking-widest">今日订单量</p>
-                  <span class="material-symbols-rounded text-blue-500/20 p-1.5 bg-blue-50 rounded-lg text-blue-600">receipt_long</span>
+                  <AppIcon name="receipt" class="text-blue-500/20 p-1.5 bg-blue-50 rounded-lg text-blue-600" />
               </div>
               <h3 class="text-2xl font-black text-primary tracking-tight mb-1">{{ stats.overview.total_orders_today }}</h3>
               <div class="flex items-center gap-1.5">
@@ -111,7 +112,7 @@ const formatPercent = (val: number) => {
           <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 relative overflow-hidden group">
               <div class="flex justify-between items-start mb-2">
                   <p class="text-gray-400 font-bold text-xs uppercase tracking-widest">客单价 (AOV)</p>
-                  <span class="material-symbols-rounded text-orange-500/20 p-1.5 bg-orange-50 rounded-lg text-orange-600">attach_money</span>
+                  <AppIcon name="yuan" class="text-orange-500/20 p-1.5 bg-orange-50 rounded-lg text-orange-600" />
               </div>
               <h3 class="text-2xl font-black text-primary tracking-tight mb-1">{{ formatCurrency(stats.overview.aov_today) }}</h3>
               <div class="flex items-center gap-1.5">
@@ -124,12 +125,12 @@ const formatPercent = (val: number) => {
               <div class="absolute -right-4 -top-4 size-24 bg-white/10 rounded-full blur-2xl"></div>
               <div class="flex justify-between items-start mb-2 relative z-10">
                   <p class="text-white/60 font-bold text-xs uppercase tracking-widest">当前制作中</p>
-                  <span class="material-symbols-rounded text-white/30 p-1.5 bg-white/10 rounded-lg">coffee_maker</span>
+                  <AppIcon name="coffee" class="text-white/30 p-1.5 bg-white/10 rounded-lg" />
               </div>
               <h3 class="text-3xl font-black text-white tracking-tight mb-1 relative z-10">{{ stats.overview.pending_orders_count }}</h3>
               <div class="flex items-center gap-1.5 relative z-10">
                    <div class="px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5 bg-white/20">
-                       <span class="material-symbols-rounded text-sm" aria-hidden="true">sync</span>
+                       <AppIcon name="sync" class="text-sm" />
                        需关注
                    </div>
               </div>
@@ -139,7 +140,7 @@ const formatPercent = (val: number) => {
           <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 relative overflow-hidden group">
               <div class="flex justify-between items-start mb-2">
                   <p class="text-gray-400 font-bold text-xs uppercase tracking-widest">今日新增会员</p>
-                  <span class="material-symbols-rounded text-purple-500/20 p-1.5 bg-purple-50 rounded-lg text-purple-600">group_add</span>
+                  <AppIcon name="user-plus" class="text-purple-500/20 p-1.5 bg-purple-50 rounded-lg text-purple-600" />
               </div>
               <h3 class="text-2xl font-black text-primary tracking-tight mb-1">{{ stats.overview.new_members_today }}</h3>
               <div class="flex items-center gap-1.5">
@@ -237,7 +238,7 @@ const formatPercent = (val: number) => {
           <div class="bg-[#103E32] rounded-[32px] p-8 text-white relative overflow-hidden">
                <div class="absolute top-0 right-0 -mr-16 -mt-16 size-64 bg-[#DCCA98] rounded-full blur-[100px] opacity-20 pointer-events-none"></div>
                <h3 class="text-xl font-black mb-6 flex items-center gap-2">
-                   <span class="material-symbols-rounded text-[#DCCA98]">emoji_events</span>
+                   <AppIcon name="trophy" class="text-[#DCCA98]" />
                    热销商品排行榜 TOP 3
                </h3>
                
@@ -263,14 +264,14 @@ const formatPercent = (val: number) => {
           <div class="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 flex flex-col h-[350px]">
                <div class="flex items-center justify-between mb-4">
                    <h3 class="text-xl font-black text-red-600 flex items-center gap-2">
-                       <span class="material-symbols-rounded">warning</span>
+                       <AppIcon name="warning" />
                        售罄商品
                    </h3>
                    <span v-if="stats.inventory.sold_out_items.length" class="bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-bold">{{ stats.inventory.sold_out_items.length }} Items</span>
                </div>
 
                <div v-if="!stats.inventory.sold_out_items.length" class="flex-1 flex flex-col items-center justify-center text-gray-400">
-                   <span class="material-symbols-rounded text-6xl opacity-20 text-green-500 mb-2">check_circle</span>
+                   <AppIcon name="check-circle" class="text-6xl opacity-20 text-green-500 mb-2" />
                    <p class="font-bold opacity-50">库存充足</p>
                </div>
 

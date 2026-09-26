@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { api } from '../api';
 import FinanceChart from '../components/charts/FinanceChart.vue';
@@ -83,7 +84,7 @@ onUnmounted(() => {
         </div>
         <div class="flex gap-3">
              <button @click="exportData" class="px-5 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm">
-                 <span class="material-symbols-rounded text-lg">download</span>
+                 <AppIcon name="download" class="text-lg" />
                  导出
              </button>
              <select v-model="dateRange" class="px-5 py-2.5 bg-[#103E32] text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 flex items-center gap-2 outline-none cursor-pointer hover:bg-opacity-90 transition-all">
@@ -101,7 +102,7 @@ onUnmounted(() => {
         <div class="bg-white p-6 rounded-[28px] border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
             <div class="flex justify-between items-start mb-4">
                 <div class="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                    <span class="material-symbols-rounded">payments</span>
+                    <AppIcon name="money" />
                 </div>
                 <span class="text-[10px] font-black text-gray-300 uppercase tracking-widest">今日营收</span>
             </div>
@@ -115,7 +116,7 @@ onUnmounted(() => {
         <div class="bg-white p-6 rounded-[28px] border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
             <div class="flex justify-between items-start mb-4">
                 <div class="size-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center font-bold">
-                    <span class="material-symbols-rounded">account_balance_wallet</span>
+                    <AppIcon name="wallet" />
                 </div>
                 <span class="text-[10px] font-black text-gray-300 uppercase tracking-widest">今日充值</span>
             </div>
@@ -130,7 +131,7 @@ onUnmounted(() => {
             <div class="absolute -right-6 -top-6 size-24 bg-red-100 rounded-full blur-2xl opacity-50"></div>
             <div class="flex justify-between items-start mb-4 relative z-10">
                 <div class="size-10 rounded-xl bg-white text-red-600 flex items-center justify-center font-bold shadow-sm">
-                    <span class="material-symbols-rounded">money_off</span>
+                    <AppIcon name="coins" />
                 </div>
                 <span class="text-[10px] font-black text-red-400 uppercase tracking-widest">待结算余额</span>
             </div>
@@ -187,7 +188,7 @@ onUnmounted(() => {
                 class="px-8 py-3.5 text-sm font-black rounded-2xl transition-all flex items-center gap-2"
                 :class="activeTab === 'transactions' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-primary hover:bg-white'"
             >
-                <span class="material-symbols-rounded text-lg">receipt_long</span>
+                <AppIcon name="receipt" class="text-lg" />
                 消费流水
             </button>
             <button 
@@ -195,7 +196,7 @@ onUnmounted(() => {
                 class="px-8 py-3.5 text-sm font-black rounded-2xl transition-all flex items-center gap-2"
                 :class="activeTab === 'deposits' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-primary hover:bg-white'"
             >
-                <span class="material-symbols-rounded text-lg">account_balance_wallet</span>
+                <AppIcon name="wallet" class="text-lg" />
                 充值记录
             </button>
         </div>
@@ -242,7 +243,7 @@ onUnmounted(() => {
                      <tr v-if="transactions.length === 0">
                          <td colspan="6" class="py-20 text-center">
                              <div class="flex flex-col items-center gap-2 opacity-20">
-                                 <span class="material-symbols-rounded text-6xl">database_off</span>
+                                 <AppIcon name="database" class="text-6xl" />
                                  <p class="font-black text-xl uppercase tracking-widest">暂无记录</p>
                              </div>
                          </td>

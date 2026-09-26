@@ -12,16 +12,18 @@
  * the only feedback for "order placed" / "wrong password", and without
  * `aria-live` a screen-reader user never heard it.
  */
+import AppIcon from './AppIcon.vue';
+import type { IconName } from '../icons';
 import { useToastStore } from '../toast';
 import { storeToRefs } from 'pinia';
 
 const store = useToastStore();
 const { toasts } = storeToRefs(store);
 
-const getIcon = (type: string) => {
+const getIcon = (type: string): IconName => {
   switch (type) {
-    case 'success': return 'check_circle';
-    case 'error': return 'error';
+    case 'success': return 'check-circle';
+    case 'error': return 'warning-circle';
     case 'warning': return 'warning';
     default: return 'info';
   }
@@ -52,11 +54,11 @@ const getClasses = (type: string) => {
         :key="toast.id"
         :aria-live="toast.type === 'error' || toast.type === 'warning' ? 'assertive' : 'polite'"
         role="status"
-        class="pointer-events-none flex items-center p-4 rounded-[20px] shadow-lg border backdrop-blur-sm"
+        class="pointer-events-none flex items-center gap-3 px-4 py-3.5 rounded-2xl shadow-lg border"
         :class="getClasses(toast.type)"
       >
-        <span class="material-symbols-rounded mr-3 text-xl" aria-hidden="true">{{ getIcon(toast.type) }}</span>
-        <span class="font-bold text-sm">{{ toast.message }}</span>
+        <AppIcon :name="getIcon(toast.type)" weight="fill" class="text-xl" />
+        <span class="font-semibold text-[15px]">{{ toast.message }}</span>
       </div>
     </TransitionGroup>
   </div>

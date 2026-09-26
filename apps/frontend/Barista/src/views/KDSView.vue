@@ -5,11 +5,13 @@
  * Premium Kitchen Display System Order Board.
  * Features: Three-column Kanban layout, stats bar, sound notifications, keyboard shortcuts.
  */
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { api } from '../api';
 import { useToastStore } from '../stores/toast';
 import { useOrderPolling } from '../composables/useOrderPolling';
 import { useKitchenDevice } from '../composables/useKitchenDevice';
+import type { IconName } from '@shared/icons';
 import OrderCard from '../components/OrderCard.vue';
 import KDSLayout from '../components/KDSLayout.vue';
 
@@ -88,11 +90,11 @@ onUnmounted(() => {
     window.removeEventListener('keydown', handleKeydown);
 });
 
-const columns = [
+const columns: { title: string; orders: typeof pendingOrders; icon: IconName; accentColor: string; iconBg: string; iconColor: string; countBg: string; borderColor: string }[] = [
   { 
     title: 'New Orders', 
     orders: pendingOrders, 
-    icon: 'schedule', 
+    icon: 'clock', 
     accentColor: 'amber',
     iconBg: 'bg-amber-100',
     iconColor: 'text-amber-600',
@@ -102,7 +104,7 @@ const columns = [
   { 
     title: 'Making', 
     orders: processingOrders, 
-    icon: 'local_fire_department', 
+    icon: 'flame', 
     accentColor: 'indigo',
     iconBg: 'bg-indigo-100',
     iconColor: 'text-indigo-600',
@@ -112,7 +114,7 @@ const columns = [
   { 
     title: 'Ready', 
     orders: completedOrders, 
-    icon: 'check_circle', 
+    icon: 'check-circle', 
     accentColor: 'emerald',
     iconBg: 'bg-emerald-100',
     iconColor: 'text-emerald-600',
@@ -134,7 +136,7 @@ const manualRefresh = () => refresh();
           <!-- Total Orders -->
           <div class="flex items-center gap-3 bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-50">
             <div class="size-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <span class="material-symbols-rounded text-primary text-xl" aria-hidden="true">receipt_long</span>
+              <AppIcon name="receipt" class="text-primary text-xl" />
             </div>
             <div class="min-w-0">
               <div class="text-xl font-black text-primary leading-none tabular-nums">{{ totalOrders }}</div>
@@ -145,7 +147,7 @@ const manualRefresh = () => refresh();
           <!-- Active Orders -->
           <div class="flex items-center gap-3 bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-50">
             <div class="size-9 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
-              <span class="material-symbols-rounded text-amber-500 text-xl" aria-hidden="true">pending</span>
+              <AppIcon name="hourglass" class="text-amber-500 text-xl" />
             </div>
             <div class="min-w-0">
               <div class="text-xl font-black text-primary leading-none tabular-nums">{{ pendingOrders.length + processingOrders.length }}</div>
@@ -156,7 +158,7 @@ const manualRefresh = () => refresh();
           <!-- Average Wait -->
           <div class="flex items-center gap-3 bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-50">
             <div class="size-9 rounded-xl bg-secondary/30 flex items-center justify-center shrink-0">
-              <span class="material-symbols-rounded text-secondary-content text-xl" aria-hidden="true">timer</span>
+              <AppIcon name="timer" class="text-secondary-content text-xl" />
             </div>
             <div class="min-w-0">
               <div class="text-xl font-black text-primary leading-none tabular-nums">
@@ -170,7 +172,7 @@ const manualRefresh = () => refresh();
           <!-- Ready Orders -->
           <div class="flex items-center gap-3 bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-50">
             <div class="size-9 rounded-xl bg-emerald-50 flex items-center justify-center shrink-0">
-              <span class="material-symbols-rounded text-emerald-500 text-xl filled" aria-hidden="true">check_circle</span>
+              <AppIcon name="check-circle" weight="fill" class="text-emerald-500 text-xl" />
             </div>
             <div class="min-w-0">
               <div class="text-xl font-black text-primary leading-none tabular-nums">{{ completedOrders.length }}</div>
@@ -188,7 +190,7 @@ const manualRefresh = () => refresh();
           title="Refresh (R)"
           class="shrink-0 flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-4 md:px-5 bg-white rounded-2xl shadow-sm border border-gray-100 text-sm font-bold text-text-main hover:shadow-md disabled:opacity-50"
         >
-          <span class="material-symbols-rounded text-xl" :class="{ 'animate-spin': refreshing }" aria-hidden="true">refresh</span>
+          <AppIcon name="refresh" class="text-xl" :class="{ 'animate-spin': refreshing }" />
           <span class="hidden sm:inline">Refresh</span>
         </button>
       </div>
@@ -215,7 +217,7 @@ const manualRefresh = () => refresh();
           <div class="flex items-center justify-between gap-3 mb-3 pb-3 border-b border-gray-100/80">
             <div class="flex items-center gap-2.5 min-w-0">
               <div class="size-9 lg:size-10 rounded-xl flex items-center justify-center shrink-0" :class="col.iconBg">
-                <span class="material-symbols-rounded text-xl filled" :class="col.iconColor" aria-hidden="true">{{ col.icon }}</span>
+                <AppIcon :name="col.icon" weight="fill" class="text-xl" :class="col.iconColor" />
               </div>
               <h2 class="text-base lg:text-lg font-black tracking-tight text-primary truncate">{{ col.title }}</h2>
             </div>
@@ -240,7 +242,7 @@ const manualRefresh = () => refresh();
             <!-- Empty State -->
             <div v-if="col.orders.value.length === 0" key="empty" class="h-40 md:h-48 flex flex-col items-center justify-center text-gray-400 animate-fade-in">
               <div class="size-20 rounded-[24px] bg-gray-50 flex items-center justify-center mb-3 shadow-inner">
-                <span class="material-symbols-rounded text-4xl opacity-40" aria-hidden="true">coffee</span>
+                <AppIcon name="coffee" class="text-4xl opacity-40" />
               </div>
               <span class="text-xs font-bold uppercase tracking-widest">No orders</span>
             </div>

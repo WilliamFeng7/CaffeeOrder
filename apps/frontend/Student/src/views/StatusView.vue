@@ -10,6 +10,7 @@
  * 3. 票据展示 (Ticket Display): 显示模拟的取餐号 (A92) 和虚拟的小票样式。
  */
 
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { TRANSLATIONS } from '../data';
 import type { ViewState, Language } from '../types';
@@ -69,12 +70,12 @@ onUnmounted(() => {
       <!-- 状态图标: 制作中闪烁 / 完成时跳动 -->
       <div v-if="step < 3" class="animate-pulse mb-8">
          <div class="size-24 rounded-full bg-primary flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(27,77,62,0.4)]">
-            <span class="material-symbols-rounded text-5xl text-white">coffee_maker</span>
+            <AppIcon name="coffee" class="text-5xl text-white" />
          </div>
       </div>
       <div v-else class="mb-8 animate-[bounce_1s]">
          <div class="size-24 rounded-full bg-green-500 text-white flex items-center justify-center mx-auto shadow-lg">
-            <span class="material-symbols-rounded text-5xl">check</span>
+            <AppIcon name="check" class="text-5xl" />
          </div>
       </div>
 
@@ -97,7 +98,7 @@ onUnmounted(() => {
          
          <!-- View Receipt Button (Mock) -->
          <div class="flex items-center justify-center gap-2 text-sm font-medium bg-background-light py-2 rounded-lg text-text-main">
-            <span class="material-symbols-rounded text-base">receipt_long</span>
+            <AppIcon name="receipt" class="text-base" />
             {{ t.viewReceipt }}
          </div>
       </div>
@@ -108,7 +109,7 @@ onUnmounted(() => {
          @click="emit('navigate', 'home')"
          class="mt-12 text-text-sub font-bold flex items-center gap-2 px-6 py-3 rounded-full active:bg-background-light active:text-text-main active:scale-90 transition-all duration-500 ease-luxury"
       >
-         <span class="material-symbols-rounded">home</span>
+         <AppIcon name="house" />
          {{ t.backHome }}
       </button>
     </div>

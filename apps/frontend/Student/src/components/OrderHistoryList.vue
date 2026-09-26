@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppIcon from '@shared/components/AppIcon.vue';
 import type { Order, Language } from '../types';
 import { computed } from 'vue';
 import { TRANSLATIONS } from '../data';
@@ -47,84 +48,64 @@ const formatDate = (dateStr: string) => {
 </script>
 
 <template>
-  <div class="flex flex-col h-full bg-background-light animate-slide-up-content">
-     <!-- Header Navigation -->
-     <header class="flex items-center p-6 pt-12 sticky top-0 bg-background-light/95 backdrop-blur z-20">
-       <button 
-           @click="emit('close')" 
-           class="flex items-center justify-center size-12 rounded-full bg-white shadow-sm active:scale-90 transition-all font-black"
+  <div class="flex flex-col h-full bg-background-light animate-fade-in">
+     <header class="flex items-center gap-3 px-4 md:px-8 pt-6 md:pt-8 pb-3 shrink-0">
+       <button
+           type="button"
+           @click="emit('close')"
+           :aria-label="lang === 'cn' ? '返回' : 'Back'"
+           class="size-11 rounded-full bg-white shadow-card text-text-main flex items-center justify-center active:bg-cream/70"
        >
-          <span class="material-symbols-rounded text-text-main">arrow_back</span>
+          <AppIcon name="arrow-left" class="text-xl" />
        </button>
-       <h1 class="text-2xl font-black ml-4 text-text-main">{{ t.orderHistory }}</h1>
+       <h1 class="font-display text-[24px] md:text-3xl font-bold tracking-tight text-text-main">{{ t.orderHistory }}</h1>
      </header>
-     
-     <!-- History List -->
-     <main class="flex-1 overflow-y-auto p-6 space-y-6 pb-32">
-        <!-- Empty State -->
-        <div v-if="orders.length === 0" class="h-64 flex flex-col items-center justify-center text-gray-400">
-          <span class="material-symbols-rounded text-6xl opacity-20">history</span>
-          <p class="mt-4 font-bold">{{ t.noOrders }}</p>
+
+     <main class="flex-1 overflow-y-auto no-scrollbar px-4 md:px-8 pt-2 pb-32">
+        <div class="max-w-2xl mx-auto space-y-3">
+        <div v-if="orders.length === 0" class="py-24 flex flex-col items-center text-text-sub">
+          <AppIcon name="history" class="text-4xl mb-3 opacity-60" />
+          <p class="text-[15px] font-medium">{{ t.noOrders }}</p>
         </div>
-        
-        <!-- Order Card -->
-        <div 
+
+        <article
           v-else
-          v-for="order in historyOrders" 
-          :key="order.id" 
-          class="bg-white p-6 rounded-[24px] shadow-sm border border-gray-100" 
+          v-for="order in historyOrders"
+          :key="order.id"
+          class="bg-white rounded-card shadow-card p-4"
         >
-            <!-- Order Header Info -->
-            <div class="flex justify-between items-start mb-4 pb-4 border-b border-gray-50">
-                <div class="space-y-1">
-                  <!-- Date -->
-                  <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                      {{ formatDate(order.date) }}
-                  </p>
-                  <!-- Pickup Number -->
-                  <h3 class="text-xl font-black text-primary">#{{ order.dailyNumber }}</h3>
-                  
-                  <!-- UUIDs for verification -->
-                  <div class="flex flex-col gap-0.5 mt-2">
-                       <p class="text-[9px] text-gray-400 font-mono">
-                           <span class="opacity-50">OID:</span> {{ order.order_no }}
-                       </p>
-                  </div>
+            <div class="flex items-start justify-between gap-3 pb-3 mb-3 border-b border-line">
+                <div class="min-w-0">
+                  <p class="text-[12px] text-text-sub tabular-nums">{{ formatDate(order.date) }}</p>
+                  <p class="font-display text-xl font-bold text-primary tabular-nums">#{{ order.dailyNumber }}</p>
+                  <p class="text-[11px] text-text-sub font-mono truncate">{{ order.order_no }}</p>
                 </div>
-                
-                <div class="text-right">
-                  <!-- Total Price -->
-                  <span class="block text-2xl font-black text-text-main">¥{{ order.total.toFixed(2) }}</span>
-                  <!-- Status Tag -->
-                  <div class="mt-2 flex justify-end">
-                    <span 
-                        class="px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider"
-                        :class="order.isCompleted ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'"
-                    >
-                        {{ order.isCompleted ? t.completed : 'Pending' }}
-                    </span>
-                  </div>
+                <div class="text-right shrink-0">
+                  <p class="text-lg font-bold text-text-main tabular-nums">¥{{ order.total.toFixed(2) }}</p>
+                  <span
+                      class="mt-1 inline-flex h-6 px-2 items-center rounded-full text-[12px] font-semibold"
+                      :class="order.isCompleted ? 'bg-primary-soft text-primary' : 'bg-secondary-soft text-secondary-content'"
+                  >
+                      {{ order.isCompleted ? t.completed : (lang === 'cn' ? '进行中' : 'In progress') }}
+                  </span>
                 </div>
             </div>
 
-            <!-- Order Items List -->
-            <div class="space-y-3">
+            <div class="space-y-2.5">
                 <div v-for="(item, i) in order.items" :key="i" class="flex items-center gap-3">
-                    <div 
-                        class="size-12 rounded-xl bg-gray-50 bg-cover bg-center shrink-0" 
-                        :style="{ backgroundImage: `url(${item.image})` }"
-                    ></div>
+                    <img v-if="item.image" :src="item.image" alt="" class="size-11 rounded-[10px] object-cover bg-cream shrink-0" loading="lazy" decoding="async" />
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-black text-text-main truncate">
+                        <p class="text-[14px] font-medium text-text-main truncate">
                             {{ lang === 'cn' ? (item.nameCN || item.name) : item.name }}
                         </p>
-                        <p class="text-[10px] text-gray-400 truncate">
+                        <p class="text-[12px] text-text-sub truncate">
                             {{ item.temperature }} · {{ item.sugar }}
                         </p>
                     </div>
-                    <span class="text-sm font-bold text-text-main">x{{ item.quantity }}</span>
+                    <span class="text-[14px] font-semibold text-text-main tabular-nums">×{{ item.quantity }}</span>
                 </div>
             </div>
+        </article>
         </div>
      </main>
   </div>

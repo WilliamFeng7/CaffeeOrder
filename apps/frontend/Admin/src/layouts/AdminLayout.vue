@@ -1,18 +1,19 @@
 <script setup lang="ts">
+import AppIcon from '@shared/components/AppIcon.vue';
 import { useRouter, useRoute } from 'vue-router';
 import { auth } from '@shared/auth';
+import type { IconName } from '@shared/icons';
 
 const router = useRouter();
 const route = useRoute();
 
-const menuItems = [
-    { name: '经营概览', path: '/', icon: 'dashboard' },
-    { name: '用户与账户', path: '/users', icon: 'group' },
-    { name: '业务订单', path: '/orders', icon: 'shopping_cart' },
-    { name: '商品管理', path: '/products', icon: 'inventory_2' },
-    
-    { name: '财务与结算', path: '/finance', icon: 'monitoring' },
-    { name: '系统设置', path: '/settings', icon: 'settings' },
+const menuItems: { name: string; path: string; icon: IconName }[] = [
+    { name: '经营概览', path: '/', icon: 'grid' },
+    { name: '用户与账户', path: '/users', icon: 'users' },
+    { name: '业务订单', path: '/orders', icon: 'receipt' },
+    { name: '商品管理', path: '/products', icon: 'package' },
+    { name: '财务与结算', path: '/finance', icon: 'chart' },
+    { name: '系统设置', path: '/settings', icon: 'gear' },
 ];
 
 const handleLogout = () => {
@@ -27,7 +28,7 @@ const handleLogout = () => {
     <aside class="w-20 md:w-72 bg-[#103E32] text-white flex flex-col shadow-xl z-50">
         <div class="p-4 md:p-8 pb-4">
             <h1 class="text-xl md:text-2xl font-black tracking-tight flex items-center gap-3">
-                <span class="material-symbols-rounded text-[#DCCA98]">coffee</span>
+                <AppIcon name="coffee" class="text-[#DCCA98]" />
                 <span class="hidden md:inline">OTIA 咖啡后台</span>
             </h1>
             <p class="hidden md:block text-xs text-white/40 mt-1 uppercase tracking-widest font-bold">管理系统</p>
@@ -41,7 +42,7 @@ const handleLogout = () => {
                 class="flex items-center justify-center md:justify-start gap-4 px-3 md:px-6 py-4 rounded-xl md:rounded-2xl transition-all duration-300 group"
                 :class="route.path === item.path ? 'bg-[#DCCA98] text-[#103E32] shadow-lg shadow-[#DCCA98]/20 translate-x-1 md:translate-x-2' : 'hover:bg-white/5 text-white/70 hover:text-white'"
             >
-                <span class="material-symbols-rounded text-2xl group-hover:scale-110 transition-transform">{{ item.icon }}</span>
+                <AppIcon :name="item.icon" class="text-2xl group-hover:scale-110 transition-transform" />
                 <span class="hidden md:block font-bold text-sm tracking-wide">{{ item.name }}</span>
             </router-link>
         </nav>
@@ -51,7 +52,7 @@ const handleLogout = () => {
                 @click="handleLogout"
                 class="w-full flex items-center justify-center gap-3 px-3 md:px-6 py-4 rounded-xl md:rounded-2xl bg-white/5 hover:bg-red-500/20 hover:text-red-200 transition-all duration-300 text-sm font-bold tracking-wide"
             >
-                <span class="material-symbols-rounded">logout</span>
+                <AppIcon name="sign-out" />
                 <span class="hidden md:block">退出登录</span>
             </button>
         </div>

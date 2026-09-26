@@ -5,8 +5,10 @@
  * Premium order card for KDS display.
  * Features: Elegant styling, time tracking, item pills, action buttons.
  */
+import AppIcon from '@shared/components/AppIcon.vue';
 import type { Order } from '../api';
 import { computed, ref, watch } from 'vue';
+import type { IconName } from '@shared/icons';
 
 const props = defineProps<{
   order: Order;
@@ -48,12 +50,12 @@ const isUrgent = computed(() => {
   return waitMinutes.value > 10;
 });
 
-const nextAction = computed(() => {
+const nextAction = computed((): { label: string; action: string; icon: IconName; bgClass: string; textClass: string } | null => {
   const s = props.order.status.toLowerCase();
   if (s === 'created') return {
     label: 'Start Making',
     action: 'processing',
-    icon: 'play_arrow',
+    icon: 'play',
     bgClass: 'bg-primary hover:bg-primary/90',
     textClass: 'text-white'
   };
@@ -101,7 +103,7 @@ const runAction = () => {
         <div class="flex flex-col min-w-0">
           <span class="text-sm font-bold text-text-main tabular-nums">{{ formatTime(order.created_at) }}</span>
           <span class="text-xs font-bold flex items-center gap-1.5" :class="isUrgent ? 'text-red-600' : 'text-text-sub'">
-            <span class="material-symbols-rounded text-sm" :class="isUrgent ? 'filled' : ''" aria-hidden="true">{{ isUrgent ? 'warning' : 'schedule' }}</span>
+            <AppIcon :name="isUrgent ? 'warning' : 'clock'" :weight="isUrgent ? 'fill' : 'regular'" class="text-sm" />
             {{ timeElapsed }} ago
           </span>
         </div>
@@ -111,7 +113,7 @@ const runAction = () => {
       <div class="flex items-center gap-2 shrink-0">
         <span class="hidden lg:inline text-[11px] font-bold text-text-sub bg-gray-100 px-2.5 py-1 rounded-lg">{{ itemCount }} {{ itemCount === 1 ? 'item' : 'items' }}</span>
         <div v-if="isUrgent" class="size-8 rounded-lg bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/30" aria-label="Waiting over 10 minutes">
-          <span class="material-symbols-rounded text-white text-base filled" aria-hidden="true">priority_high</span>
+          <AppIcon name="exclamation" weight="fill" class="text-white text-base" />
         </div>
       </div>
     </div>
@@ -138,7 +140,7 @@ const runAction = () => {
             class="text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1" 
             :class="item.temperature === 'Hot' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'"
           >
-            <span class="material-symbols-rounded text-xs" aria-hidden="true">{{ item.temperature === 'Hot' ? 'local_fire_department' : 'ac_unit' }}</span>
+            <AppIcon :name="item.temperature === 'Hot' ? 'flame' : 'snowflake'" class="text-xs" />
             {{ item.temperature }}
           </span>
           <span 
@@ -161,7 +163,7 @@ const runAction = () => {
       :class="[nextAction.bgClass, nextAction.textClass]"
     >
       <span v-if="pending" class="size-4 border-2 border-current border-r-transparent rounded-full animate-spin" aria-hidden="true"></span>
-      <span v-else class="material-symbols-rounded text-xl" aria-hidden="true">{{ nextAction.icon }}</span>
+      <AppIcon :name="nextAction.icon" v-else class="text-xl" />
       <span>{{ nextAction.label }}</span>
     </button>
     
@@ -170,7 +172,7 @@ const runAction = () => {
       v-else 
       class="w-full py-3 rounded-xl bg-emerald-100 text-emerald-700 text-sm font-bold text-center flex items-center justify-center gap-2 relative z-10"
     >
-      <span class="material-symbols-rounded text-xl filled" aria-hidden="true">check_circle</span>
+      <AppIcon name="check-circle" weight="fill" class="text-xl" />
       <span>Ready for Pickup</span>
     </div>
   </div>

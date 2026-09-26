@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, onMounted, computed } from 'vue';
 import { api } from '../api';
 import { useToastStore } from '../stores/toast';
@@ -116,7 +117,7 @@ onMounted(fetchProducts);
          
          <div class="flex gap-4 w-full md:w-auto">
              <div class="relative flex-1 md:w-64">
-                 <span class="material-symbols-rounded absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">search</span>
+                 <AppIcon name="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
                  <input 
                     v-model="searchQuery" 
                     type="text" 
@@ -126,7 +127,7 @@ onMounted(fetchProducts);
              </div>
              
              <button @click="handleCreate" class="px-6 h-12 bg-[#103E32] text-white rounded-2xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 transition-transform flex items-center gap-2 shrink-0">
-                 <span class="material-symbols-rounded">add_circle</span>
+                 <AppIcon name="plus-circle" />
                  添加商品
              </button>
          </div>
@@ -162,10 +163,10 @@ onMounted(fetchProducts);
                      <!-- Hidden until hover with a mouse; always shown on touch, where hover never happens -->
                      <div class="flex gap-2 opacity-100 [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                          <button type="button" @click="handleEdit(prod)" aria-label="编辑" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100">
-                             <span class="material-symbols-rounded text-sm [@media(pointer:coarse)]:text-xl" aria-hidden="true">edit</span>
+                             <AppIcon name="edit" class="text-sm [@media(pointer:coarse)]:text-xl" />
                          </button>
                          <button type="button" @click="handleDelete(prod.id)" aria-label="删除" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100">
-                             <span class="material-symbols-rounded text-sm [@media(pointer:coarse)]:text-xl" aria-hidden="true">delete</span>
+                             <AppIcon name="trash" class="text-sm [@media(pointer:coarse)]:text-xl" />
                          </button>
                      </div>
                  </div>
@@ -237,7 +238,7 @@ onMounted(fetchProducts);
                   <div class="flex items-center gap-3 bg-yellow-50 p-4 rounded-xl border border-yellow-100 cursor-pointer" @click="editingProduct.is_recommend = !editingProduct.is_recommend">
                       <div class="size-6 rounded-full border-2 flex items-center justify-center transition-colors"
                            :class="editingProduct.is_recommend ? 'bg-yellow-500 border-yellow-500' : 'border-gray-300 bg-white'">
-                          <span v-if="editingProduct.is_recommend" class="material-symbols-rounded text-white text-sm">check</span>
+                          <AppIcon name="check" v-if="editingProduct.is_recommend" class="text-white text-sm" />
                       </div>
                        <span class="font-bold text-gray-700 text-sm">设为店长推荐 (Store Manager Recommend)</span>
                    </div>
@@ -251,12 +252,12 @@ onMounted(fetchProducts);
                                placeholder="999" />
                            <button type="button" @click="editingProduct.inventory_count = 0" 
                                class="h-12 px-4 bg-red-50 text-red-600 rounded-xl font-bold text-sm hover:bg-red-100 transition-colors flex items-center gap-2">
-                               <span class="material-symbols-rounded text-lg">block</span>
+                               <AppIcon name="prohibit" class="text-lg" />
                                设为售罄
                            </button>
                            <button type="button" @click="editingProduct.inventory_count = 999" 
                                class="h-12 px-4 bg-green-50 text-green-600 rounded-xl font-bold text-sm hover:bg-green-100 transition-colors flex items-center gap-2">
-                               <span class="material-symbols-rounded text-lg">inventory_2</span>
+                               <AppIcon name="package" class="text-lg" />
                                恢复库存
                            </button>
                        </div>
@@ -278,7 +279,7 @@ onMounted(fetchProducts);
          <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showDeleteModal = false"></div>
          <div class="bg-white w-full max-w-sm rounded-[32px] p-8 relative z-10 shadow-2xl animate-scale-in text-center">
              <div class="size-16 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
-                 <span class="material-symbols-rounded text-3xl">delete_forever</span>
+                 <AppIcon name="trash" class="text-3xl" />
              </div>
              <h3 class="text-xl font-black text-gray-900 mb-2">确认删除?</h3>
              <p class="text-gray-500 text-sm font-bold mb-6">商品删除后无法恢复。</p>

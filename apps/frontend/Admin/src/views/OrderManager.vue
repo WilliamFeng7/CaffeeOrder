@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, onMounted, computed } from 'vue';
 import { api, type User } from '../api';
 import { useToastStore } from '../stores/toast';
@@ -131,15 +132,15 @@ onMounted(fetchOrders);
                      @click="handleStatusChange(order.id, 'completed')"
                      class="px-5 py-2.5 bg-[#103E32] text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-[#0c3128] flex items-center gap-2"
                  >
-                     <span class="material-symbols-rounded text-xl" aria-hidden="true">check</span>
+                     <AppIcon name="check" class="text-xl" />
                      完成订单
                  </button>
                  <div v-else-if="order.status === 'completed'" class="text-green-700 font-bold text-sm flex items-center gap-2 px-5 py-2.5 bg-green-50 rounded-xl">
-                      <span class="material-symbols-rounded text-xl" aria-hidden="true">done_all</span>
+                      <AppIcon name="checks" class="text-xl" />
                       已完成
                  </div>
                  <div v-else class="text-gray-600 font-bold text-sm flex items-center gap-2 px-5 py-2.5 bg-gray-100 rounded-xl">
-                      <span class="material-symbols-rounded text-xl" aria-hidden="true">undo</span>
+                      <AppIcon name="undo" class="text-xl" />
                       {{ statusMeta(order.status).label }}
                  </div>
              </div>
@@ -147,7 +148,7 @@ onMounted(fetchOrders);
          </div>
          
          <div v-if="filteredOrders.length === 0" class="text-center py-20 text-gray-500">
-             <span class="material-symbols-rounded text-6xl opacity-30" aria-hidden="true">inbox</span>
+             <AppIcon name="tray" class="text-6xl opacity-30" />
              <p class="mt-4 font-bold">暂无订单</p>
          </div>
      </div>
@@ -164,7 +165,7 @@ onMounted(fetchOrders);
                      <p class="text-xs text-gray-400 font-mono mt-0.5">{{ selectedOrder.order_no }}</p>
                  </div>
                  <button type="button" @click="showDetailModal = false" aria-label="关闭" class="size-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
-                     <span class="material-symbols-rounded" aria-hidden="true">close</span>
+                     <AppIcon name="x" />
                  </button>
              </div>
 

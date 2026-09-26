@@ -11,6 +11,7 @@
  * 4. 支付 (Payment): 模拟支付流程，提交订单。
  */
 
+import AppIcon from '@shared/components/AppIcon.vue';
 import { computed, ref } from 'vue';
 import { TRANSLATIONS } from '../data';
 import { formatCents, toCents, sumCents } from '../utils/money';
@@ -57,164 +58,140 @@ const { handlers: dragHandlers } = useSheetDrag({
 </script>
 
 <template>
-  <div ref="rootEl" class="flex flex-col h-full bg-background-light relative z-40 shadow-[0_-20px_60px_rgba(0,0,0,0.12)]">
-    <!-- Header Navigation -->
-    <!-- 顶部导航: 返回按钮和标题 -->
-    <header class="relative flex items-center px-5 py-4 md:px-10 md:py-6 bg-white/90 backdrop-blur-md shadow-sm shrink-0 sticky top-0 z-20 touch-none" v-on="dragHandlers">
-      <!-- Swipe Indicator -->
-      <div class="absolute top-1.5 left-1/2 -translate-x-1/2 h-1 w-10 bg-gray-200 rounded-full" aria-hidden="true"></div>
-      <button 
+  <div ref="rootEl" class="flex flex-col h-full bg-background-light relative z-40 shadow-sheet">
+    <!-- Header (also the drag handle: swipe down to go back to the menu) -->
+    <header class="relative flex items-center gap-3 px-4 md:px-8 py-3 md:py-4 bg-white border-b border-line shrink-0 sticky top-0 z-20 touch-none" v-on="dragHandlers">
+      <div class="absolute top-1.5 left-1/2 -translate-x-1/2 h-1 w-10 bg-line rounded-full" aria-hidden="true"></div>
+      <button
         type="button"
-        @click="emit('navigate', 'order')" 
+        @click="emit('navigate', 'order')"
         :aria-label="lang === 'cn' ? '返回' : 'Back'"
-        class="flex items-center justify-center size-12 md:size-14 rounded-full bg-gray-50 active:bg-gray-100 outline-none"
+        class="size-11 rounded-full bg-cream/70 text-text-main flex items-center justify-center active:bg-cream"
       >
-         <span class="material-symbols-rounded text-text-main text-xl md:text-2xl" aria-hidden="true">arrow_back</span>
+         <AppIcon name="arrow-left" class="text-xl" />
       </button>
-      <h1 class="text-2xl md:text-3xl font-[900] ml-4 text-text-main tracking-tight">{{ t.reviewOrder }}</h1>
+      <h1 class="font-display text-xl md:text-2xl font-bold tracking-tight text-text-main">{{ t.reviewOrder }}</h1>
     </header>
 
-    <!-- Main Content: Cart List & Payment Summary -->
-    <main class="flex-1 overflow-y-auto no-scrollbar p-4 md:p-10 pb-40 flex flex-col md:flex-row gap-5 md:gap-8">
-      
-      <!-- Left Column: Cart Items List -->
-      <!-- 左侧: 商品清单 -->
-      <div class="flex-1 space-y-6">
-         <div class="bg-white rounded-[28px] md:rounded-[32px] p-5 md:p-8 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.05)]">
-            <div class="flex items-center justify-between mb-5">
-               <h2 class="text-base md:text-lg font-black text-text-main uppercase tracking-widest opacity-80">{{ t.items }} ({{ cart.length }})</h2>
+    <!-- Cart list & summary -->
+    <main class="flex-1 overflow-y-auto no-scrollbar p-4 md:p-8 pb-40 md:pb-10 flex flex-col md:flex-row gap-4 md:gap-6">
+
+      <!-- Items -->
+      <section class="flex-1 min-w-0">
+         <div class="bg-white rounded-card shadow-card p-4 md:p-6">
+            <h2 class="text-[13px] font-semibold text-text-sub mb-3">{{ t.items }} · {{ cart.length }}</h2>
+
+            <!-- Empty State -->
+            <div v-if="cart.length === 0" class="py-16 flex flex-col items-center text-text-sub">
+               <AppIcon name="bag" class="text-4xl mb-3 opacity-60" />
+               <p class="text-[15px] font-medium">{{ t.noOrders }}</p>
             </div>
-            
-            <div class="space-y-5">
-               <!-- Empty State -->
-               <div v-if="cart.length === 0" class="flex flex-col items-center justify-center py-20 text-gray-300">
-                  <span class="material-symbols-rounded text-6xl mb-4 opacity-30">remove_shopping_cart</span>
-                  <p class="font-bold text-sm uppercase tracking-widest">{{ t.noOrders }}</p>
-               </div>
 
-               <!-- Cart Item Row -->
-               <div 
-                  v-else 
-                  v-for="(item, idx) in cart" 
-                  :key="item.cartId" 
-                  class="flex gap-4 md:gap-6 border-b border-gray-50 pb-5 last:border-0 last:pb-0 animate-slide-up-content" 
-                  :style="{ animationDelay: `${Math.min(idx, 6) * 40}ms` }"
-               >
-                  <!-- Item Image -->
-                  <div class="size-20 md:size-24 rounded-2xl bg-gray-100 bg-cover bg-center shrink-0 shadow-inner" :style="{ backgroundImage: `url(${item.image})` }"></div>
-                  
-                  <!-- Item Details -->
-                  <div class="flex-1 flex flex-col justify-between py-1">
-                     <div>
-                       <!-- Name & Subtotal -->
-                       <div class="flex justify-between items-start mb-1">
-                          <h3 class="text-base md:text-lg font-[800] text-text-main line-clamp-1">
-                             {{ lang === 'cn' ? item.nameCN : item.name }}
-                          </h3>
-                          <span class="font-[900] text-base text-primary">¥{{ formatCents(toCents(item.price) * item.quantity) }}</span>
-                       </div>
-                       <!-- Spec Tags -->
-                       <div class="flex flex-wrap gap-1.5 mb-2">
-                           <!-- Size Removed -->
+            <!-- Cart Item Row -->
+            <div
+               v-else
+               v-for="(item, idx) in cart"
+               :key="item.cartId"
+               class="flex gap-3.5 md:gap-4 py-4 border-b border-line last:border-0 animate-slide-up-content"
+               :style="{ animationDelay: `${Math.min(idx, 6) * 40}ms` }"
+            >
+               <img :src="item.image" :alt="item.name" class="size-16 md:size-20 rounded-tile object-cover bg-cream shrink-0" decoding="async" />
 
-                          <!-- Temp -->
-                          <span class="text-[10px] font-bold text-text-sub bg-gray-100 px-2 py-0.5 rounded">
-                             {{ lang === 'cn' ? (item.temperature === 'Hot' ? t.hot : t.iced) : item.temperature }}
-                          </span>
-                          <!-- Sugar -->
-                          <span v-if="item.sugar" class="text-[10px] font-bold text-text-sub bg-gray-100 px-2 py-0.5 rounded">{{ item.sugar }}</span>
+               <div class="flex-1 min-w-0 flex flex-col">
+                  <div class="flex items-start justify-between gap-3">
+                     <h3 class="text-[15px] md:text-base font-semibold text-text-main line-clamp-1">
+                        {{ lang === 'cn' ? item.nameCN : item.name }}
+                     </h3>
+                     <span class="text-[15px] md:text-base font-bold text-text-main tabular-nums shrink-0">¥{{ formatCents(toCents(item.price) * item.quantity) }}</span>
+                  </div>
+                  <!-- Options -->
+                  <div class="flex flex-wrap gap-1.5 mt-1.5">
+                     <span class="text-[12px] font-medium text-text-sub bg-cream px-2 py-0.5 rounded-full">
+                        {{ lang === 'cn' ? (item.temperature === 'Hot' ? t.hot : t.iced) : item.temperature }}
+                     </span>
+                     <span v-if="item.sugar" class="text-[12px] font-medium text-text-sub bg-cream px-2 py-0.5 rounded-full">{{ item.sugar }}</span>
+                  </div>
 
-                       </div>
-                     </div>
-
-                     <!-- Quantity Controller -->
-                     <div class="flex items-center justify-between mt-1">
-                        <div class="flex items-center bg-gray-50 rounded-full p-1 gap-2 shadow-inner">
-                           <!-- Decrease -->
-                           <button 
-                              type="button"
-                              @click="emit('update-quantity', item.cartId, -1)" 
-                              :aria-label="lang === 'cn' ? '减少' : 'Decrease'"
-                              class="size-11 rounded-full bg-white text-text-main flex items-center justify-center shadow-sm outline-none"
-                           >
-                              <span class="material-symbols-rounded text-lg font-bold" aria-hidden="true">remove</span>
-                           </button>
-                           <!-- Count -->
-                           <span class="font-black text-text-main text-base w-6 text-center tabular-nums">{{ item.quantity }}</span>
-                           <!-- Increase -->
-                           <button 
-                              type="button"
-                              @click="emit('update-quantity', item.cartId, 1)" 
-                              :aria-label="lang === 'cn' ? '增加' : 'Increase'"
-                              class="size-11 rounded-full bg-primary text-white flex items-center justify-center shadow-md outline-none"
-                           >
-                              <span class="material-symbols-rounded text-lg font-bold" aria-hidden="true">add</span>
-                           </button>
-                        </div>
-                        <!-- Unit Price -->
-                        <span class="text-[10px] font-bold text-text-sub">¥{{ formatCents(toCents(item.price)) }} / ea</span>
+                  <!-- Quantity stepper -->
+                  <div class="flex items-center justify-between mt-auto pt-2.5">
+                     <span class="text-[12px] text-text-sub tabular-nums">¥{{ formatCents(toCents(item.price)) }} / {{ lang === 'cn' ? '杯' : 'ea' }}</span>
+                     <div class="flex items-center bg-cream rounded-full p-1 gap-1.5">
+                        <button
+                           type="button"
+                           @click="emit('update-quantity', item.cartId, -1)"
+                           :aria-label="lang === 'cn' ? '减少' : 'Decrease'"
+                           class="size-11 rounded-full bg-white text-text-main flex items-center justify-center shadow-sm outline-none"
+                        >
+                           <AppIcon name="minus" weight="bold" class="text-base" />
+                        </button>
+                        <span class="w-6 text-center text-base font-bold text-text-main tabular-nums">{{ item.quantity }}</span>
+                        <button
+                           type="button"
+                           @click="emit('update-quantity', item.cartId, 1)"
+                           :aria-label="lang === 'cn' ? '增加' : 'Increase'"
+                           class="size-11 rounded-full bg-primary text-white flex items-center justify-center outline-none active:bg-primary-dark"
+                        >
+                           <AppIcon name="plus" weight="bold" class="text-base" />
+                        </button>
                      </div>
                   </div>
                </div>
             </div>
          </div>
-      </div>
+      </section>
 
-      <!-- Right Column: Summary & Pay -->
-      <!-- 右侧: 结算概览 -->
-      <div class="md:w-96 flex flex-col gap-6">
-         <div class="bg-white rounded-[32px] p-6 md:p-8 shadow-[0_8px_30px_-8px_rgba(0,0,0,0.05)] flex flex-col gap-6 md:sticky md:top-28">
-            <h3 class="font-black text-xl tracking-tight">{{ t!.pay }}</h3>
-            
-            <!-- Price Breakdown -->
-            <div class="space-y-3">
-               <div class="flex justify-between text-text-sub text-sm font-bold">
-                  <span>{{ t.subtotal }}</span>
-                  <span>¥{{ formatCents(subtotalCents) }}</span>
-               </div>
-               <div class="h-px bg-gray-100 my-2"></div>
-                <div class="flex justify-between text-3xl font-sans font-black text-[#103E32] tracking-tighter">
-                   <span>{{ t.total }}</span>
-                   <span class="font-sans">¥{{ formatCents(totalCents) }}</span>
-                </div>
+      <!-- Summary -->
+      <aside class="md:w-80 lg:w-96 shrink-0">
+         <div class="bg-white rounded-card shadow-card p-5 md:p-6 flex flex-col gap-4 md:sticky md:top-0">
+            <h3 class="text-[13px] font-semibold text-text-sub">{{ t.pay }}</h3>
+            <div class="flex justify-between text-[15px] text-text-sub">
+               <span>{{ t.subtotal }}</span>
+               <span class="tabular-nums">¥{{ formatCents(subtotalCents) }}</span>
+            </div>
+            <div class="h-px bg-line"></div>
+            <div class="flex items-baseline justify-between text-text-main">
+               <span class="text-[15px] font-semibold">{{ t.total }}</span>
+               <span class="text-3xl font-bold tabular-nums"><span class="text-lg font-semibold mr-0.5">¥</span>{{ formatCents(totalCents) }}</span>
             </div>
 
-            <!-- Pay Button (Desktop) -->
-            <button 
+            <!-- Pay Button (iPad) -->
+            <button
                type="button"
                @click="emit('place-order')"
                :disabled="cart.length === 0 || placing"
-               class="hidden md:flex items-center justify-center gap-2 w-full h-[68px] rounded-[32px] font-sans font-black text-2xl shadow-xl mt-2 disabled:opacity-60 outline-none text-white bg-[#103E32] shadow-[#103E32]/30"
+               class="hidden md:flex items-center justify-center gap-2 w-full h-14 rounded-full bg-primary text-white font-semibold text-[17px] disabled:opacity-60 active:bg-primary-dark outline-none"
             >
                <template v-if="placing">
                   <span class="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
-                  <span class="text-xl">{{ t.placing }}</span>
+                  {{ t.placing }}
                </template>
                <template v-else>
-                  {{ lang === 'cn' ? '支付' : 'Pay' }} <span class="bg-white/10 px-2 py-0.5 rounded-lg ml-1 font-sans">¥{{ formatCents(totalCents) }}</span>
+                  {{ lang === 'cn' ? '支付' : 'Pay' }} ¥{{ formatCents(totalCents) }}
                </template>
             </button>
-            
-            <p class="text-center text-[9px] font-bold text-gray-400 uppercase tracking-widest">{{ t.securePayment }}</p>
+
+            <p class="flex items-center justify-center gap-1.5 text-[12px] text-text-sub">
+               <AppIcon name="lock" class="text-sm" />
+               {{ t.securePayment }}
+            </p>
          </div>
-      </div>
+      </aside>
     </main>
 
-    <!-- Mobile Sticky Pay Button -->
-    <!-- 移动端底部悬浮支付按钮 -->
-    <div class="md:hidden absolute bottom-0 left-0 w-full bg-white p-4 pb-[env(safe-area-inset-bottom,20px)] border-t border-gray-100 z-30 shadow-[0_-10px_30px_rgba(0,0,0,0.05)]">
-       <button 
+    <!-- Pay Button (phone): pinned to the bottom -->
+    <div class="md:hidden absolute bottom-0 inset-x-0 bg-white border-t border-line px-4 pt-3 pb-[max(env(safe-area-inset-bottom),16px)] z-30">
+       <button
            type="button"
            @click="emit('place-order')"
            :disabled="cart.length === 0 || placing"
-           class="w-full h-16 rounded-[32px] font-sans font-black text-xl shadow-lg disabled:opacity-60 outline-none flex items-center justify-center gap-2 text-white bg-[#103E32] shadow-[#103E32]/20"
+           class="w-full h-14 rounded-full bg-primary text-white font-semibold text-[17px] flex items-center justify-center gap-2 disabled:opacity-60 active:bg-primary-dark outline-none"
         >
            <template v-if="placing">
               <span class="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
               {{ t.placing }}
            </template>
            <template v-else>
-              {{ lang === 'cn' ? '支付' : 'Pay' }} <span class="bg-white/20 px-3 py-1 rounded-xl text-white text-lg font-sans font-bold">¥{{ formatCents(totalCents) }}</span>
+              {{ lang === 'cn' ? '支付' : 'Pay' }} ¥{{ formatCents(totalCents) }}
            </template>
         </button>
     </div>

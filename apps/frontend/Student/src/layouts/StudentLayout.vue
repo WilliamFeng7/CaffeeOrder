@@ -3,6 +3,7 @@
  * StudentLayout.vue
  * Wrapper for the Student Application logic.
  */
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
@@ -17,6 +18,7 @@ import { formatCents, sumCents } from '../utils/money';
 import { useToastStore } from '../stores/toast';
 import { type CartItem, type Product, type Order, type Language, type TabState, type UserProfile } from '../types';
 import { auth } from '@shared/auth';
+import type { IconName } from '@shared/icons';
 
 const router = useRouter();
 
@@ -38,6 +40,19 @@ const userProfile = ref<UserProfile>({
 });
 
 const t = computed(() => TRANSLATIONS[language.value]);
+
+// 底部标签栏 (Tab bar)
+const TABS: { id: TabState; icon: IconName }[] = [
+  { id: 'home', icon: 'house' },
+  { id: 'order', icon: 'coffee' },
+  { id: 'pickup', icon: 'receipt' },
+  { id: 'profile', icon: 'user' },
+];
+const tabIndex = computed(() => Math.max(0, TABS.findIndex(tab => tab.id === currentTab.value)));
+const tabLabel = (id: TabState) =>
+  t.value[`nav${id.charAt(0).toUpperCase() + id.slice(1)}` as keyof typeof t.value] as string;
+// 进行中的订单数，显示在「取餐」标签上
+const activeOrderCount = computed(() => orders.value.filter(o => o.status === 'active').length);
 
 // --- Lifecycle ---
 const readStoredJSON = <T,>(key: string): T | null => {
@@ -286,12 +301,12 @@ watch(cartCount, (newCount, oldCount) => {
 </script>
 
 <template>
-  <div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans select-none flex flex-col z-0">
+  <div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans text-text-main select-none flex flex-col z-0">
     <!-- Toasts are rendered once, globally, by the shared <ToastContainer /> mounted
          in App.vue. This layout used to run its own inline pill list on top of that,
          so a single message appeared twice. -->
 
-    <div class="flex-1 overflow-hidden relative w-full h-full z-0 transform-gpu pb-[80px]">
+    <div class="flex-1 overflow-hidden relative w-full h-full z-0 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-[calc(72px+env(safe-area-inset-bottom))]">
       <!-- KeepAlive: switching tabs keeps each tab's scroll position, category
            and sub-view instead of rebuilding it from the top every time. -->
       <KeepAlive>
@@ -302,37 +317,54 @@ watch(cartCount, (newCount, oldCount) => {
       </KeepAlive>
     </div>
 
-    <div v-if="cartCount > 0 && !isCheckoutOpen && !selectedProduct && currentTab === 'order'" class="absolute bottom-[84px] md:bottom-[100px] left-0 right-0 z-50 pointer-events-none flex justify-center animate-slide-up-content">
-       <div @click="isCheckoutOpen = true" data-testid="checkout-bar" class="pointer-events-auto bg-[#103E32] h-[56px] md:h-[64px] w-[calc(100%-32px)] max-w-[560px] rounded-[32px] flex items-center justify-between p-1.5 pl-6 shadow-[0_24px_60px_-20px_rgba(16,62,50,0.6)] border border-[#ffffff10] transition-transform duration-200 ease-out relative overflow-hidden active:scale-[0.97]" :class="{ 'scale-[1.02]': cartBump }">
-          <div class="flex items-center gap-5 relative z-10">
-             <div class="relative mt-0.5">
-                <span class="material-symbols-rounded text-white text-[28px] md:text-[30px] font-light opacity-90" aria-hidden="true">shopping_bag</span>
-                <span :key="cartCount" class="absolute -top-1 -right-1.5 bg-[#EF4444] text-white text-[10px] font-bold size-4 md:size-5 rounded-full flex items-center justify-center border-[2px] border-[#103E32] shadow-sm animate-cart-bump">{{ cartCount }}</span>
-             </div>
-             <div class="flex flex-col justify-center">
-                <span class="text-[20px] md:text-[24px] font-[800] text-white leading-none tracking-tight font-sans">¥{{ formatCents(cartTotalCents) }}</span>
-                <span class="text-[9px] text-white/50 font-bold uppercase tracking-[0.2em] mt-0.5">Total</span>
-             </div>
-          </div>
-          <button type="button" class="h-[44px] md:h-[52px] px-6 md:px-8 rounded-[26px] bg-white text-[#103E32] font-black text-sm md:text-base flex items-center gap-2 shadow-[0_4px_20px_rgba(0,0,0,0.1)] active:bg-[#f2f2f2] relative z-10">
+    <!-- Cart bar: floats above the tab bar on the menu -->
+    <div v-if="cartCount > 0 && !isCheckoutOpen && !selectedProduct && currentTab === 'order'" class="absolute inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] md:bottom-[calc(86px+env(safe-area-inset-bottom))] z-40 flex justify-center px-4 pointer-events-none animate-slide-up-content">
+       <button
+         type="button"
+         @click="isCheckoutOpen = true"
+         data-testid="checkout-bar"
+         class="pointer-events-auto w-full max-w-lg h-14 md:h-16 rounded-full bg-primary text-white shadow-float flex items-center gap-3 pl-2 pr-2 transition-transform duration-200 ease-out active:scale-[0.98]"
+         :class="{ 'scale-[1.02]': cartBump }"
+       >
+          <span class="relative size-10 md:size-12 rounded-full bg-white/15 flex items-center justify-center shrink-0">
+             <AppIcon name="bag" class="text-[22px]" />
+             <span :key="cartCount" class="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-white text-primary text-[11px] font-bold flex items-center justify-center tabular-nums animate-cart-bump">{{ cartCount }}</span>
+          </span>
+          <span class="text-lg md:text-xl font-bold tabular-nums">¥{{ formatCents(cartTotalCents) }}</span>
+          <span class="ml-auto h-10 md:h-12 px-5 md:px-6 rounded-full bg-white text-primary font-semibold text-[15px] md:text-base flex items-center gap-1.5">
             {{ t.checkout }}
-            <span class="material-symbols-rounded text-xl md:text-2xl font-bold mt-0.5" aria-hidden="true">arrow_forward</span>
-          </button>
-       </div>
+            <AppIcon name="arrow-right" weight="bold" class="text-base" />
+          </span>
+       </button>
     </div>
 
-    <div class="absolute bottom-0 left-0 w-full z-30 pointer-events-auto bg-white border-t border-gray-100 shadow-[0_-5px_40px_rgba(0,0,0,0.02)] h-[72px] md:h-[88px] pb-[env(safe-area-inset-bottom,12px)] flex items-center justify-center md:rounded-b-[32px] transform-gpu">
-      <div class="flex items-center justify-between px-6 w-full max-w-lg h-full">
-        <button v-for="tab in (['home', 'order', 'pickup', 'profile'] as TabState[])" :key="tab" type="button" @click="currentTab = tab" :aria-current="currentTab === tab ? 'page' : undefined" class="relative flex items-center justify-center gap-2 rounded-full transition-[flex-grow,background-color,padding,width,transform] duration-300 ease-silk outline-none" :class="currentTab === tab ? 'bg-primary text-white pl-6 pr-6 py-3.5 grow-[1.5] shadow-lg shadow-primary/20' : 'bg-transparent text-gray-400 w-16 py-3 grow-0 active:bg-gray-50'">
-            <span class="material-symbols-rounded text-[28px] md:text-[30px] shrink-0" :class="{ 'filled': currentTab === tab }" aria-hidden="true">
-              {{ tab === 'home' ? 'storefront' : tab === 'order' ? 'local_cafe' : tab === 'pickup' ? 'shopping_bag' : 'person' }}
-            </span>
-            <span class="text-xs font-[800] uppercase tracking-widest whitespace-nowrap overflow-hidden transition-[max-width,opacity,transform] duration-300 ease-silk" :class="currentTab === tab ? 'max-w-[100px] opacity-100 ml-1 translate-x-0' : 'max-w-0 opacity-0 ml-0 -translate-x-2'">
-              {{ t[`nav${tab.charAt(0).toUpperCase() + tab.slice(1)}` as keyof typeof t] }}
-            </span>
+    <!-- Tab bar: equal slots, the highlight slides between them (transform only) -->
+    <nav class="absolute bottom-0 inset-x-0 z-30 bg-white border-t border-line pb-[env(safe-area-inset-bottom)]" :aria-label="language === 'cn' ? '主导航' : 'Main'">
+      <div class="relative mx-auto max-w-xl grid grid-cols-4 h-16 md:h-[72px]">
+        <div
+          class="absolute left-0 top-0 h-full w-1/4 transition-transform duration-300 ease-out pointer-events-none"
+          :style="{ transform: `translateX(${tabIndex * 100}%)` }"
+          aria-hidden="true"
+        >
+          <span class="absolute left-1/2 top-2 md:top-3 -translate-x-1/2 h-8 w-14 rounded-full bg-primary-soft"></span>
+        </div>
+        <button
+          v-for="tab in TABS"
+          :key="tab.id"
+          type="button"
+          @click="currentTab = tab.id"
+          :aria-current="currentTab === tab.id ? 'page' : undefined"
+          class="relative z-10 flex flex-col items-center justify-center gap-1 transition-colors duration-200"
+          :class="currentTab === tab.id ? 'text-primary' : 'text-text-sub'"
+        >
+          <span class="relative">
+            <AppIcon :name="tab.icon" :weight="currentTab === tab.id ? 'fill' : 'regular'" class="text-[22px] md:text-2xl" />
+            <span v-if="tab.id === 'pickup' && activeOrderCount > 0" class="absolute -top-1.5 -right-2.5 min-w-4 h-4 px-1 rounded-full bg-primary text-white text-[10px] font-bold leading-4 text-center tabular-nums ring-2 ring-white">{{ activeOrderCount }}</span>
+          </span>
+          <span class="text-[11px] md:text-xs" :class="currentTab === tab.id ? 'font-semibold' : 'font-medium'">{{ tabLabel(tab.id) }}</span>
         </button>
       </div>
-    </div>
+    </nav>
 
     <Transition name="sheet">
       <div v-if="isCheckoutOpen" class="absolute inset-0 z-[100]">

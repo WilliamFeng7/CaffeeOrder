@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api';
@@ -58,7 +59,7 @@ const noiseTexture = "data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='htt
       <div class="text-center space-y-3">
         <!-- Logo Icon -->
         <div class="w-16 h-16 md:w-20 md:h-20 bg-primary text-secondary rounded-[20px] md:rounded-[24px] flex items-center justify-center mx-auto shadow-lg shadow-primary/25 animate-scale-in" style="animation-delay: 200ms">
-          <span class="material-symbols-rounded text-3xl md:text-4xl">coffee_maker</span>
+          <AppIcon name="coffee" class="text-3xl md:text-4xl" />
         </div>
         
         <!-- Brand -->
@@ -77,7 +78,7 @@ const noiseTexture = "data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='htt
           <!-- Username Field -->
           <div class="space-y-2">
             <label class="text-[10px] font-black text-text-sub uppercase tracking-[0.15em] ml-1 flex items-center gap-2">
-              <span class="material-symbols-rounded text-sm opacity-50">person</span>
+              <AppIcon name="user" class="text-sm opacity-50" />
               Username
             </label>
             <input 
@@ -92,7 +93,7 @@ const noiseTexture = "data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='htt
           <!-- Password Field -->
           <div class="space-y-2">
             <label class="text-[10px] font-black text-text-sub uppercase tracking-[0.15em] ml-1 flex items-center gap-2">
-              <span class="material-symbols-rounded text-sm opacity-50">lock</span>
+              <AppIcon name="lock" class="text-sm opacity-50" />
               Password
             </label>
             <input 
@@ -117,7 +118,7 @@ const noiseTexture = "data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='htt
           <span v-if="loading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
           <template v-else>
             <span class="relative z-10">Sign In</span>
-            <span class="material-symbols-rounded text-xl relative z-10">arrow_forward</span>
+            <AppIcon name="arrow-right" class="text-xl relative z-10" />
           </template>
         </button>
       </form>

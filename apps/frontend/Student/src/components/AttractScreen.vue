@@ -10,6 +10,7 @@
  * 3. 交互入口 (Entry Point): 点击任意位置或按钮进入点餐流程 ( emit 'start' )。
  */
 
+import AppIcon from '@shared/components/AppIcon.vue';
 import { computed } from 'vue';
 import { TRANSLATIONS } from '../data';
 import type { Language } from '../types';
@@ -51,7 +52,7 @@ const t = computed(() => TRANSLATIONS[props.lang]);
       <!-- Animated Icon -->
       <div class="mb-12 animate-bounce">
         <div class="size-20 rounded-full bg-primary flex items-center justify-center shadow-[0_0_40px_rgba(249,245,6,0.6)]">
-           <span class="material-symbols-rounded text-4xl text-black">touch_app</span>
+           <AppIcon name="hand-tap" class="text-4xl text-black" />
         </div>
       </div>
       
@@ -61,7 +62,7 @@ const t = computed(() => TRANSLATIONS[props.lang]);
       <!-- Start Button -->
       <button class="bg-white text-[#103E32] px-16 py-6 rounded-[32px] font-black text-2xl active:bg-[#DCCA98] active:text-[#103E32] active:scale-95 transition-all duration-500 ease-luxury flex items-center gap-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
         {{ t.startOrdering }}
-        <span class="material-symbols-rounded text-3xl">arrow_forward</span>
+        <AppIcon name="arrow-right" class="text-3xl" />
       </button>
     </div>
 

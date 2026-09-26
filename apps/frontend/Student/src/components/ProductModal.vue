@@ -17,6 +17,7 @@
  *    - 加入购物车反馈动画 (Jelly/Success).
  */
 
+import AppIcon from '@shared/components/AppIcon.vue';
 import { ref, computed } from 'vue';
 import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Product, Language } from '../types';
@@ -114,79 +115,76 @@ const handleContentClick = (e: MouseEvent) => {
 
 <template>
   <div class="fixed inset-0 z-[110] flex items-end md:items-center justify-center md:p-8">
-     <!-- Backdrop (Click to close) -->
-     <!-- 背景遮罩 (点击空白处关闭)；不做模糊：面板滑动时每一帧都要重算整屏模糊 -->
-     <div 
+     <!-- Backdrop (tap to close); no blur, which repaints the whole screen every frame the sheet moves -->
+     <div
         ref="backdropEl"
-        class="absolute inset-0 bg-black/45 transition-opacity duration-200 ease-out" 
+        class="absolute inset-0 bg-black/40 transition-opacity duration-200 ease-out"
         :class="isClosing ? 'opacity-0' : 'opacity-100 animate-fade-in'"
         @click="handleClose"
      ></div>
-     
-     <!-- Modal Sheet Panel -->
-     <!-- 弹窗主体面板：手机为底部抽屉，iPad 为居中卡片；高度随内容，不再留一大片空白 -->
+
+     <!-- Sheet: bottom sheet on phones, centered card on iPad; height follows the content -->
      <div
        ref="sheetEl"
        @click="handleContentClick"
        role="dialog"
        aria-modal="true"
        aria-labelledby="modal-title"
-       class="bg-background-light w-full max-h-[88%] md:max-h-full md:max-w-2xl rounded-t-[32px] md:rounded-[40px] overflow-hidden flex flex-col shadow-2xl relative z-10 transition-[transform,opacity] duration-200 ease-out"
+       class="bg-background-light w-full max-h-[88%] md:max-h-full md:max-w-xl rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10 transition-[transform,opacity] duration-200 ease-out"
        :class="isClosing ? 'translate-y-full md:translate-y-6 md:scale-95 opacity-0' : 'animate-slide-up-modal md:animate-scale-in'"
      >
-        <!-- Close Button (Floating) -->
+        <!-- Close Button -->
         <button
           type="button"
           @click="handleClose"
           :aria-label="lang === 'cn' ? '关闭' : 'Close'"
-          class="absolute top-4 right-4 z-30 size-11 rounded-full bg-white/80 backdrop-blur-lg flex items-center justify-center border border-white/60 shadow-sm active:bg-white"
+          class="absolute top-3.5 right-3.5 z-30 size-10 rounded-full bg-white/90 text-text-main shadow-sm flex items-center justify-center active:bg-white"
         >
-           <span class="material-symbols-rounded text-2xl text-gray-800" aria-hidden="true">close</span>
+           <AppIcon name="x" weight="bold" class="text-lg" />
         </button>
 
         <!-- Scrollable Content Area -->
         <div class="flex-1 min-h-0 overflow-y-auto no-scrollbar scroll-smooth-touch">
-           <!-- Product Image Header (also the drag handle: swipe down to close) -->
-           <div class="relative h-[200px] md:h-[280px] w-full shrink-0 overflow-hidden bg-[#F2F2F2] touch-none" v-on="dragHandlers">
+           <!-- Photo (also the drag handle: swipe down to close) -->
+           <div class="relative h-[220px] md:h-[300px] w-full shrink-0 overflow-hidden bg-cream touch-none" v-on="dragHandlers">
               <img
                 :src="product.image"
                 :alt="lang === 'cn' ? product.nameCN : product.name"
-                class="w-full h-full object-cover animate-blur-in"
+                class="w-full h-full object-cover animate-fade-in"
+                decoding="async"
               />
-              <!-- Swipe Indicator -->
-              <div class="absolute top-2.5 left-1/2 -translate-x-1/2 h-1.5 w-12 bg-white/80 rounded-full shadow-sm" aria-hidden="true"></div>
-              <!-- Soft fade into the sheet -->
-              <div class="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-background-light to-transparent"></div>
+              <!-- Grab handle -->
+              <div class="absolute top-2 left-1/2 -translate-x-1/2 h-1.5 w-10 bg-white/85 rounded-full shadow-sm" aria-hidden="true"></div>
            </div>
 
-           <!-- Title & Description: on the sheet itself, not over the photo -->
-           <div class="px-6 md:px-10 -mt-2 relative">
+           <!-- Name & Description -->
+           <div class="px-6 md:px-8 pt-5">
               <h1
                 id="modal-title"
-                class="text-3xl md:text-5xl font-sans font-black text-[#103E32] tracking-tighter leading-none animate-slide-up-content"
+                class="font-display text-[28px] md:text-4xl font-bold tracking-tight leading-tight text-text-main animate-slide-up-content"
                 style="animation-delay: 60ms"
               >
                 {{ lang === 'cn' ? product.nameCN : product.name }}
               </h1>
-              <p class="text-text-sub font-medium text-sm md:text-base line-clamp-3 max-w-lg leading-relaxed mt-2 animate-slide-up-content" style="animation-delay: 90ms">
+              <p class="mt-2 text-[15px] text-text-sub leading-relaxed line-clamp-3 animate-slide-up-content" style="animation-delay: 90ms">
                 {{ lang === 'cn' ? product.descriptionCN : product.description }}
               </p>
            </div>
 
-           <!-- Options Selection Section -->
-           <div class="px-6 md:px-10 pt-6 pb-6 md:pb-8 space-y-6">
-               <!-- Sugar Level Selection -->
-               <div class="space-y-3 animate-slide-up-content" style="animation-delay: 120ms">
-                <label class="text-xs font-black text-text-sub uppercase tracking-widest ml-1">{{ t.sweetness }}</label>
-                <div class="flex bg-gray-100/70 p-1.5 rounded-[22px] gap-1.5 border border-gray-100 overflow-x-auto no-scrollbar">
+           <!-- Options -->
+           <div class="px-6 md:px-8 pt-6 pb-6 md:pb-8 space-y-6">
+              <!-- Sugar Level: segmented control -->
+              <div class="space-y-2.5 animate-slide-up-content" style="animation-delay: 120ms">
+                <label class="text-[13px] font-semibold text-text-sub">{{ t.sweetness }}</label>
+                <div class="flex bg-cream p-1 rounded-full gap-1">
                    <button
                      v-for="s in (['0%', '50%', 'Regular', '120%'] as const)"
                      :key="s"
                      @click="sugar = s"
                      type="button"
                      :aria-pressed="sugar === s"
-                     class="flex-1 py-3.5 px-3 min-w-[70px] rounded-2xl text-xs md:text-sm font-bold transition-[background-color,color,box-shadow] duration-150 ease-out"
-                     :class="sugar === s ? 'bg-white text-primary shadow-md' : 'text-text-sub active:bg-white/60'"
+                     class="flex-1 h-11 px-2 rounded-full text-[14px] transition-[background-color,color,box-shadow] duration-150 ease-out"
+                     :class="sugar === s ? 'bg-white text-primary font-semibold shadow-sm' : 'text-text-sub font-medium active:bg-white/60'"
                    >
                       {{ OPTION_TRANSLATIONS.sugar[s][lang] || s }}
                    </button>
@@ -195,35 +193,29 @@ const handleContentClick = (e: MouseEvent) => {
            </div>
         </div>
 
-        <!-- Sticky Footer: Total & Add Button -->
-        <div class="flex-none px-5 md:px-8 pt-3 pb-[max(env(safe-area-inset-bottom),16px)] md:pb-6 bg-white border-t border-gray-50 shadow-[0_-10px_60px_rgba(0,0,0,0.04)] z-20">
-           <div class="flex items-center gap-6">
-              
-              <!-- Total Price Display -->
+        <!-- Footer: Total & Add Button -->
+        <div class="flex-none px-5 md:px-8 pt-3 pb-[max(env(safe-area-inset-bottom),16px)] md:pb-6 bg-white border-t border-line z-20">
+           <div class="flex items-center gap-5">
               <div class="flex flex-col">
-                 <span class="text-[10px] font-black text-text-sub tracking-widest uppercase mb-1">{{ t.total }}</span>
-                 <span class="text-3xl font-[900] text-primary tracking-tighter leading-none tabular-nums">¥{{ calculateTotal.toFixed(2) }}</span>
+                 <span class="text-[12px] font-medium text-text-sub">{{ t.total }}</span>
+                 <span class="text-2xl font-bold text-text-main tabular-nums leading-tight"><span class="text-base font-semibold mr-0.5">¥</span>{{ calculateTotal.toFixed(2) }}</span>
               </div>
 
-              <!-- Action Button -->
-              <button 
+              <button
                  data-testid="add-to-cart-btn"
                  type="button"
                  @click="handleAddToCartClick"
                  :disabled="isSuccess"
-                 class="flex-1 h-[56px] md:h-[64px] rounded-[28px] md:rounded-[32px] font-sans font-black text-lg md:text-xl flex items-center justify-center gap-3 shadow-[0_20px_50px_-10px_rgba(16,62,50,0.4)] outline-none relative overflow-hidden"
-                 :class="isSuccess 
-                   ? 'bg-green-600 text-white' 
-                   : 'bg-[#103E32] text-white'
-                 "
-              >  
-                 <div class="relative flex items-center gap-3" :class="{ 'animate-jelly': isJelly }">
+                 class="flex-1 h-14 rounded-full font-semibold text-[17px] flex items-center justify-center gap-2 text-white transition-colors duration-200 outline-none"
+                 :class="isSuccess ? 'bg-primary-dark' : 'bg-primary active:bg-primary-dark'"
+              >
+                 <div class="relative flex items-center gap-2" :class="{ 'animate-jelly': isJelly }">
                    <template v-if="isSuccess">
-                      <span class="material-symbols-rounded text-2xl animate-scale-up" aria-hidden="true">check_circle</span>
-                      {{ lang === 'cn' ? '已添加' : 'Added' }}
+                      <AppIcon name="check-circle" weight="fill" class="text-xl animate-scale-up" />
+                      {{ lang === 'cn' ? '已加入' : 'Added' }}
                    </template>
                    <template v-else>
-                      <span class="material-symbols-rounded text-2xl" aria-hidden="true">shopping_bag</span>
+                      <AppIcon name="bag" class="text-xl" />
                       {{ t.addToCart }}
                    </template>
                  </div>

@@ -69,60 +69,60 @@ const handlePasswordChange = async () => {
        <div ref="backdropEl" class="absolute inset-0 bg-black/60 animate-fade-in" @click="emit('close')"></div>
        
        <!-- Modal Content -->
-       <div ref="sheetEl" role="dialog" aria-modal="true" class="bg-white w-full max-w-md rounded-[32px] px-8 pt-3 pb-8 relative z-10 shadow-2xl animate-scale-in">
+       <div ref="sheetEl" role="dialog" aria-modal="true" class="bg-white w-full max-w-md rounded-sheet px-6 pt-2 pb-7 relative z-10 shadow-float animate-scale-in">
           <!-- Drag handle: swipe down to close -->
-          <div class="touch-none -mx-8 px-8 pt-2 pb-8" v-on="dragHandlers">
-             <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-7" aria-hidden="true"></div>
-             <h3 class="text-2xl font-black text-[#103E32]">{{ lang === 'cn' ? '修改密码' : 'Change Password' }}</h3>
+          <div class="touch-none -mx-6 px-6 pt-2 pb-6" v-on="dragHandlers">
+             <div class="w-10 h-1.5 bg-line rounded-full mx-auto mb-5" aria-hidden="true"></div>
+             <h3 class="font-display text-xl font-bold text-text-main">{{ lang === 'cn' ? '修改密码' : 'Change Password' }}</h3>
           </div>
           
-          <div class="space-y-6">
+          <div class="space-y-4">
              <!-- Old Password -->
-             <div class="space-y-2">
-                <label class="text-[10px] font-black text-gray-400 uppercase tracking-wider ml-4">{{ lang === 'cn' ? '原密码' : 'Old Password' }}</label>
+             <div class="space-y-1.5">
+                <label class="block text-[13px] font-semibold text-text-sub">{{ lang === 'cn' ? '原密码' : 'Old Password' }}</label>
                 <input 
-                   class="w-full h-14 px-6 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-[#103E32]/20 font-bold text-lg text-text-main"
+                   class="w-full min-h-[52px] px-4 rounded-tile bg-background-light border border-line text-[16px] font-medium text-text-main outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                    v-model="passwordForm.oldPassword"
                    type="password"
                    autocomplete="current-password"
                 />
              </div>
              <!-- New Password -->
-             <div class="space-y-2">
-                <label class="text-[10px] font-black text-gray-400 uppercase tracking-wider ml-4">{{ lang === 'cn' ? '新密码' : 'New Password' }}</label>
+             <div class="space-y-1.5">
+                <label class="block text-[13px] font-semibold text-text-sub">{{ lang === 'cn' ? '新密码' : 'New Password' }}</label>
                 <input 
-                   class="w-full h-14 px-6 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-[#103E32]/20 font-bold text-lg text-text-main"
+                   class="w-full min-h-[52px] px-4 rounded-tile bg-background-light border border-line text-[16px] font-medium text-text-main outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                    v-model="passwordForm.newPassword"
                    type="password"
                    autocomplete="new-password"
                 />
              </div>
              <!-- Confirm Password -->
-             <div class="space-y-2">
-                <label class="text-[10px] font-black text-gray-400 uppercase tracking-wider ml-4">{{ lang === 'cn' ? '确认新密码' : 'Confirm Password' }}</label>
+             <div class="space-y-1.5">
+                <label class="block text-[13px] font-semibold text-text-sub">{{ lang === 'cn' ? '确认新密码' : 'Confirm Password' }}</label>
                 <input 
-                   class="w-full h-14 px-6 bg-gray-50 rounded-2xl outline-none focus:ring-2 focus:ring-[#103E32]/20 font-bold text-lg text-text-main"
+                   class="w-full min-h-[52px] px-4 rounded-tile bg-background-light border border-line text-[16px] font-medium text-text-main outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
                    v-model="passwordForm.confirmPassword"
                    type="password"
                    autocomplete="new-password"
                 />
              </div>
              <!-- Error Msg -->
-             <p v-if="passwordError" class="text-sm text-red-500 font-bold ml-4">{{ passwordError }}</p>
+             <p v-if="passwordError" class="text-[13px] text-[#B42318] font-medium">{{ passwordError }}</p>
              
              <!-- Action Buttons -->
-             <div class="flex flex-col gap-3 mt-6">
+             <div class="flex flex-col gap-2.5 pt-2">
                 <button 
                      type="button"
                      @click="handlePasswordChange" 
-                     class="w-full h-16 rounded-[24px] font-black text-white bg-[#103E32] shadow-xl shadow-[#103E32]/20 text-lg tracking-wide"
+                     class="w-full h-14 rounded-full bg-primary text-white font-semibold text-[17px] active:bg-primary-dark"
                  >
                      {{ lang === 'cn' ? '更新密码' : 'Update Password' }}
                  </button>
                  <button 
                      type="button"
                      @click="emit('close')" 
-                     class="w-full h-16 rounded-[24px] font-black text-[#103E32] bg-gray-100 text-lg tracking-wide active:bg-gray-200"
+                     class="w-full h-14 rounded-full bg-cream text-text-main font-semibold text-[17px] active:bg-line"
                  >
                      {{ lang === 'cn' ? '取消' : 'Cancel' }}
                  </button>

@@ -8,11 +8,12 @@
  * effect remain.
  */
 import motion from '../../../packages/shared/tailwind-motion.mjs';
+import fonts from '../../../packages/shared/tailwind-fonts.mjs';
 
 export default {
   // Hover styles only on devices that can hover: taps on iPad/phones no longer leave stuck hover states.
   future: { hoverOnlyWhenSupported: true },
-    presets: [motion],
+    presets: [motion, fonts],
     content: [
         "./index.html",
         "./src/**/*.{vue,js,ts,jsx,tsx}",
@@ -46,10 +47,6 @@ export default {
                 "kds-sugar-50": "#FDE68A",
                 "kds-sugar-100": "#F59E0B",
                 "kds-sugar-120": "#B45309",
-            },
-            fontFamily: {
-                sans: ["Spline Sans", "sans-serif"],
-                serif: ["Playfair Display", "serif"],
             },
             // KDS-only effect, not part of the shared motion vocabulary.
             // Tailwind merges these with the preset's keyframes/animations.
