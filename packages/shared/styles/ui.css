@@ -1,0 +1,206 @@
+/**
+ * Shared UI primitives for Student / Admin / Barista.
+ *
+ * The visual language is deliberately small: text-first pill buttons, hairline
+ * fields and cards, small uppercase eyebrows for labels, and one accent colour.
+ * Icons are the exception, not the decoration - thin (Phosphor "light") and
+ * only where a word would not fit.
+ *
+ * Imported by each app's index.css right after motion.css; the classes sit in
+ * Tailwind's components layer, so utilities on the element still win.
+ */
+@layer components {
+  /* --- Buttons ---------------------------------------------------------- */
+  .btn {
+    @apply relative inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full
+      text-[15px] font-medium leading-none whitespace-nowrap select-none
+      disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .btn-sm {
+    @apply h-9 px-4 text-[13px];
+  }
+
+  /* 36px buttons still get a 44px touch target. */
+  .btn-sm::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+  }
+
+  .btn-lg {
+    @apply h-14 px-8 text-[16px];
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary-dark active:bg-primary-dark;
+  }
+
+  .btn-ink {
+    @apply bg-text-main text-white hover:bg-black active:bg-black;
+  }
+
+  .btn-outline {
+    @apply border border-line-strong text-text-main hover:border-text-main active:bg-cream;
+  }
+
+  .btn-ghost {
+    @apply text-text-main hover:bg-cream active:bg-cream;
+  }
+
+  .btn-danger {
+    @apply bg-danger text-white hover:bg-[#971D14] active:bg-[#971D14];
+  }
+
+  .btn-danger-ghost {
+    @apply text-danger hover:bg-danger-soft active:bg-danger-soft;
+  }
+
+  /* Icon-only button: no fill until pressed or hovered. Needs an aria-label. */
+  .icon-btn {
+    @apply relative inline-flex items-center justify-center size-10 rounded-full shrink-0
+      text-text-sub hover:text-text-main hover:bg-cream active:bg-cream active:text-text-main;
+  }
+
+  .icon-btn::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+  }
+
+  /* --- Fields ------------------------------------------------------------ */
+  .field {
+    @apply w-full h-12 px-4 rounded-tile bg-surface-light border border-line
+      text-[15px] text-text-main placeholder:text-text-sub/60 outline-none
+      hover:border-line-strong focus:border-text-main;
+    transition:
+      border-color var(--dur-color) var(--ease-out),
+      box-shadow var(--dur-color) var(--ease-out);
+  }
+
+  .field:focus {
+    box-shadow: 0 0 0 4px rgba(23, 28, 25, 0.06);
+  }
+
+  textarea.field {
+    @apply h-auto py-3 leading-relaxed resize-none;
+  }
+
+  select.field {
+    @apply pr-10 appearance-none bg-no-repeat cursor-pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256' fill='%23676C69'%3E%3Cpath d='M212.24,100.24l-80,80a6,6,0,0,1-8.48,0l-80-80a6,6,0,0,1,8.48-8.48L128,167.51l75.76-75.75a6,6,0,0,1,8.48,8.48Z'/%3E%3C/svg%3E");
+    background-size: 16px 16px;
+    background-position: right 14px center;
+  }
+
+  /* Underline-only field for sign-in forms: the line draws in from the
+     centre on focus. Wrap the input: <label class="line-field">…<input>… */
+  .line-field {
+    @apply relative block;
+  }
+
+  .line-field input {
+    @apply w-full h-12 bg-transparent border-0 border-b border-line-strong rounded-none px-0
+      text-[17px] text-text-main placeholder:text-text-sub/50 outline-none;
+  }
+
+  .line-field::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1.5px;
+    background: rgb(23 28 25);
+    transform: scaleX(0);
+    transition: transform var(--dur-enter) var(--ease-out);
+  }
+
+  .line-field:focus-within::after {
+    transform: scaleX(1);
+  }
+
+  .label {
+    @apply block text-[12px] font-medium text-text-sub mb-2;
+  }
+
+  /* Small uppercase label above a heading or value. (Not `.overline`: that is
+     Tailwind's text-decoration utility and draws a line over the text.) */
+  .eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.16em] text-text-sub;
+  }
+
+  /* --- Surfaces ----------------------------------------------------------- */
+  .card {
+    @apply bg-surface-light rounded-card border border-line;
+  }
+
+  .hairline-list > * + * {
+    @apply border-t border-line;
+  }
+
+  /* --- Chips and dots ----------------------------------------------------- */
+  .chip {
+    @apply inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-[12px] font-medium whitespace-nowrap;
+  }
+
+  .chip-quiet {
+    @apply bg-cream text-text-sub;
+  }
+
+  .chip-accent {
+    @apply bg-primary-soft text-primary;
+  }
+
+  .chip-warm {
+    @apply bg-secondary-soft text-secondary-content;
+  }
+
+  .chip-danger {
+    @apply bg-danger-soft text-danger;
+  }
+
+  .dot {
+    @apply inline-block size-1.5 rounded-full bg-current shrink-0;
+  }
+
+  /* --- Links -------------------------------------------------------------- */
+  /* Text link whose underline draws in from the left on hover (pointer
+     devices only; a tap on iPad must not leave it drawn). */
+  .link {
+    @apply relative inline-flex items-center gap-1 font-medium;
+  }
+
+  .link::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -2px;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform var(--dur-release) var(--ease-out);
+  }
+
+  /* An arrow that nudges forward while its group is hovered. */
+  .nudge {
+    transition: transform var(--dur-release) var(--ease-out);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .link:hover::after {
+      transform: scaleX(1);
+      transform-origin: left;
+    }
+
+    .group:hover .nudge {
+      transform: translate3d(3px, 0, 0);
+    }
+
+    .group:hover .nudge-diag {
+      transform: translate3d(2px, -2px, 0);
+    }
+  }
+}

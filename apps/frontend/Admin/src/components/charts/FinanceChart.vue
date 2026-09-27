@@ -1,105 +1,99 @@
 <script setup lang="ts">
+/**
+ * Money in (top-ups, green with a soft wash) against money spent (orders,
+ * amber) per day, on one ¥ axis. The first draw rises from the baseline;
+ * later updates glide.
+ */
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
-  Title,
   Tooltip,
-  Legend,
-  Filler
+  Filler,
+  type ScriptableContext,
+  type TooltipItem,
 } from 'chart.js';
 import { Line } from 'vue-chartjs';
 import { computed } from 'vue';
+import { CHART_INK, CHART_GRID, CHART_TICKS, chartAnimation, chartTooltip, softFill } from './chartTheme';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
 const props = defineProps<{
     data: Array<{ date: string; deposit: number; spending: number }>;
 }>();
 
+const line = {
+    borderWidth: 2,
+    tension: 0.4,
+    // Smooth, but never overshooting the data (no dips below zero between days).
+    cubicInterpolationMode: 'monotone' as const,
+    pointRadius: 0,
+    pointHoverRadius: 4,
+    pointHoverBorderWidth: 2,
+    pointHoverBackgroundColor: '#FFFFFF',
+};
+
 const chartData = computed(() => ({
     labels: props.data.map(d => d.date),
     datasets: [
         {
+            ...line,
             label: '充值',
             data: props.data.map(d => d.deposit),
-            borderColor: '#10B981',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            borderColor: CHART_INK.primary,
+            backgroundColor: (ctx: ScriptableContext<'line'>) => softFill(ctx, CHART_INK.primaryRgb),
             fill: true,
-            tension: 0.4,
-            // Smooth, but never overshooting the data (no dips below zero between days).
-            cubicInterpolationMode: 'monotone' as const,
         },
         {
+            ...line,
             label: '消费',
             data: props.data.map(d => d.spending),
-            borderColor: '#F87171',
-            backgroundColor: 'rgba(248, 113, 113, 0.1)',
-            fill: true,
-            tension: 0.4,
-            cubicInterpolationMode: 'monotone' as const,
-        }
-    ]
+            borderColor: CHART_INK.secondary,
+            backgroundColor: 'transparent',
+            fill: false,
+        },
+    ],
 }));
-
-const reduceMotion = typeof window !== 'undefined'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    animation: reduceMotion ? (false as const) : { duration: 300 },
+    ...chartAnimation(),
     interaction: {
       mode: 'index' as const,
       intersect: false,
     },
     plugins: {
-        // The card header already carries the legend.
-        legend: {
-            display: false,
-        },
+        // The card header carries the legend.
+        legend: { display: false },
         tooltip: {
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            titleColor: '#333',
-            bodyColor: '#666',
-            borderColor: '#ddd',
-            borderWidth: 1,
-            padding: 10,
+            ...chartTooltip,
             displayColors: true,
-        }
+            boxWidth: 8,
+            boxHeight: 8,
+            boxPadding: 4,
+            callbacks: {
+                label: (item: TooltipItem<'line'>) => ` ${item.dataset.label}  ¥${Number(item.raw).toFixed(2)}`,
+            },
+        },
     },
     scales: {
         x: {
-            grid: {
-                display: false
-            }
+            grid: { display: false },
+            border: { display: false },
+            ticks: { color: CHART_TICKS, font: { size: 11 }, maxRotation: 0, autoSkipPadding: 12 },
         },
         y: {
-            type: 'linear' as const,
-            display: true,
-            position: 'left' as const,
             beginAtZero: true,
             suggestedMax: 100,
-            grid: {
-                color: '#f0f0f0'
-            },
-            title: {
-                display: true,
-                text: '金额 (¥)'
-            }
-        }
-    }
+            border: { display: false },
+            grid: { color: CHART_GRID },
+            ticks: { color: CHART_TICKS, font: { size: 11 }, padding: 8, callback: (v: string | number) => `¥${v}` },
+        },
+    },
 };
 </script>
 

@@ -12,6 +12,13 @@ const username = ref('');
 const password = ref('');
 const isLoading = ref(false);
 
+// The form shakes once when a sign-in is refused.
+const rejected = ref(false);
+const shake = () => {
+    rejected.value = false;
+    requestAnimationFrame(() => { rejected.value = true; });
+};
+
 // 动态计算学生端URL：开发环境用5173，生产环境（81端口）跳转到80端口
 const studentUrl = computed(() => {
     const currentPort = window.location.port;
@@ -43,6 +50,7 @@ onUnmounted(clearCountdown);
 const handleLogin = async () => {
     if (!username.value || !password.value) {
         toast.warning('请输入用户名和密码');
+        shake();
         return;
     }
     
@@ -56,6 +64,7 @@ const handleLogin = async () => {
         // session here could only produce 403s later.
         if (String(res.role).toLowerCase() !== 'admin') {
             toast.error('该账号无权访问管理后台 (Not an admin account)');
+            shake();
             return;
         }
         auth.setSession(res.access_token, res.role);
@@ -97,6 +106,7 @@ const handleLogin = async () => {
         } else {
             toast.error('账号密码错误或网络异常');
         }
+        shake();
     } finally {
         isLoading.value = false;
     }
@@ -104,68 +114,42 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="fixed inset-0 bg-[#051F19] flex items-center justify-center p-4">
-    <!-- Abstract Background -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-        <div class="absolute -top-[20%] -left-[10%] size-[600px] bg-[#103E32] rounded-full blur-[120px] opacity-40"></div>
-        <div class="absolute bottom-[10%] right-[10%] size-[400px] bg-[#DCCA98]/20 rounded-full blur-[100px] opacity-30"></div>
-    </div>
+  <div class="fixed inset-0 bg-background-light flex items-center justify-center p-6 overflow-y-auto">
+    <div class="w-full max-w-[380px]">
+        <div class="mb-14">
+            <p class="eyebrow animate-slide-up-content">OTIA · 管理后台</p>
+            <h1 class="mt-3 font-serif text-[44px] font-medium leading-none tracking-[-0.02em] text-text-main animate-text-reveal" style="animation-delay: 60ms">管理员登录</h1>
+            <p class="mt-4 text-[15px] text-text-sub animate-slide-up-content" style="animation-delay: 120ms">使用管理员账号进入系统后台</p>
+        </div>
 
-    <div class="w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 p-10 rounded-[40px] shadow-2xl relative z-10 animate-fade-in">
-         <div class="text-center mb-10">
-            <div class="size-20 bg-[#103E32] rounded-3xl mx-auto flex items-center justify-center shadow-lg shadow-[#103E32]/40 mb-6">
-                <AppIcon name="shield" class="text-[#DCCA98] text-4xl" />
-            </div>
-            <h1 class="text-3xl font-black text-white tracking-tight">管理员登录</h1>
-            <p class="text-white/40 mt-2 font-bold text-sm tracking-widest uppercase">系统后台</p>
-         </div>
-
-         <div class="space-y-6">
-            <div class="space-y-2">
-                <label class="text-[10px] font-black text-[#DCCA98] uppercase tracking-[0.2em] ml-4">用户名</label>
-                <input 
-                    v-model="username" 
-                    type="text" 
-                    class="w-full h-16 bg-white/5 border border-white/10 rounded-3xl px-6 text-white text-lg font-bold outline-none focus:bg-white/10 focus:border-[#DCCA98]/50 transition-all placeholder:text-white/20"
-                    placeholder="输入管理员账号"
-                />
-            </div>
-            
-            <div class="space-y-2">
-                <label class="text-[10px] font-black text-[#DCCA98] uppercase tracking-[0.2em] ml-4">密码</label>
-                <input 
-                    v-model="password" 
-                    type="password" 
-                    class="w-full h-16 bg-white/5 border border-white/10 rounded-3xl px-6 text-white text-lg font-bold outline-none focus:bg-white/10 focus:border-[#DCCA98]/50 transition-all placeholder:text-white/20"
-                    placeholder="输入密码"
-                    @keyup.enter="handleLogin"
-                />
+        <form @submit.prevent="handleLogin" class="space-y-7" :class="{ shake: rejected }" @animationend="rejected = false">
+            <div class="animate-slide-up-content" style="animation-delay: 180ms">
+                <label for="admin-username" class="eyebrow">用户名</label>
+                <div class="line-field mt-1">
+                    <input id="admin-username" v-model="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="输入管理员账号" />
+                </div>
             </div>
 
-            <!-- Errors now shown via Toast -->
+            <div class="animate-slide-up-content" style="animation-delay: 230ms">
+                <label for="admin-password" class="eyebrow">密码</label>
+                <div class="line-field mt-1">
+                    <input id="admin-password" v-model="password" type="password" autocomplete="current-password" placeholder="输入密码" />
+                </div>
+            </div>
 
-            <button 
-                @click="handleLogin"
-                :disabled="isLoading"
-                class="w-full h-16 bg-[#DCCA98] hover:bg-[#E5D5A8] active:scale-[0.98] text-[#103E32] rounded-3xl font-black text-lg tracking-wide uppercase transition-all duration-300 shadow-xl shadow-[#DCCA98]/20 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-                {{ isLoading ? '登录中...' : '登录' }}
-            </button>
-         </div>
-         
-         <div class="mt-8 text-center">
-             <a :href="studentUrl" class="text-white/30 text-xs font-bold hover:text-white transition-colors">返回学生端</a>
-         </div>
+            <div class="pt-3 animate-slide-up-content" style="animation-delay: 280ms">
+                <button type="submit" :disabled="isLoading || countdownSeconds > 0" class="btn btn-primary btn-lg w-full group">
+                    <span v-if="isLoading" class="size-4 border-[1.5px] border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
+                    <template v-else-if="countdownSeconds > 0">请等待 {{ countdownSeconds }} 秒</template>
+                    <template v-else>
+                        登录
+                        <AppIcon name="arrow-right" class="text-base nudge" />
+                    </template>
+                </button>
+            </div>
+        </form>
+
+        <a :href="studentUrl" class="link mt-10 text-[13px] text-text-sub hover:text-text-main animate-fade-in" style="animation-delay: 400ms">返回学生端</a>
     </div>
   </div>
 </template>
-
-<style scoped>
-@keyframes fade-in {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-}
-.animate-fade-in {
-    animation: fade-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
-</style>

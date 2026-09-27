@@ -22,6 +22,8 @@ export function useOrderPolling(options: UseOrderPollingOptions = {}) {
     const loading = ref(true);
     const refreshing = ref(false);
     const error = ref<Error | null>(null);
+    // Bumped after every successful fetch (the header's live dot pings on it).
+    const syncCount = ref(0);
 
     let abortController: AbortController | null = null;
     let timeoutId: number | null = null;
@@ -53,6 +55,7 @@ export function useOrderPolling(options: UseOrderPollingOptions = {}) {
 
             orders.value = sortedOrders;
             error.value = null;
+            syncCount.value++;
         } catch (e) {
             // A cancellation is expected whenever a newer tick superseded this
             // one - it is not an outage and must not surface as an error.
@@ -106,6 +109,7 @@ export function useOrderPolling(options: UseOrderPollingOptions = {}) {
         loading,
         refreshing,
         error,
+        syncCount,
         refresh
     };
 }

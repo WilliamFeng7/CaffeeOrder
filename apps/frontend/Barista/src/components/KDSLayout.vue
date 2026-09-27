@@ -1,9 +1,11 @@
 <script setup lang="ts">
 /**
  * KDSLayout.vue
- * 
- * Premium Kitchen Display System layout - matching Student app aesthetic.
- * Features: Glass-morphism header, elegant brand, live clock, toast system.
+ *
+ * Kitchen display frame: a quiet header (wordmark, live status, clock, sign
+ * out) above the order board. The live dot pings once every time fresh
+ * orders arrive from the server, so staff can see the board is alive without
+ * a spinner looping forever.
  */
 import AppIcon from '@shared/components/AppIcon.vue';
 import { useRouter } from 'vue-router';
@@ -13,6 +15,8 @@ import { auth } from '@shared/auth';
 defineProps<{
   // iOS keeps the new-order beep muted until the screen is tapped once.
   soundReady?: boolean;
+  /** Increments on every successful poll. */
+  beat?: number;
 }>();
 
 const router = useRouter();
@@ -59,61 +63,57 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans select-none flex flex-col z-0">
-    
+  <div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans text-text-main select-none flex flex-col z-0">
+
     <!-- Header: one compact row, so the order columns get the screen height -->
-    <header class="py-2.5 md:py-3 px-4 md:px-6 flex items-center justify-between gap-4 z-10 bg-white/80 backdrop-blur-xl border-b border-gray-100/80 sticky top-0 shadow-[0_4px_30px_rgba(0,0,0,0.03)]">
-      
-      <!-- Left: Brand -->
-      <div class="flex items-center gap-3">
-        <div class="size-10 md:size-11 bg-gradient-to-br from-primary to-[#0A2921] rounded-[14px] md:rounded-[16px] flex items-center justify-center shadow-lg shadow-primary/25">
-          <AppIcon name="coffee" class="text-secondary text-2xl" />
-        </div>
-        <div class="flex flex-col">
-          <span class="text-base md:text-lg font-black text-primary leading-tight tracking-tight">Kitchen Display</span>
-          <div class="flex items-center gap-2">
-            <span class="size-2 rounded-full bg-emerald-500 animate-pulse shadow-sm shadow-emerald-500/50" aria-hidden="true"></span>
-            <span class="text-[10px] md:text-xs font-bold text-text-sub uppercase tracking-widest">Live</span>
-            <span v-if="!soundReady" class="ml-1 flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 text-[10px] md:text-[11px] font-bold">
-              <AppIcon name="speaker-slash" class="text-sm" />
-              Tap to enable sound
-            </span>
-          </div>
-        </div>
+    <header class="h-16 md:h-[72px] px-4 md:px-7 flex items-center justify-between gap-4 border-b border-line shrink-0 animate-fade-in">
+
+      <!-- Left: wordmark + live status -->
+      <div class="flex items-baseline gap-4 min-w-0">
+        <span class="font-serif text-[22px] md:text-[24px] font-semibold tracking-tight">OTIA</span>
+        <span class="hidden sm:inline text-[14px] text-text-sub">Kitchen</span>
+        <span class="flex items-center gap-2 text-[12px] font-medium text-primary">
+          <span class="relative flex size-2 self-center">
+            <span :key="beat" class="absolute inset-0 rounded-full bg-primary ping" aria-hidden="true"></span>
+            <span class="relative size-2 rounded-full bg-primary" aria-hidden="true"></span>
+          </span>
+          Live
+        </span>
+        <Transition name="page">
+          <span v-if="!soundReady" class="chip chip-warm self-center">
+            <AppIcon name="speaker-slash" weight="light" class="text-sm" />
+            Tap to enable sound
+          </span>
+        </Transition>
       </div>
 
-      <!-- Center: Time -->
-      <div class="hidden md:flex items-baseline gap-3 bg-white/80 px-5 py-1.5 rounded-2xl border border-gray-100/50 shadow-sm">
-        <div class="text-2xl lg:text-3xl font-black text-primary font-mono tracking-tight leading-none tabular-nums">
-          {{ currentTime }}
-        </div>
-        <div class="text-[11px] font-bold text-text-sub uppercase tracking-widest">
-          {{ currentDate }}
-        </div>
+      <!-- Center: time -->
+      <div class="hidden md:flex items-baseline gap-3">
+        <span class="font-serif text-[28px] font-medium tabular-nums leading-none">{{ currentTime }}</span>
+        <span class="eyebrow">{{ currentDate }}</span>
       </div>
 
-      <!-- Right: Actions -->
+      <!-- Right: time on phones, sign out -->
       <div class="flex items-center gap-3">
-        <!-- Mobile Time -->
-        <div class="md:hidden flex flex-col items-end">
-          <span class="text-lg font-black text-primary font-mono tabular-nums">{{ currentTime }}</span>
-        </div>
-        
-        <button 
+        <span class="md:hidden font-serif text-[20px] font-medium tabular-nums">{{ currentTime }}</span>
+        <button
           type="button"
           @click="handleSignOutTap"
           :aria-label="confirmingSignOut ? 'Tap again to sign out' : 'Sign out'"
-          class="flex items-center gap-2 min-h-11 px-4 py-2.5 rounded-xl md:rounded-2xl font-bold text-xs md:text-sm shadow-sm border hover:shadow-md"
-          :class="confirmingSignOut ? 'bg-red-500 text-white border-red-500' : 'bg-white text-text-main border-gray-100 hover:border-gray-200'"
+          class="btn btn-sm min-w-[96px]"
+          :class="confirmingSignOut ? 'btn-danger' : 'btn-ghost text-text-sub hover:text-text-main'"
         >
-          <AppIcon name="sign-out" class="text-lg md:text-xl" :class="confirmingSignOut ? '' : 'opacity-60'" />
-          <span class="hidden sm:inline">{{ confirmingSignOut ? 'Tap again to sign out' : 'Sign Out' }}</span>
+          <span class="grid overflow-hidden">
+            <Transition name="roll-up">
+              <span :key="String(confirmingSignOut)" class="col-start-1 row-start-1">{{ confirmingSignOut ? 'Tap again to sign out' : 'Sign out' }}</span>
+            </Transition>
+          </span>
         </button>
       </div>
     </header>
 
     <!-- Main Content Area -->
-    <main class="flex-1 w-full overflow-hidden relative z-0 p-3 md:p-4 lg:p-5">
+    <main class="flex-1 w-full overflow-hidden relative z-0 p-3 md:p-5">
       <slot></slot>
     </main>
     <!-- Toasts are rendered globally in App.vue (single renderer) -->

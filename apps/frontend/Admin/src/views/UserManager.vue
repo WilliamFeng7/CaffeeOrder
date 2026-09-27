@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppIcon from '@shared/components/AppIcon.vue';
-import { ref, onMounted } from 'vue';
+import AppModal from '@shared/components/AppModal.vue';
+import { ref, computed, onMounted } from 'vue';
 import { api } from '../api';
 import { useToastStore } from '../stores/toast';
 
@@ -38,6 +39,18 @@ const deleteId = ref<number | null>(null);
 const handleDelete = (id: number) => {
     deleteId.value = id;
     showDeleteModal.value = true;
+};
+
+const deleteName = computed(() => {
+    const u = users.value.find(x => x.id === deleteId.value);
+    return u ? (u.name || u.username) : '';
+});
+
+const initials = (user: any) => String(user.name || user.username || '?').slice(0, 2).toUpperCase();
+
+const openCreate = () => {
+    editingUser.value = { name: '', username: '', password: '', role: 'student', balance: 0 };
+    showModal.value = true;
 };
 
 const confirmDelete = async () => {
@@ -133,60 +146,67 @@ onMounted(fetchUsers);
 </script>
 
 <template>
-  <div class="space-y-6 animate-fade-in">
-     <div class="flex justify-between items-center">
-         <h1 class="text-3xl font-black text-primary tracking-tight">用户管理</h1>
-         <button @click="() => { editingUser = { name: '', username: '', password: '', role: 'student', balance: 0 }; showModal = true; }" class="px-6 py-3 bg-[#103E32] text-white rounded-2xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 transition-transform flex items-center gap-2">
-             <AppIcon name="user-plus" />
+  <div class="space-y-6">
+     <div class="flex flex-wrap items-end justify-between gap-4 animate-slide-up-content">
+         <div>
+             <p class="eyebrow">{{ users.length }} 位用户</p>
+             <h1 class="mt-2 font-serif text-[34px] font-medium leading-tight tracking-[-0.015em]">用户管理</h1>
+         </div>
+         <button type="button" @click="openCreate" class="btn btn-primary btn-sm">
+             <AppIcon name="plus" class="text-base" />
              添加用户
          </button>
      </div>
 
-     <!-- Table Card -->
-     <div class="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden">
-        <div class="overflow-x-auto">
+     <!-- Table -->
+     <div class="card overflow-hidden animate-slide-up-content" style="animation-delay: 60ms">
+        <div class="overflow-x-auto quiet-scrollbar">
             <table class="w-full text-left">
-                <thead class="bg-gray-50 border-b border-gray-100">
-                    <tr>
-                        <th class="px-8 py-5 text-xs font-black text-gray-400 uppercase tracking-widest">用户信息</th>
-                        <th class="px-8 py-5 text-xs font-black text-gray-400 uppercase tracking-widest">角色</th>
-                        <th class="px-8 py-5 text-xs font-black text-gray-400 uppercase tracking-widest text-right">余额</th>
-                        <th class="px-8 py-5 text-xs font-black text-gray-400 uppercase tracking-widest text-right">操作</th>
+                <thead>
+                    <tr class="border-b border-line">
+                        <th class="px-6 py-3.5 eyebrow font-medium">用户</th>
+                        <th class="px-6 py-3.5 eyebrow font-medium">角色</th>
+                        <th class="px-6 py-3.5 eyebrow font-medium text-right">余额</th>
+                        <th class="px-6 py-3.5 eyebrow font-medium text-right">操作</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-50">
-                    <tr v-for="user in users" :key="user.id" class="group hover:bg-gray-50/80 transition-colors">
-                        <td class="px-8 py-5">
-                            <div class="flex items-center gap-4">
-                                <div class="size-10 rounded-full bg-[#103E32]/10 text-[#103E32] flex items-center justify-center font-bold text-sm">
-                                    {{ user.username.slice(0,2).toUpperCase() }}
-                                </div>
-                                <div>
-                                    <p class="font-bold text-gray-900">{{ user.name }}</p>
-                                    <p class="text-xs text-gray-400 font-mono">{{ user.username }}</p>
+                <tbody v-if="loading && !users.length">
+                    <tr v-for="i in 5" :key="i" class="border-b border-line last:border-0">
+                        <td colspan="4" class="px-6 py-4">
+                            <div class="h-9 rounded-tile bg-cream animate-pulse"></div>
+                        </td>
+                    </tr>
+                </tbody>
+                <tbody v-else class="stagger-in">
+                    <tr v-for="user in users" :key="user.id" class="group border-b border-line last:border-0 hover:bg-background-light transition-colors duration-color">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3.5">
+                                <span class="size-9 rounded-full bg-cream text-text-main flex items-center justify-center text-[12px] font-medium shrink-0">
+                                    {{ initials(user) }}
+                                </span>
+                                <div class="min-w-0">
+                                    <p class="text-[14px] font-medium truncate">{{ user.name }}</p>
+                                    <p class="text-[12px] text-text-sub font-mono truncate">{{ user.username }}</p>
                                 </div>
                             </div>
                         </td>
-                        <td class="px-8 py-5">
-                            <span class="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider" 
-                                  :class="user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'">
-                                {{ user.role }}
-                            </span>
+                        <td class="px-6 py-4">
+                            <span class="chip" :class="user.role === 'admin' ? 'chip-warm' : user.role === 'barista' ? 'chip-accent' : 'chip-quiet'">{{ user.role }}</span>
                         </td>
-                        <td class="px-8 py-5 text-right">
-                             <p class="font-mono font-bold text-gray-900">¥{{ user.balance.toFixed(2) }}</p>
+                        <td class="px-6 py-4 text-right">
+                             <span class="font-serif text-[16px] font-medium tabular-nums">¥{{ user.balance.toFixed(2) }}</span>
                         </td>
-                        <td class="px-8 py-5 text-right">
+                        <td class="px-6 py-4 text-right">
                              <!-- Hidden until hover with a mouse; always shown on touch, where hover never happens -->
-                             <div v-if="user.role !== 'admin'" class="flex items-center justify-end gap-2 opacity-100 [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                                 <button type="button" @click="handleEdit(user)" aria-label="编辑" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors">
-                                     <AppIcon name="edit" class="text-sm [@media(pointer:coarse)]:text-xl" />
+                             <div v-if="user.role !== 'admin'" class="flex items-center justify-end gap-1 opacity-100 [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-color">
+                                 <button type="button" @click="handleEdit(user)" aria-label="编辑" title="编辑" class="icon-btn size-8 [@media(pointer:coarse)]:size-11">
+                                     <AppIcon name="edit" weight="light" class="text-[18px]" />
                                  </button>
-                                 <button type="button" @click="handleDepositOpen(user)" aria-label="充值" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-100 transition-colors" title="充值">
-                                     <AppIcon name="wallet" class="text-sm [@media(pointer:coarse)]:text-xl" />
+                                 <button type="button" @click="handleDepositOpen(user)" aria-label="充值" title="充值" class="icon-btn size-8 [@media(pointer:coarse)]:size-11">
+                                     <AppIcon name="wallet" weight="light" class="text-[18px]" />
                                  </button>
-                                 <button type="button" @click="handleDelete(user.id)" aria-label="删除" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100 transition-colors">
-                                     <AppIcon name="trash" class="text-sm [@media(pointer:coarse)]:text-xl" />
+                                 <button type="button" @click="handleDelete(user.id)" aria-label="删除" title="删除" class="icon-btn size-8 [@media(pointer:coarse)]:size-11 hover:!text-danger hover:!bg-danger-soft">
+                                     <AppIcon name="trash" weight="light" class="text-[18px]" />
                                  </button>
                              </div>
                         </td>
@@ -196,124 +216,83 @@ onMounted(fetchUsers);
         </div>
      </div>
 
-     <!-- Delete Confirmation Modal -->
-     <Teleport to="body">
-     <div v-if="showDeleteModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-         <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showDeleteModal = false"></div>
-         <div class="bg-white w-full max-w-sm rounded-[32px] p-8 relative z-10 shadow-2xl animate-scale-in text-center">
-             <div class="size-16 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
-                 <AppIcon name="trash" class="text-3xl" />
-             </div>
-             <h3 class="text-xl font-black text-gray-900 mb-2">确认删除?</h3>
-             <p class="text-gray-500 text-sm font-bold mb-6">此操作不可逆，用户数据将被永久移除。</p>
-             <div class="flex gap-3">
-                 <button @click="confirmDelete" class="flex-1 h-12 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-600/20 transition-colors">确认删除</button>
-                 <button @click="showDeleteModal = false" class="flex-1 h-12 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">取消</button>
-             </div>
-         </div>
-     </div>
-     </Teleport>
+     <!-- Delete confirmation -->
+     <AppModal :open="showDeleteModal" size="sm" title="删除用户" :subtitle="deleteName" @close="showDeleteModal = false">
+         <p class="text-[14px] text-text-sub leading-relaxed">此操作不可撤销，该用户的数据将被永久移除。</p>
+         <template #footer>
+             <button type="button" @click="showDeleteModal = false" class="btn btn-ghost flex-1">取消</button>
+             <button type="button" @click="confirmDelete" class="btn btn-danger flex-1">确认删除</button>
+         </template>
+     </AppModal>
 
-     <!-- Edit Modal -->
-     <Teleport to="body">
-     <div v-if="showModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-         <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showModal = false"></div>
-         <div class="bg-white w-full max-w-lg rounded-[32px] p-8 relative z-10 shadow-2xl animate-scale-in">
-             <h3 class="text-2xl font-black text-primary mb-6">{{ editingUser.id ? '编辑用户' : '添加用户' }}</h3>
-             <div class="space-y-4">
-                 <div>
-                     <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">姓名 (Name) <span class="text-red-400">*</span></label>
-                     <input v-model="editingUser.name" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-                 </div>
-                 <div v-if="!editingUser.id">
-                     <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">用户名 (Username) <span class="text-red-400">*</span></label>
-                     <input v-model="editingUser.username" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-                 </div>
-                 <div>
-                     <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">密码 (Password)</label>
-                     <input v-model="editingUser.password" type="password" autocomplete="new-password" placeholder="留空则不修改 (Leave empty to keep)" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-                     <p v-if="!editingUser.id" class="text-[10px] text-red-400 font-bold mt-1 ml-2">* 必填 (Required, >8 chars)</p>
-                     <p v-else class="text-[10px] text-gray-400 font-bold mt-1 ml-2">若修改需 >8 位 (If changed, must be >8 chars)</p>
-                 </div>
-                 <div>
-                     <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">余额 (¥) <span class="text-red-400">*</span></label>
-                     <input v-model.number="editingUser.balance" type="number" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-                 </div>
-                 <div>
-                     <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">角色 <span class="text-red-400">*</span></label>
-                     <select v-model="editingUser.role" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20">
+     <!-- Edit / create -->
+     <AppModal :open="showModal" :title="editingUser?.id ? '编辑用户' : '添加用户'" @close="showModal = false">
+         <div v-if="editingUser" class="space-y-4">
+             <label class="block">
+                 <span class="label">姓名 <span class="text-danger">*</span></span>
+                 <input v-model="editingUser.name" class="field" />
+             </label>
+             <label v-if="!editingUser.id" class="block">
+                 <span class="label">用户名 <span class="text-danger">*</span></span>
+                 <input v-model="editingUser.username" class="field" autocomplete="off" />
+             </label>
+             <label class="block">
+                 <span class="label">密码</span>
+                 <input v-model="editingUser.password" type="password" autocomplete="new-password" :placeholder="editingUser.id ? '留空则不修改' : '至少 8 位'" class="field" />
+                 <span class="mt-1.5 block text-[12px]" :class="editingUser.id ? 'text-text-sub' : 'text-danger'">
+                     {{ editingUser.id ? '若修改需大于 8 位' : '必填，大于 8 位' }}
+                 </span>
+             </label>
+             <div class="grid grid-cols-2 gap-4">
+                 <label class="block">
+                     <span class="label">余额 (¥) <span class="text-danger">*</span></span>
+                     <input v-model.number="editingUser.balance" type="number" class="field tabular-nums" />
+                 </label>
+                 <label class="block">
+                     <span class="label">角色 <span class="text-danger">*</span></span>
+                     <select v-model="editingUser.role" class="field">
                          <option value="student">学生</option>
                          <option value="admin">管理员</option>
                      </select>
-                 </div>
-                 <div>
-                     <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">手机号 (Phone) <span class="text-gray-300 font-normal">- Optional</span></label>
-                     <input v-model="editingUser.phone" placeholder="11位数字 (11 digits)" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-                 </div>
-                 <div>
-                     <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">邮箱 (Email) <span class="text-gray-300 font-normal">- Optional</span></label>
-                     <input v-model="editingUser.email" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-                 </div>
-                 
-                 <div class="pt-4 flex gap-3">
-                     <button @click="handleSave" class="flex-1 h-14 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20">保存更改</button>
-                     <button @click="showModal = false" class="flex-1 h-14 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">取消</button>
-                 </div>
+                 </label>
+             </div>
+             <div class="grid grid-cols-2 gap-4">
+                 <label class="block">
+                     <span class="label">手机号 <span class="text-text-sub/70">选填</span></span>
+                     <input v-model="editingUser.phone" placeholder="11 位数字" inputmode="numeric" class="field tabular-nums" />
+                 </label>
+                 <label class="block">
+                     <span class="label">邮箱 <span class="text-text-sub/70">选填</span></span>
+                     <input v-model="editingUser.email" type="email" class="field" />
+                 </label>
              </div>
          </div>
-     </div>
-     </Teleport>
+         <template #footer>
+             <button type="button" @click="showModal = false" class="btn btn-ghost flex-1">取消</button>
+             <button type="button" @click="handleSave" class="btn btn-primary flex-1">保存</button>
+         </template>
+     </AppModal>
 
-     <!-- Deposit Modal -->
-     <Teleport to="body">
-     <div v-if="showDepositModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-         <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showDepositModal = false"></div>
-         <div class="bg-white w-full max-w-sm rounded-[32px] p-8 relative z-10 shadow-2xl animate-scale-in">
-             <div class="mb-6 flex flex-col items-center">
-                 <div class="size-16 rounded-full bg-green-50 text-green-600 flex items-center justify-center mb-4">
-                     <AppIcon name="card" class="text-3xl" />
-                 </div>
-                 <h3 class="text-xl font-black text-primary">账户充值 (Top Up)</h3>
-                 <p class="text-gray-400 text-sm font-bold mt-1">为 {{ depositUser?.name }} 充值</p>
-             </div>
-             
-             <div class="space-y-4">
-                 <div class="grid grid-cols-3 gap-2">
-                     <button @click="depositAmount = 50" :class="depositAmount === 50 ? 'bg-primary text-white' : 'bg-gray-50 text-gray-600'" class="h-10 rounded-xl font-bold text-sm transition-colors">¥50</button>
-                     <button @click="depositAmount = 100" :class="depositAmount === 100 ? 'bg-primary text-white' : 'bg-gray-50 text-gray-600'" class="h-10 rounded-xl font-bold text-sm transition-colors">¥100</button>
-                     <button @click="depositAmount = 200" :class="depositAmount === 200 ? 'bg-primary text-white' : 'bg-gray-50 text-gray-600'" class="h-10 rounded-xl font-bold text-sm transition-colors">¥200</button>
-                 </div>
-                 
-                 <div>
-                     <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">充值金额 (¥)</label>
-                     <input v-model.number="depositAmount" type="number" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20 text-center text-lg" />
-                 </div>
-                 
-                 <div class="pt-2 flex gap-3">
-                     <button @click="handleDepositSubmit" class="flex-1 h-12 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold shadow-lg shadow-green-600/20 transition-colors">确认充值</button>
-                     <button @click="showDepositModal = false" class="flex-1 h-12 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">取消</button>
-                 </div>
-             </div>
+     <!-- Top up -->
+     <AppModal :open="showDepositModal" size="sm" title="账户充值" :subtitle="depositUser ? `为 ${depositUser.name || depositUser.username} 充值` : ''" @close="showDepositModal = false">
+         <div class="grid grid-cols-3 gap-2">
+             <button
+                 v-for="amount in [50, 100, 200]"
+                 :key="amount"
+                 type="button"
+                 @click="depositAmount = amount"
+                 class="h-11 rounded-full border text-[14px] font-medium tabular-nums transition-colors duration-color"
+                 :class="depositAmount === amount ? 'bg-text-main border-text-main text-white' : 'border-line text-text-main hover:border-text-main'"
+             >¥{{ amount }}</button>
          </div>
-     </div>
-     </Teleport>
-
+         <label class="block mt-5">
+             <span class="label">充值金额 (¥)</span>
+             <input v-model.number="depositAmount" type="number" class="field text-center font-serif !text-[22px] tabular-nums" />
+         </label>
+         <template #footer>
+             <button type="button" @click="showDepositModal = false" class="btn btn-ghost flex-1">取消</button>
+             <button type="button" @click="handleDepositSubmit" class="btn btn-primary flex-1">确认充值</button>
+         </template>
+     </AppModal>
   </div>
 </template>
-
-<style scoped>
-.animate-fade-in {
-    animation: fadeIn 0.4s ease-out forwards;
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.animate-scale-in {
-    animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-@keyframes scaleIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-}
-</style>

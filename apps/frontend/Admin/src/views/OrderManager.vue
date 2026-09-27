@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import AppIcon from '@shared/components/AppIcon.vue';
+import AppModal from '@shared/components/AppModal.vue';
+import SlidingTabs from '@shared/components/SlidingTabs.vue';
 import { ref, onMounted, computed } from 'vue';
 import { api, type User } from '../api';
 import { useToastStore } from '../stores/toast';
@@ -17,13 +19,19 @@ const ACTIVE = ['created', 'processing', 'ready'];
 // 状态标签 (Status chips): every lifecycle state gets its own label, instead of
 // "not completed" being treated as one bucket (which offered 完成订单 on refunds).
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-    created: { label: '待制作', cls: 'bg-amber-50 text-amber-700' },
-    processing: { label: '制作中', cls: 'bg-indigo-50 text-indigo-700' },
-    ready: { label: '待取餐', cls: 'bg-emerald-50 text-emerald-700' },
-    completed: { label: '已完成', cls: 'bg-green-50 text-green-700' },
-    refunded: { label: '已退款', cls: 'bg-gray-100 text-gray-600' },
+    created: { label: '待制作', cls: 'text-secondary-content' },
+    processing: { label: '制作中', cls: 'text-text-main' },
+    ready: { label: '待取餐', cls: 'text-primary' },
+    completed: { label: '已完成', cls: 'text-text-sub' },
+    refunded: { label: '已退款', cls: 'text-text-sub' },
 };
-const statusMeta = (status: string) => STATUS_META[status] ?? { label: status, cls: 'bg-gray-100 text-gray-600' };
+const statusMeta = (status: string) => STATUS_META[status] ?? { label: status, cls: 'text-text-sub' };
+
+const filterOptions = [
+    { value: 'all' as const, label: '全部' },
+    { value: 'pending' as const, label: '待处理' },
+    { value: 'completed' as const, label: '已完成' },
+];
 
 const fetchOrders = async () => {
     loading.value = true;
@@ -77,125 +85,113 @@ onMounted(fetchOrders);
 </script>
 
 <template>
-  <div class="space-y-5 animate-fade-in">
-     <div class="flex justify-between items-center gap-4">
-         <h1 class="text-3xl font-black text-primary tracking-tight">订单管理</h1>
-         
-         <div class="flex bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
-             <button type="button" @click="filter = 'all'" class="px-4 py-2 rounded-lg text-sm font-bold" :class="filter === 'all' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:text-gray-700'">全部</button>
-             <button type="button" @click="filter = 'pending'" class="px-4 py-2 rounded-lg text-sm font-bold" :class="filter === 'pending' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:text-gray-700'">待处理</button>
-             <button type="button" @click="filter = 'completed'" class="px-4 py-2 rounded-lg text-sm font-bold" :class="filter === 'completed' ? 'bg-primary text-white shadow-md' : 'text-gray-500 hover:text-gray-700'">已完成</button>
+  <div class="space-y-6">
+     <div class="flex flex-wrap items-end justify-between gap-4 animate-slide-up-content">
+         <div>
+             <p class="eyebrow">{{ filteredOrders.length }} 笔订单</p>
+             <h1 class="mt-2 font-serif text-[34px] font-medium leading-tight tracking-[-0.015em]">订单管理</h1>
          </div>
+         <SlidingTabs v-model="filter" :options="filterOptions" variant="segment" size="sm" label="订单筛选" />
      </div>
 
      <!-- Loading -->
-     <div v-if="loading" class="space-y-3" aria-hidden="true">
-         <div v-for="i in 5" :key="i" class="h-[88px] bg-white rounded-[24px] border border-gray-100 relative overflow-hidden">
-             <div class="absolute inset-0 bg-gradient-to-r from-transparent via-gray-100/80 to-transparent animate-shimmer"></div>
+     <div v-if="loading" class="card divide-y divide-line" aria-hidden="true">
+         <div v-for="i in 5" :key="i" class="px-6 py-5 flex items-center gap-5">
+             <div class="size-12 rounded-tile bg-cream animate-pulse"></div>
+             <div class="flex-1 space-y-2">
+                 <div class="h-3.5 w-40 rounded-full bg-cream animate-pulse"></div>
+                 <div class="h-3 w-64 rounded-full bg-cream animate-pulse"></div>
+             </div>
          </div>
      </div>
 
-     <!-- Orders List -->
-     <div v-else class="space-y-3 stagger-in">
-         <div v-for="order in filteredOrders" :key="order.id" class="bg-white px-5 py-4 rounded-[24px] shadow-sm border border-gray-100 flex items-center justify-between gap-4 group hover:shadow-md transition-shadow duration-200">
-             
-             <!-- Left Info -->
-             <div class="flex items-center gap-5 cursor-pointer min-w-0" @click="viewDetails(order)">
+     <!-- Orders (the list crossfades when the filter changes) -->
+     <Transition v-else name="page" mode="out-in">
+     <div :key="filter" class="card overflow-hidden">
+         <ul v-if="filteredOrders.length" class="divide-y divide-line stagger-in">
+             <li v-for="order in filteredOrders" :key="order.id" class="group px-6 py-4 flex items-center gap-5 hover:bg-background-light transition-colors duration-color">
                  <!-- Pickup number: what the customer and the barista call out -->
-                 <div class="size-14 rounded-2xl flex flex-col items-center justify-center shrink-0 bg-[#F2F7F5] text-primary">
-                     <span class="text-[9px] font-black uppercase tracking-widest text-gray-500 leading-none">取餐号</span>
-                     <span class="text-xl font-black leading-tight tabular-nums">{{ order.pickup_number ?? '—' }}</span>
-                 </div>
-                 
-                 <div class="min-w-0">
-                     <div class="flex items-center gap-2 min-w-0">
-                         <p class="font-bold text-gray-900 text-base truncate group-hover:text-primary transition-colors">{{ customerName(order) }}</p>
-                         <span v-if="ACTIVE.includes(order.status)" class="px-2 py-0.5 rounded-md text-[11px] font-black shrink-0" :class="statusMeta(order.status).cls">{{ statusMeta(order.status).label }}</span>
-                     </div>
-                     <p class="text-xs text-gray-500 font-mono mt-1 truncate">
-                         {{ new Date(order.created_at).toLocaleString() }}
-                         <span class="mx-1 text-gray-300">·</span>
-                         订单 {{ order.id }}
-                     </p>
-                     <div class="flex items-center gap-2 mt-1.5">
-                         <span class="font-black text-primary tabular-nums">¥{{ order.total.toFixed(2) }}</span>
-                         <span class="text-xs text-blue-600 font-bold ml-1 hover:underline">查看详情</span>
-                     </div>
-                 </div>
-             </div>
-
-             <!-- Right Actions -->
-             <div class="flex items-center gap-4 shrink-0">
-                 <button
-                     v-if="ACTIVE.includes(order.status)"
-                     type="button"
-                     @click="handleStatusChange(order.id, 'completed')"
-                     class="px-5 py-2.5 bg-[#103E32] text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:bg-[#0c3128] flex items-center gap-2"
-                 >
-                     <AppIcon name="check" class="text-xl" />
-                     完成订单
+                 <button type="button" class="flex items-center gap-5 min-w-0 flex-1 text-left" @click="viewDetails(order)">
+                     <span class="w-14 shrink-0">
+                         <span class="block eyebrow !text-[10px]">取餐号</span>
+                         <span class="block mt-1 font-serif text-[26px] font-medium leading-none tabular-nums">{{ order.pickup_number ?? '—' }}</span>
+                     </span>
+                     <span class="min-w-0">
+                         <span class="flex items-center gap-2.5 min-w-0">
+                             <span class="text-[15px] font-medium truncate">{{ customerName(order) }}</span>
+                             <span class="flex items-center gap-1.5 text-[12px] font-medium shrink-0" :class="statusMeta(order.status).cls">
+                                 <span class="dot" aria-hidden="true"></span>
+                                 {{ statusMeta(order.status).label }}
+                             </span>
+                         </span>
+                         <span class="block mt-1 text-[12px] text-text-sub tabular-nums truncate">
+                             {{ new Date(order.created_at).toLocaleString() }}
+                             <span class="mx-1">·</span>
+                             订单 {{ order.id }}
+                             <span class="ml-2 text-text-main opacity-0 group-hover:opacity-100 transition-opacity duration-color">查看详情 →</span>
+                         </span>
+                     </span>
                  </button>
-                 <div v-else-if="order.status === 'completed'" class="text-green-700 font-bold text-sm flex items-center gap-2 px-5 py-2.5 bg-green-50 rounded-xl">
-                      <AppIcon name="checks" class="text-xl" />
-                      已完成
-                 </div>
-                 <div v-else class="text-gray-600 font-bold text-sm flex items-center gap-2 px-5 py-2.5 bg-gray-100 rounded-xl">
-                      <AppIcon name="undo" class="text-xl" />
-                      {{ statusMeta(order.status).label }}
-                 </div>
-             </div>
 
-         </div>
-         
-         <div v-if="filteredOrders.length === 0" class="text-center py-20 text-gray-500">
-             <AppIcon name="tray" class="text-6xl opacity-30" />
-             <p class="mt-4 font-bold">暂无订单</p>
+                 <span class="font-serif text-[18px] font-medium tabular-nums shrink-0">¥{{ order.total.toFixed(2) }}</span>
+
+                 <div class="w-[108px] flex justify-end shrink-0">
+                     <button
+                         v-if="ACTIVE.includes(order.status)"
+                         type="button"
+                         @click="handleStatusChange(order.id, 'completed')"
+                         class="btn btn-outline btn-sm"
+                     >
+                         <AppIcon name="check" class="text-base" />
+                         完成
+                     </button>
+                     <span v-else-if="order.status === 'completed'" class="text-[13px] text-text-sub flex items-center gap-1.5">
+                         <AppIcon name="checks" weight="light" class="text-base" />
+                         已完成
+                     </span>
+                     <span v-else class="text-[13px] text-text-sub flex items-center gap-1.5">
+                         <AppIcon name="undo" weight="light" class="text-base" />
+                         {{ statusMeta(order.status).label }}
+                     </span>
+                 </div>
+             </li>
+         </ul>
+
+         <div v-else class="py-20 flex flex-col items-center gap-2 text-text-sub">
+             <AppIcon name="tray" weight="light" class="text-3xl" />
+             <p class="text-[13px]">暂无订单</p>
          </div>
      </div>
+     </Transition>
 
-     <!-- Detail Modal -->
-     <Teleport to="body">
-     <div v-if="showDetailModal && selectedOrder" class="fixed inset-0 z-50 flex items-center justify-center p-4">
-         <div class="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" @click="showDetailModal = false"></div>
-         <div class="bg-white w-full max-w-lg rounded-[32px] p-8 relative z-10 shadow-2xl animate-scale-in max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true">
-             <div class="flex justify-between items-start mb-6">
-                 <div>
-                     <h3 class="text-2xl font-black text-primary">取餐号 {{ selectedOrder.pickup_number ?? '—' }}</h3>
-                     <p class="text-sm text-gray-500 mt-1">{{ customerName(selectedOrder) }} · {{ new Date(selectedOrder.created_at).toLocaleString() }}</p>
-                     <p class="text-xs text-gray-400 font-mono mt-0.5">{{ selectedOrder.order_no }}</p>
-                 </div>
-                 <button type="button" @click="showDetailModal = false" aria-label="关闭" class="size-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">
-                     <AppIcon name="x" />
-                 </button>
-             </div>
-
-             <div class="space-y-4">
-                 <div v-for="(item, idx) in selectedOrder.items" :key="idx" class="flex gap-4">
-                     <div class="size-16 rounded-xl bg-gray-100 bg-cover bg-center shrink-0" :style="{ backgroundImage: `url(${item.image_url})` }"></div>
-                     <div class="flex-1">
-                         <div class="flex justify-between">
-                             <h4 class="font-bold text-gray-900">{{ item.item_name }} <span v-if="item.quantity > 1" class="text-gray-500 font-black">×{{ item.quantity }}</span></h4>
-                             <span class="font-bold text-gray-900 tabular-nums">¥{{ (item.price_snap * (item.quantity || 1) / 100).toFixed(2) }}</span>
+     <!-- Detail -->
+     <AppModal
+        :open="showDetailModal && !!selectedOrder"
+        :title="selectedOrder ? `取餐号 ${selectedOrder.pickup_number ?? '—'}` : ''"
+        :subtitle="selectedOrder ? `${customerName(selectedOrder)} · ${new Date(selectedOrder.created_at).toLocaleString()}` : ''"
+        @close="showDetailModal = false"
+     >
+         <template v-if="selectedOrder">
+             <p class="-mt-3 mb-5 font-mono text-[11px] text-text-sub">{{ selectedOrder.order_no }}</p>
+             <ul class="divide-y divide-line border-y border-line">
+                 <li v-for="(item, idx) in selectedOrder.items" :key="idx" class="py-4 flex gap-4">
+                     <div class="size-14 rounded-tile bg-cream bg-cover bg-center shrink-0" :style="{ backgroundImage: `url(${item.image_url})` }"></div>
+                     <div class="flex-1 min-w-0">
+                         <div class="flex justify-between gap-3">
+                             <p class="text-[15px] font-medium">{{ item.item_name }} <span v-if="item.quantity > 1" class="text-text-sub">×{{ item.quantity }}</span></p>
+                             <span class="text-[14px] tabular-nums">¥{{ (item.price_snap * (item.quantity || 1) / 100).toFixed(2) }}</span>
                          </div>
-                         <div class="text-xs text-gray-500 mt-1">
-                             <div v-if="item.spec" class="flex flex-wrap gap-1">
-                                 <span v-for="(val, key) in item.spec" :key="key" class="bg-gray-100 px-1.5 py-0.5 rounded text-[10px] uppercase">
-                                     {{ key }}: {{ val }}
-                                 </span>
-                             </div>
+                         <div v-if="item.spec" class="mt-1.5 flex flex-wrap gap-1.5">
+                             <span v-for="(val, key) in item.spec" :key="key" class="chip chip-quiet">{{ key }}: {{ val }}</span>
                          </div>
                      </div>
-                 </div>
+                 </li>
+             </ul>
+             <div class="mt-5 flex items-baseline justify-between">
+                 <span class="eyebrow">总金额</span>
+                 <span class="font-serif text-[30px] font-medium tabular-nums">¥{{ selectedOrder.total.toFixed(2) }}</span>
              </div>
-             
-             <hr class="my-6 border-dashed border-gray-200">
-             
-             <div class="flex justify-between items-end">
-                 <span class="text-sm font-bold text-gray-500 uppercase tracking-widest">总金额</span>
-                 <span class="text-3xl font-black text-primary tabular-nums">¥{{ selectedOrder.total.toFixed(2) }}</span>
-             </div>
-         </div>
-     </div>
-     </Teleport>
+         </template>
+     </AppModal>
   </div>
 </template>

@@ -1,27 +1,24 @@
 <script setup lang="ts">
 /**
  * HomeView.vue
- * 
+ *
  * 首页视图组件 (Home View Component).
- * 
+ *
  * 主要功能 (Core Features):
- * 1. 欢迎标语 (Welcome Banner): 根据时间或写死的欢迎语展示。
+ * 1. 欢迎标语 (Welcome): 随时间变化的问候 + 一句标题。
  * 2. 推荐位 (Featured Item): 展示主推商品 (通常是列表中的第2个商品)。
- * 3. 热门推荐 (Trending List): 展示列表中的第3-5个商品。
- * 4. 快速导航 (Quick Nav): 跳转到完整菜单。
+ * 3. 热门推荐 (Trending List): 展示列表中的第3-5个商品，带编号。
+ *
+ * Motion: the headline is revealed line by line, the featured photo settles
+ * from a slight zoom, and the trending rows rise in as they scroll into view.
  */
 
 import AppIcon from '@shared/components/AppIcon.vue';
+import { vReveal } from '@shared/reveal';
 import { computed, ref, onActivated } from 'vue';
 import { TRANSLATIONS, PRODUCTS } from '../data';
 import type { Product, Language, TabState } from '../types';
 import { useKeepScroll } from '../composables/useKeepScroll';
-
-// ...
-
-// Fetch initial data
-
-
 
 // 定义组件 Props (Props Definition)
 const props = defineProps<{
@@ -33,7 +30,7 @@ const props = defineProps<{
 // 定义组件 Events (Events Definition)
 const emit = defineEmits<{
   (e: 'navigate', tab: TabState): void; // 导航跳转请求
-  (e: 'quick-add', product: Product): void; // 快速点击商品 (通常打开详情弹窗)
+  (e: 'quick-add', product: Product, origin?: HTMLElement | null): void; // 点击商品 (打开详情弹窗; origin 为图片)
 }>();
 
 // 计算属性：获取当前语言的翻译包
@@ -59,7 +56,6 @@ const featuredProduct = computed(() => PRODUCTS[1] || PRODUCTS[0] || {
 
 /**
  * 获取热门趋势商品 (Trending Products)
- * 逻辑:
  * 取商品列表的下标 2, 3, 4 (即第 3 到第 5 个商品) 作为热门推荐展示。
  * 如果商品不足，则回退取前 3 个。
  */
@@ -82,6 +78,12 @@ const isOpen = computed(() => props.shopOpen !== false);
 
 const { scroller, onScroll } = useKeepScroll();
 
+/** 打开商品，并把被点的图片交给共享元素过渡 */
+const open = (p: Product, event: MouseEvent) => {
+  if (p.inventoryCount === 0 || p.id === 'placeholder') return;
+  emit('quick-add', p, (event.currentTarget as HTMLElement).querySelector('img'));
+};
+
 </script>
 
 <template>
@@ -91,70 +93,68 @@ const { scroller, onScroll } = useKeepScroll();
       <!-- Wordmark & status -->
       <div class="flex items-center justify-between animate-fade-in">
          <span class="font-serif text-[19px] font-semibold tracking-tight text-text-main">{{ t.downtownCafe }}</span>
-         <span class="flex items-center gap-1.5 text-[13px] font-medium" :class="isOpen ? 'text-primary' : 'text-text-sub'">
-            <span class="size-1.5 rounded-full" :class="isOpen ? 'bg-primary' : 'bg-text-sub'" aria-hidden="true"></span>
+         <span class="relative flex items-center gap-2 text-[13px] font-medium" :class="isOpen ? 'text-primary' : 'text-text-sub'">
+            <span class="relative flex size-1.5">
+               <span v-if="isOpen" class="absolute inset-0 rounded-full bg-primary ping" aria-hidden="true"></span>
+               <span class="relative size-1.5 rounded-full" :class="isOpen ? 'bg-primary' : 'bg-text-sub'" aria-hidden="true"></span>
+            </span>
             {{ isOpen ? t.open : t.closed }}
          </span>
       </div>
 
-      <!-- Greeting -->
-      <header class="mt-10 md:mt-14 animate-slide-up-content" style="animation-delay: 60ms">
-         <p class="text-[12px] font-medium tracking-[0.14em] uppercase text-text-sub">{{ greeting }} {{ displayName }}</p>
-         <h1 class="mt-2 font-serif text-[34px] md:text-[52px] font-medium leading-[1.08] tracking-[-0.015em] text-text-main">{{ t.homeSubtitle }}</h1>
+      <!-- Greeting: the headline is revealed from below its own baseline -->
+      <header class="mt-12 md:mt-16">
+         <p class="eyebrow animate-slide-up-content" style="animation-delay: 60ms">{{ greeting }} {{ displayName }}</p>
+         <h1 class="mt-3 font-serif text-[36px] md:text-[56px] font-medium leading-[1.06] tracking-[-0.02em] text-text-main max-w-3xl text-balance animate-text-reveal" style="animation-delay: 120ms">{{ t.homeSubtitle }}</h1>
       </header>
 
       <!-- Featured + Trending: stacked on phones and iPad portrait, side by side in landscape -->
-      <div class="mt-8 md:mt-12 grid gap-10 lg:grid-cols-5 lg:gap-12 lg:items-start">
+      <div class="mt-10 md:mt-14 grid gap-12 lg:grid-cols-5 lg:gap-14 lg:items-start">
 
          <!-- Featured: the photo, then its caption -->
          <article
             class="lg:col-span-3 group cursor-pointer animate-slide-up-content"
-            style="animation-delay: 120ms"
-            @click="featuredProduct.inventoryCount !== 0 && emit('quick-add', featuredProduct)"
+            style="animation-delay: 200ms"
+            data-testid="featured-card"
+            @click="open(featuredProduct, $event)"
          >
             <div class="relative aspect-[4/3] md:aspect-[16/10] rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.99]">
                <img
                   v-if="featuredProduct.image"
                   :src="featuredProduct.image"
-                  class="w-full h-full object-cover"
+                  class="w-full h-full object-cover hero-settle transition-transform duration-spring-soft ease-out group-hover:scale-[1.03]"
                   :class="{'grayscale': featuredProduct.inventoryCount === 0}"
                   :alt="featuredProduct.name"
                   decoding="async"
                />
-               <span v-if="featuredProduct.inventoryCount === 0" class="absolute top-4 left-4 h-7 px-3 rounded-full bg-text-main/85 text-white text-[12px] font-medium flex items-center">
+               <span v-if="featuredProduct.inventoryCount === 0" class="absolute top-4 left-4 chip bg-white/90 text-text-main">
                   {{ lang === 'cn' ? '已售罄' : 'Sold out' }}
                </span>
             </div>
 
-            <div class="mt-4 flex items-end justify-between gap-5">
+            <div class="mt-5 flex items-end justify-between gap-6">
                <div class="min-w-0">
-                  <p class="flex items-center gap-1 text-[12px] font-medium tracking-[0.14em] uppercase text-secondary-content">
-                     <AppIcon name="star" weight="fill" class="text-secondary text-xs" />
-                     {{ t.bestSeller }}
-                  </p>
-                  <h2 class="mt-1.5 font-serif text-[26px] md:text-[32px] font-medium leading-tight text-text-main">{{ lang === 'cn' ? featuredProduct.nameCN : featuredProduct.name }}</h2>
-                  <p class="mt-1 text-[15px] text-text-sub leading-relaxed line-clamp-2 max-w-md">{{ lang === 'cn' ? featuredProduct.descriptionCN : featuredProduct.description }}</p>
+                  <p class="eyebrow !text-secondary-content">{{ t.bestSeller }}</p>
+                  <h2 class="mt-2 font-serif text-[26px] md:text-[32px] font-medium leading-tight text-text-main">{{ lang === 'cn' ? featuredProduct.nameCN : featuredProduct.name }}</h2>
+                  <p class="mt-1.5 text-[15px] text-text-sub leading-relaxed line-clamp-2 max-w-md">{{ lang === 'cn' ? featuredProduct.descriptionCN : featuredProduct.description }}</p>
                </div>
-               <div v-if="featuredProduct.inventoryCount !== 0" class="flex flex-col items-end gap-2.5 shrink-0">
-                  <span class="text-[17px] font-medium text-text-main tabular-nums">¥{{ Number(featuredProduct.price).toFixed(2) }}</span>
-                  <button
-                     type="button"
-                     :aria-label="t.addToCart"
-                     class="size-11 rounded-full bg-primary text-white flex items-center justify-center active:bg-primary-dark"
-                  >
-                     <AppIcon name="plus" class="text-lg" />
-                  </button>
+               <div v-if="featuredProduct.inventoryCount !== 0" class="flex flex-col items-end gap-2 shrink-0">
+                  <span class="font-serif text-[22px] font-medium text-text-main tabular-nums">¥{{ Number(featuredProduct.price).toFixed(2) }}</span>
+                  <span class="link text-[14px] text-primary">
+                     {{ t.addToOrder }}
+                     <AppIcon name="arrow-right" class="text-sm nudge" />
+                  </span>
                </div>
             </div>
          </article>
 
-         <!-- Trending: a hairline list -->
-         <section class="lg:col-span-2 animate-fade-in" style="animation-delay: 180ms">
-            <div class="flex items-baseline justify-between border-b border-line pb-3">
+         <!-- Trending: a numbered hairline list -->
+         <section class="lg:col-span-2">
+            <div v-reveal="120" class="flex items-baseline justify-between border-b border-line pb-3">
                <h2 class="font-serif text-[22px] md:text-[24px] font-medium text-text-main">{{ t.trendingNow }}</h2>
-               <button type="button" @click="emit('navigate', 'order')" class="min-h-11 -my-3 px-2 -mr-2 text-[14px] font-medium text-primary flex items-center gap-1">
-                  {{ t.seeAll }}
-                  <AppIcon name="caret-right" class="text-sm" />
+               <button type="button" @click="emit('navigate', 'order')" class="group min-h-11 -my-3 px-2 -mr-2 text-[14px] font-medium text-text-main flex items-center gap-1">
+                  <span class="link">{{ t.seeAll }}</span>
+                  <AppIcon name="arrow-right" class="text-sm nudge" />
                </button>
             </div>
 
@@ -162,12 +162,13 @@ const { scroller, onScroll } = useKeepScroll();
                <li
                   v-for="(p, i) in trending"
                   :key="p.id"
-                  @click="p.inventoryCount !== 0 && emit('quick-add', p)"
+                  v-reveal="160 + i * 70"
+                  @click="open(p, $event)"
                   data-testid="product-card"
-                  class="group py-4 flex items-center gap-4 cursor-pointer animate-slide-up-content"
+                  class="group py-4 flex items-center gap-4 cursor-pointer"
                   :class="{'opacity-50 pointer-events-none': p.inventoryCount === 0}"
-                  :style="{ animationDelay: `${220 + i * 45}ms` }"
                >
+                  <span class="w-6 font-serif text-[15px] text-text-sub tabular-nums">{{ String(i + 1).padStart(2, '0') }}</span>
                   <div class="size-16 md:size-[72px] rounded-tile overflow-hidden bg-cream shrink-0 transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.96]">
                      <img :src="p.image" class="w-full h-full object-cover" :class="{'grayscale': p.inventoryCount === 0}" :alt="p.name" loading="lazy" decoding="async" />
                   </div>
@@ -178,13 +179,7 @@ const { scroller, onScroll } = useKeepScroll();
                         <template v-else>¥{{ Number(p.price).toFixed(2) }}</template>
                      </p>
                   </div>
-                  <span
-                     v-if="p.inventoryCount !== 0"
-                     class="size-9 rounded-full border border-line text-text-main flex items-center justify-center shrink-0 transition-colors duration-color group-active:bg-primary group-active:border-primary group-active:text-white"
-                     aria-hidden="true"
-                  >
-                     <AppIcon name="plus" class="text-base" />
-                  </span>
+                  <AppIcon v-if="p.inventoryCount !== 0" name="arrow-up-right" weight="light" class="text-lg text-text-sub nudge nudge-diag" />
                </li>
             </ul>
          </section>

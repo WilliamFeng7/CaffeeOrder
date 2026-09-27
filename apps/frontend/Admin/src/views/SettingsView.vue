@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import SlidingTabs from '@shared/components/SlidingTabs.vue';
 import { api } from '../api';
 import { useToastStore } from '../stores/toast';
 
@@ -33,67 +34,47 @@ const saveSetting = async (key: string, value: string) => {
     }
 };
 
+const statusOptions = [
+    { value: 'open', label: '营业中' },
+    { value: 'closed', label: '已打烊' },
+];
+const setStatus = (value: string) => {
+    storeStatus.value = value;
+    saveSetting('store_status', value);
+};
+
 onMounted(fetchSettings);
 </script>
 
 <template>
-  <div class="space-y-6 animate-fade-in">
-     <h1 class="text-3xl font-black text-primary tracking-tight">系统设置</h1>
-
-     <div class="bg-white rounded-[32px] p-8 border border-gray-100 shadow-sm space-y-8">
-         
-         <!-- Store Status -->
-         <div class="flex items-center justify-between">
-             <div>
-                 <h3 class="text-xl font-bold text-gray-900">店铺状态</h3>
-                 <p class="text-sm text-gray-400 mt-1">控制店铺是否接收新订单。</p>
-             </div>
-             
-             <div class="flex bg-gray-100 p-1 rounded-xl">
-                 <button 
-                    @click="storeStatus = 'open'; saveSetting('store_status', 'open')"
-                    :class="storeStatus === 'open' ? 'bg-green-500 text-white shadow-lg shadow-green-500/30' : 'text-gray-500 hover:text-gray-700'"
-                    class="px-6 py-3 rounded-lg font-bold transition-all text-sm"
-                 >
-                    营业中
-                 </button>
-                 <button 
-                    @click="storeStatus = 'closed'; saveSetting('store_status', 'closed')"
-                     :class="storeStatus === 'closed' ? 'bg-red-500 text-white shadow-lg shadow-red-500/30' : 'text-gray-500 hover:text-gray-700'"
-                    class="px-6 py-3 rounded-lg font-bold transition-all text-sm"
-                 >
-                    已打烊
-                 </button>
-             </div>
-         </div>
-
-         <hr class="border-gray-100">
-
-         <!-- Banner Message -->
-         <div>
-             <h3 class="text-xl font-bold text-gray-900 mb-4">横幅公告</h3>
-             <div class="flex gap-4">
-                 <input 
-                    v-model="bannerMessage" 
-                    type="text" 
-                    class="flex-1 h-14 bg-gray-50 rounded-2xl px-6 font-bold text-gray-700 outline-none focus:ring-2 focus:ring-primary/20"
-                    placeholder="例如：今日特价！"
-                 />
-                 <button 
-                    @click="saveSetting('banner_message', bannerMessage)"
-                    class="h-14 px-8 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform"
-                 >
-                    保存
-                 </button>
-             </div>
-             <p class="text-xs text-gray-400 mt-2 ml-2">此消息将显示在学生端首页（功能待前端实现）。</p>
-         </div>
-
+  <div class="space-y-6 max-w-3xl">
+     <div class="animate-slide-up-content">
+         <p class="eyebrow">店铺</p>
+         <h1 class="mt-2 font-serif text-[34px] font-medium leading-tight tracking-[-0.015em]">系统设置</h1>
      </div>
+
+     <section class="card divide-y divide-line animate-slide-up-content" style="animation-delay: 60ms">
+         <!-- Store status -->
+         <div class="p-6 flex flex-wrap items-center justify-between gap-4">
+             <div>
+                 <h3 class="text-[15px] font-medium flex items-center gap-2">
+                     店铺状态
+                     <span class="size-1.5 rounded-full transition-colors duration-color" :class="storeStatus === 'open' ? 'bg-primary' : 'bg-danger'" aria-hidden="true"></span>
+                 </h3>
+                 <p class="mt-1 text-[13px] text-text-sub">控制店铺是否接收新订单。</p>
+             </div>
+             <SlidingTabs :model-value="storeStatus" @update:model-value="setStatus" :options="statusOptions" variant="segment" size="sm" label="店铺状态" />
+         </div>
+
+         <!-- Banner -->
+         <div class="p-6">
+             <h3 class="text-[15px] font-medium">横幅公告</h3>
+             <div class="mt-4 flex gap-3">
+                 <input v-model="bannerMessage" type="text" class="field flex-1" placeholder="例如：今日特价！" />
+                 <button type="button" @click="saveSetting('banner_message', bannerMessage)" class="btn btn-primary">保存</button>
+             </div>
+             <p class="mt-2 text-[12px] text-text-sub">此消息将显示在学生端首页（功能待前端实现）。</p>
+         </div>
+     </section>
   </div>
 </template>
-
-<style scoped>
-.animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-</style>

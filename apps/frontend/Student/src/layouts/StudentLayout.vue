@@ -4,6 +4,8 @@
  * Wrapper for the Student Application logic.
  */
 import AppIcon from '@shared/components/AppIcon.vue';
+import AnimatedNumber from '@shared/components/AnimatedNumber.vue';
+import RollingNumber from '@shared/components/RollingNumber.vue';
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
@@ -16,9 +18,10 @@ import { api } from '../api';
 import { PRODUCTS, TRANSLATIONS } from '../data';
 import { formatCents, sumCents } from '../utils/money';
 import { useToastStore } from '../stores/toast';
-import { type CartItem, type Product, type Order, type Language, type TabState, type UserProfile } from '../types';
+import { type CartItem, type Product, type Order, type Language, type TabState, type UserProfile, type SheetCloseReason } from '../types';
 import { auth } from '@shared/auth';
 import type { IconName } from '@shared/icons';
+import { canMorph, morph, onScreen } from '../composables/morph';
 
 const router = useRouter();
 
@@ -48,11 +51,18 @@ const TABS: { id: TabState; icon: IconName }[] = [
   { id: 'pickup', icon: 'receipt' },
   { id: 'profile', icon: 'user' },
 ];
-const tabIndex = computed(() => Math.max(0, TABS.findIndex(tab => tab.id === currentTab.value)));
+const tabOrder = (id: TabState) => TABS.findIndex(tab => tab.id === id);
+const tabIndex = computed(() => Math.max(0, tabOrder(currentTab.value)));
 const tabLabel = (id: TabState) =>
   t.value[`nav${id.charAt(0).toUpperCase() + id.slice(1)}` as keyof typeof t.value] as string;
 // 进行中的订单数，显示在「取餐」标签上
 const activeOrderCount = computed(() => orders.value.filter(o => o.status === 'active').length);
+
+// 切换标签时新页面从它所在的一侧滑入 (direction follows the tab bar order)
+const tabDir = ref<'fwd' | 'back'>('fwd');
+watch(currentTab, (next, prev) => {
+  tabDir.value = tabOrder(next) >= tabOrder(prev) ? 'fwd' : 'back';
+});
 
 // --- Lifecycle ---
 const readStoredJSON = <T,>(key: string): T | null => {
@@ -145,23 +155,52 @@ const handleSignOut = () => {
 
 // --- Methods ---
 // Toasts go through the shared store instead of a second, app-local queue.
-// Student previously ran two toast systems at once (this hand-rolled one plus
-// ToastContainer.vue), so a message could be raised in one and never rendered by
-// the other. `addToast` keeps its old signature so the call sites above are
-// unchanged.
 const addToast = (message: string, type: 'success' | 'info' | 'error' | 'warning' = 'info') => {
   toastStore.addToast(message, type);
 };
 
-const handleSelectProduct = (product: Product) => {
-  selectedProduct.value = null;
-  setTimeout(() => {
+// --- Product sheet ---------------------------------------------------------
+// The photo grows out of the tapped card, and on close flies back into it
+// (or, after "Add", into the cart bar). See composables/morph.ts.
+const productSheet = ref<InstanceType<typeof ProductModal> | null>(null);
+const cartIconEl = ref<HTMLElement | null>(null);
+const heroOpen = ref(false);
+let productOrigin: HTMLElement | null = null;
+let productClosing = false;
+
+const handleSelectProduct = (product: Product, origin?: HTMLElement | null) => {
+  if (selectedProduct.value) return;
+  productOrigin = origin ?? null;
+  productClosing = false;
+  heroOpen.value = canMorph() && onScreen(origin);
+  void morph('open', heroOpen.value ? origin : null, () => {
     selectedProduct.value = product;
-  }, 50);
+  }, () => productSheet.value?.photo);
 };
 
-const handleCloseProductModal = () => {
-  selectedProduct.value = null;
+const handleCloseProduct = async (reason: SheetCloseReason) => {
+  const sheet = productSheet.value;
+  if (!sheet || productClosing) return;
+  productClosing = true;
+  const unmount = () => { selectedProduct.value = null; };
+
+  // Dragged away: the sheet is already off-screen.
+  if (reason === 'dragged') {
+    unmount();
+    return;
+  }
+
+  const photo = sheet.photo;
+  const flies = canMorph() && onScreen(photo) && (reason === 'added' || onScreen(productOrigin));
+  if (flies) {
+    await morph(reason === 'added' ? 'cart' : 'close', photo, unmount,
+      () => (reason === 'added' ? cartIconEl.value : productOrigin));
+  } else {
+    await sheet.leave();
+    unmount();
+  }
+  // The bar swells a touch as the item lands in it.
+  if (reason === 'added') bumpCart();
 };
 
 const handleToggleLang = () => {
@@ -171,7 +210,6 @@ const handleToggleLang = () => {
 const handleAddToCart = (options: { size: string; temp: string; sugar: string }) => {
   if (selectedProduct.value) {
     const finalPrice = selectedProduct.value.price;
-    // Size price logic removed
 
     const newItem: CartItem = {
       ...selectedProduct.value,
@@ -188,7 +226,8 @@ const handleAddToCart = (options: { size: string; temp: string; sugar: string })
       sugar: options.sugar,
     };
     cart.value = [...cart.value, newItem];
-    addToast(language.value === 'cn' ? '已成功加入购物车' : 'Added to cart successfully', 'success');
+    // The sheet shows "Added" and the photo flies into the cart bar, which
+    // lives on the Order tab.
     currentTab.value = 'order';
   }
 };
@@ -273,10 +312,6 @@ const handlePlaceOrder = async () => {
   }
 };
 
-const handleQuickAdd = (product: Product) => {
-    handleSelectProduct(product);
-};
-
 const handleUpdateProfile = async (p: UserProfile) => {
   try {
     const updated = await api.updateProfile(p);
@@ -291,31 +326,34 @@ const handleUpdateProfile = async (p: UserProfile) => {
 // the server computes (see utils/money.ts).
 const cartTotalCents = computed(() => sumCents(cart.value));
 const cartCount = computed(() => cart.value.reduce((sum, item) => sum + item.quantity, 0));
+const formatTotal = (cents: number) => `¥${formatCents(Math.round(cents))}`;
 const cartBump = ref(false);
-watch(cartCount, (newCount, oldCount) => {
-  if (newCount > oldCount) {
-    // Swell briefly, then spring back (see the bar's ease-spring transition).
-    cartBump.value = true;
-    setTimeout(() => cartBump.value = false, 180);
-  }
-});
+const bumpCart = () => {
+  // Swell briefly, then spring back (the bar's ease-spring transition).
+  cartBump.value = true;
+  window.setTimeout(() => { cartBump.value = false; }, 180);
+};
 </script>
 
 <template>
   <div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans text-text-main select-none flex flex-col z-0">
-    <!-- Toasts are rendered once, globally, by the shared <ToastContainer /> mounted
-         in App.vue. This layout used to run its own inline pill list on top of that,
-         so a single message appeared twice. -->
+    <!-- Toasts are rendered once, globally, by the shared <ToastContainer /> in App.vue. -->
 
     <div class="flex-1 overflow-hidden relative w-full h-full z-0 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-[calc(72px+env(safe-area-inset-bottom))]">
       <!-- KeepAlive: switching tabs keeps each tab's scroll position, category
-           and sub-view instead of rebuilding it from the top every time. -->
-      <KeepAlive>
-        <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleQuickAdd" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" />
-        <MenuView v-else-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" @remove-product-instance="handleRemoveProductInstance" :lang="language" @toggle-lang="handleToggleLang" @go-checkout="isCheckoutOpen = true" />
-        <PickupView v-else-if="currentTab === 'pickup'" :orders="orders" :lang="language" />
-        <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @toggle-lang="handleToggleLang" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" @sign-out="handleSignOut" />
-      </KeepAlive>
+           and sub-view; the Transition slides the new tab in from its side.
+           The leaving tab is positioned against the inner box (not the padded
+           one), so its scroll area keeps its size while it fades out. -->
+      <div class="relative h-full">
+        <Transition :name="`tab-${tabDir}`">
+          <KeepAlive>
+            <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleSelectProduct" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" />
+            <MenuView v-else-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" @remove-product-instance="handleRemoveProductInstance" :lang="language" @toggle-lang="handleToggleLang" @go-checkout="isCheckoutOpen = true" />
+            <PickupView v-else-if="currentTab === 'pickup'" :orders="orders" :lang="language" />
+            <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @toggle-lang="handleToggleLang" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" @sign-out="handleSignOut" />
+          </KeepAlive>
+        </Transition>
+      </div>
     </div>
 
     <!-- Cart bar: floats above the tab bar on the menu -->
@@ -325,23 +363,25 @@ watch(cartCount, (newCount, oldCount) => {
            type="button"
            @click="isCheckoutOpen = true"
            data-testid="checkout-bar"
-           class="pointer-events-auto w-full max-w-md h-14 rounded-full bg-primary text-white shadow-float flex items-center gap-3 pl-5 pr-6 transition-transform duration-spring ease-spring active:duration-press active:scale-[0.98]"
+           class="group pointer-events-auto w-full max-w-md h-14 rounded-full bg-primary text-white shadow-float flex items-center gap-4 pl-5 pr-6 transition-transform duration-spring ease-spring active:duration-press active:scale-[0.98]"
            :class="{ 'scale-[1.03]': cartBump }"
          >
-            <span class="relative flex items-center">
-               <AppIcon name="bag" class="text-[22px]" />
-               <span :key="cartCount" class="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-primary text-[11px] font-semibold flex items-center justify-center tabular-nums animate-cart-bump">{{ cartCount }}</span>
+            <span ref="cartIconEl" class="relative flex items-center">
+               <AppIcon name="bag" weight="light" class="text-[24px]" />
+               <span class="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-primary text-[11px] font-semibold flex items-center justify-center leading-none">
+                  <RollingNumber :value="cartCount" />
+               </span>
             </span>
-            <span class="ml-2 text-[17px] font-semibold tabular-nums">¥{{ formatCents(cartTotalCents) }}</span>
+            <AnimatedNumber class="text-[17px] font-medium" :value="cartTotalCents" :format="formatTotal" :from-zero="false" />
             <span class="ml-auto flex items-center gap-1.5 text-[15px] font-medium">
               {{ t.checkout }}
-              <AppIcon name="arrow-right" class="text-base" />
+              <AppIcon name="arrow-right" class="text-base nudge" />
             </span>
          </button>
       </div>
     </Transition>
 
-    <!-- Tab bar: a thin line marks the current tab and springs between slots -->
+    <!-- Tab bar: a short line marks the current tab and springs between slots -->
     <nav class="absolute bottom-0 inset-x-0 z-30 bg-surface-light border-t border-line pb-[env(safe-area-inset-bottom)]" :aria-label="language === 'cn' ? '主导航' : 'Main'">
       <div class="relative mx-auto max-w-lg grid grid-cols-4 h-16 md:h-[72px]">
         <div
@@ -349,7 +389,7 @@ watch(cartCount, (newCount, oldCount) => {
           :style="{ transform: `translateX(${tabIndex * 100}%)` }"
           aria-hidden="true"
         >
-          <span class="block mx-auto h-[2px] w-6 rounded-full bg-primary"></span>
+          <span class="block mx-auto h-[2px] w-5 rounded-full bg-text-main"></span>
         </div>
         <button
           v-for="tab in TABS"
@@ -357,19 +397,23 @@ watch(cartCount, (newCount, oldCount) => {
           type="button"
           @click="currentTab = tab.id"
           :aria-current="currentTab === tab.id ? 'page' : undefined"
-          class="relative flex flex-col items-center justify-center gap-1"
+          class="relative flex flex-col items-center justify-center gap-1 transition-colors duration-color"
           :class="currentTab === tab.id ? 'text-text-main' : 'text-text-sub'"
         >
           <span class="relative">
+            <!-- Re-keyed on selection so the icon gives one small spring pop -->
             <AppIcon
+              :key="currentTab === tab.id ? 'on' : 'off'"
               :name="tab.icon"
-              :weight="currentTab === tab.id ? 'fill' : 'regular'"
-              class="text-[22px] transition-colors duration-color"
-              :class="currentTab === tab.id ? 'text-primary' : ''"
+              :weight="currentTab === tab.id ? 'regular' : 'light'"
+              class="text-[24px]"
+              :class="{ 'animate-cart-bump': currentTab === tab.id }"
             />
-            <span v-if="tab.id === 'pickup' && activeOrderCount > 0" class="absolute -top-1 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-white text-[10px] font-semibold leading-4 text-center tabular-nums ring-2 ring-white">{{ activeOrderCount }}</span>
+            <span v-if="tab.id === 'pickup' && activeOrderCount > 0" class="absolute -top-1 -right-2.5 min-w-4 h-4 px-1 rounded-full bg-primary text-white text-[10px] font-semibold leading-none flex items-center justify-center ring-2 ring-white animate-scale-in">
+              <RollingNumber :value="activeOrderCount" />
+            </span>
           </span>
-          <span class="text-[11px] tracking-wide transition-colors duration-color" :class="currentTab === tab.id ? 'font-semibold' : 'font-medium'">{{ tabLabel(tab.id) }}</span>
+          <span class="text-[11px] tracking-wide" :class="currentTab === tab.id ? 'font-semibold' : 'font-medium'">{{ tabLabel(tab.id) }}</span>
         </button>
       </div>
     </nav>
@@ -380,6 +424,15 @@ watch(cartCount, (newCount, oldCount) => {
       </div>
     </Transition>
 
-    <ProductModal v-if="selectedProduct" :product="selectedProduct" @close="handleCloseProductModal" @add-to-cart="handleAddToCart" :lang="language" />
+    <ProductModal
+      v-if="selectedProduct"
+      ref="productSheet"
+      :key="selectedProduct.id"
+      :product="selectedProduct"
+      :hero="heroOpen"
+      :lang="language"
+      @close="handleCloseProduct"
+      @add-to-cart="handleAddToCart"
+    />
   </div>
 </template>

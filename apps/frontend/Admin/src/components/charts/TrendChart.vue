@@ -1,129 +1,97 @@
 <script setup lang="ts">
+/**
+ * 24h trend of one measure at a time (orders or revenue), on one axis. The
+ * two measures have different units, so the dashboard switches between them
+ * instead of stacking two y-scales on one plot. Switching glides the line to
+ * the new values; the first draw rises from the baseline.
+ */
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
-  Title,
   Tooltip,
-  Legend,
-  Filler
+  Filler,
+  type ScriptableContext,
+  type TooltipItem,
 } from 'chart.js';
 import { Line } from 'vue-chartjs';
 import { computed } from 'vue';
+import { CHART_INK, CHART_GRID, CHART_TICKS, chartAnimation, chartTooltip, softFill } from './chartTheme';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler);
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
     data: Array<{ hour: string; orders: number; revenue: number }>;
-}>();
+    metric?: 'orders' | 'revenue';
+}>(), { metric: 'orders' });
+
+const isMoney = computed(() => props.metric === 'revenue');
 
 const chartData = computed(() => ({
     labels: props.data.map(d => d.hour),
     datasets: [
         {
-            label: '订单量 (笔)',
-            data: props.data.map(d => d.orders),
-            borderColor: '#103E32',
-            backgroundColor: 'rgba(16, 62, 50, 0.1)',
+            // One dataset whose values change, so a switch animates in place.
+            label: isMoney.value ? '销售额' : '订单量',
+            data: props.data.map(d => (isMoney.value ? d.revenue : d.orders)),
+            borderColor: CHART_INK.primary,
+            borderWidth: 2,
+            backgroundColor: (ctx: ScriptableContext<'line'>) => softFill(ctx, CHART_INK.primaryRgb),
             fill: true,
             tension: 0.4,
             // Smooth without overshooting below zero between hours.
             cubicInterpolationMode: 'monotone' as const,
-            yAxisID: 'y'
+            pointRadius: 0,
+            pointHoverRadius: 4,
+            pointHoverBorderWidth: 2,
+            pointHoverBackgroundColor: '#FFFFFF',
         },
-        {
-            label: '销售额 (¥)',
-            data: props.data.map(d => d.revenue),
-            borderColor: '#DCCA98',
-            backgroundColor: 'transparent',
-            borderDash: [5, 5],
-            tension: 0.4,
-            cubicInterpolationMode: 'monotone' as const,
-            yAxisID: 'y1'
-        }
-    ]
+    ],
 }));
 
-// The dashboard refreshes every few seconds, so the chart must not replay a
-// long entrance on each update: 300ms, and none at all under reduced motion.
-const reduceMotion = typeof window !== 'undefined'
-    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-const chartOptions = {
+const chartOptions = computed(() => ({
     responsive: true,
     maintainAspectRatio: false,
-    animation: reduceMotion ? (false as const) : { duration: 300 },
+    ...chartAnimation(),
     interaction: {
       mode: 'index' as const,
       intersect: false,
     },
     plugins: {
-        // The card header already carries the legend.
-        legend: {
-            display: false,
-        },
+        legend: { display: false },
         tooltip: {
-            backgroundColor: 'rgba(255, 255, 255, 0.9)',
-            titleColor: '#333',
-            bodyColor: '#666',
-            borderColor: '#ddd',
-            borderWidth: 1,
-            padding: 10,
-            displayColors: true,
-        }
+            ...chartTooltip,
+            callbacks: {
+                label: (item: TooltipItem<'line'>) =>
+                    isMoney.value ? `¥${Number(item.raw).toFixed(2)}` : `${item.raw} 笔`,
+            },
+        },
     },
     scales: {
         x: {
-            grid: {
-                display: false
-            }
+            grid: { display: false },
+            border: { display: false },
+            ticks: { color: CHART_TICKS, font: { size: 11 }, maxRotation: 0, autoSkipPadding: 12 },
         },
         // Counts and money never go below zero; without a floor an empty day
         // was drawn in the middle of a -1..1 axis.
         y: {
-            type: 'linear' as const,
-            display: true,
-            position: 'left' as const,
             beginAtZero: true,
-            suggestedMax: 5,
+            suggestedMax: isMoney.value ? 100 : 5,
+            border: { display: false },
+            grid: { color: CHART_GRID },
             ticks: {
-                precision: 0
+                color: CHART_TICKS,
+                font: { size: 11 },
+                padding: 8,
+                precision: 0,
+                callback: (v: string | number) => (isMoney.value ? `¥${v}` : v),
             },
-            grid: {
-                color: '#f0f0f0'
-            },
-            title: {
-                display: true,
-                text: '订单量'
-            }
         },
-        y1: {
-            type: 'linear' as const,
-            display: true,
-            position: 'right' as const,
-            beginAtZero: true,
-            suggestedMax: 100,
-            grid: {
-                drawOnChartArea: false,
-            },
-            title: {
-                display: true,
-                text: '销售额 (¥)'
-            }
-        },
-    }
-};
+    },
+}));
 </script>
 
 <template>

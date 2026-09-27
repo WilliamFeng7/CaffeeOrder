@@ -1,17 +1,23 @@
 <script setup lang="ts">
 /**
  * MenuView.vue
- * 
+ *
  * 菜单视图组件 (Menu View Component).
- * 
+ *
  * 核心功能 (Core Features):
- * 1. 商品分类展示 (Categories): 左侧可滚动侧边栏 (Desktop) 或顶部横向滚动 (Mobile)。
+ * 1. 商品分类 (Categories): iPad 左侧文字目录，手机顶部带滑动下划线的文字标签。
  * 2. 商品列表 (Product Grid): 根据分类筛选显示的商品卡片。
  * 3. 搜索功能 (Fuzzy Search): 支持中英文商品名的模糊搜索，带自动补全建议。
  * 4. 购物车角标 (Badges): 在商品卡片上显示已添加数量。
+ *
+ * Motion: a new category slides in from the side of its tab and its cards
+ * cascade in; the title rolls to the new name; the sidebar highlight and the
+ * phone underline spring to the selected category.
  */
 
 import AppIcon from '@shared/components/AppIcon.vue';
+import RollingNumber from '@shared/components/RollingNumber.vue';
+import SlidingTabs from '@shared/components/SlidingTabs.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { CATEGORIES, PRODUCTS, TRANSLATIONS } from '../data';
 import type { CartItem, Product, Language } from '../types';
@@ -25,7 +31,7 @@ const props = defineProps<{
 
 // 定义 Events (Events Definition)
 const emit = defineEmits<{
-  (e: 'select-product', product: Product): void; // 选中商品 (打开详情弹窗)
+  (e: 'select-product', product: Product, origin?: HTMLElement | null): void; // 选中商品 (打开详情弹窗; origin 为卡片图片，用于共享元素过渡)
   (e: 'remove-product-instance', productId: string): void; // 移除商品 (仅作为预留接口)
   (e: 'toggle-lang'): void; // 切换语言
   (e: 'go-checkout'): void; // 跳转结算
@@ -51,51 +57,56 @@ const t = computed(() => TRANSLATIONS[props.lang]);
 // 从别的标签页回来时停在原来的位置
 const { scroller, onScroll } = useKeepScroll();
 
-// 首次进入时卡片依次出现；之后切换分类只做淡入淡出
+// 首次进入时卡片依次出现；之后切换分类用更快的级联
 const firstPaint = ref(true);
 
-// 切换分类时整块网格淡入淡出；搜索时每打一个字不重新淡入
+// 新分类从它所在的一侧滑入 (later category: from the right)
+const gridDir = ref<'next' | 'prev'>('next');
+
+// 切换分类时整块网格过渡；搜索时每打一个字不重新过渡
 const gridKey = computed(() => (searchTerm.value.trim() ? 'search' : activeCategory.value));
 
 const activeCategoryInfo = computed(() => CATEGORIES.find(c => c.id === activeCategory.value));
 
-// 侧栏指示条的位置 (每个分类固定 80px 高，含间距)
+// 侧栏高亮块的位置 (每个分类固定 56px 高)
 const activeIndex = computed(() => Math.max(0, CATEGORIES.findIndex(c => c.id === activeCategory.value)));
+const SIDEBAR_ROW = 56;
 
 const pageTitle = computed(() => {
   if (searchTerm.value.trim()) return props.lang === 'cn' ? '搜索结果' : 'Search';
   const cat = activeCategoryInfo.value;
-  return props.lang === 'cn' ? cat?.nameCN : cat?.name;
+  return (props.lang === 'cn' ? cat?.nameCN : cat?.name) ?? '';
 });
 
-const countLabel = computed(() => {
+const countUnit = computed(() => {
   const n = filteredProducts.value.length;
-  return props.lang === 'cn' ? `${n} 款` : `${n} ${n === 1 ? 'item' : 'items'}`;
+  return props.lang === 'cn' ? '款' : (n === 1 ? 'item' : 'items');
 });
 
 const isSoldOut = (p: Product) => p.inventoryCount === 0;
+
+const categoryOptions = computed(() => CATEGORIES.map(c => ({
+  value: c.id,
+  label: props.lang === 'cn' ? c.nameCN : c.name,
+})));
 
 // --- 方法定义 (Methods) ---
 
 /**
  * 模糊搜索算法 (Fuzzy Search Algorithm)
- * 
+ *
  * 逻辑:
  * 1. 去除所有空格并转小写。
  * 2. 检查是否直接包含 (include)。
  * 3. 检查是否为子序列 (subsequence) - 即字符按顺序出现即可。
- * 
- * @param query 用户输入的搜索词
- * @param text 被搜索的目标文本 (商品名)
- * @returns boolean 是否匹配
  */
 const fuzzySearch = (query: string, text: string): boolean => {
   const q = query.toLowerCase().replace(/\s+/g, '');
   const t = text.toLowerCase().replace(/\s+/g, '');
-  
+
   // 1. 快速路径: 直接包含
   if (t.includes(q)) return true;
-  
+
   // 2. 子序列匹配 (Fuzzy)
   // e.g. "lt" matches "Latte"
   let i = 0, j = 0;
@@ -110,7 +121,7 @@ const fuzzySearch = (query: string, text: string): boolean => {
 
 /**
  * 过滤后的商品列表 (Filtered Products)
- * 
+ *
  * 逻辑:
  * 1. 如果有搜索词 -> 全局搜索匹配中英文名。
  * 2. 如果无搜索词 -> 根据 activeCategory 筛选。
@@ -119,29 +130,27 @@ const fuzzySearch = (query: string, text: string): boolean => {
 const filteredProducts = computed(() => {
   // 搜索优先
   if (searchTerm.value.trim()) {
-    return PRODUCTS.filter(p => 
-      fuzzySearch(searchTerm.value, p.name) || 
+    return PRODUCTS.filter(p =>
+      fuzzySearch(searchTerm.value, p.name) ||
       fuzzySearch(searchTerm.value, p.nameCN)
     );
   }
-  
+
   // 分类筛选
   if (activeCategory.value === 'all') return PRODUCTS;
-  
-  return activeCategory.value === 'top' 
+
+  return activeCategory.value === 'top'
     ? PRODUCTS.filter(p => p.isPopular || p.tags?.includes('Best Seller') || p.id === '1' || p.id === '2')
     : PRODUCTS.filter(p => p.category === activeCategory.value);
 });
 
 /**
  * 搜索建议列表 (Search Suggestions)
- * 
- * 逻辑:
  * 仅在有输入时生成，最多返回 5 条匹配结果用于下拉展示。
  */
 const suggestions = computed(() => {
   if (!searchTerm.value.trim()) return [];
-  return PRODUCTS.filter(p => 
+  return PRODUCTS.filter(p =>
     fuzzySearch(searchTerm.value, p.name) || fuzzySearch(searchTerm.value, p.nameCN)
   ).slice(0, 5);
 });
@@ -170,8 +179,8 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('mousedown', handleClickOutside);
-  // Cards cascade in on the first visit only; switching category just crossfades.
-  window.setTimeout(() => { firstPaint.value = false; }, 600);
+  // Cards cascade in on the first visit; later category switches use a quicker cascade.
+  window.setTimeout(() => { firstPaint.value = false; }, 700);
 });
 
 onUnmounted(() => {
@@ -185,10 +194,25 @@ onUnmounted(() => {
  * 切换时清空搜索词，回归分类浏览模式。
  */
 const handleCategoryClick = (id: string) => {
+  const from = CATEGORIES.findIndex(c => c.id === activeCategory.value);
+  const to = CATEGORIES.findIndex(c => c.id === id);
+  gridDir.value = to >= from ? 'next' : 'prev';
   activeCategory.value = id;
   searchTerm.value = '';
   // A new category starts at its first item, not wherever the last one was scrolled to.
   if (scroller.value) scroller.value.scrollTop = 0;
+};
+
+const categoryModel = computed({
+  get: () => activeCategory.value,
+  set: (id: string) => handleCategoryClick(id),
+});
+
+/** 打开商品: 把卡片图片一起交出去，详情面板从它长出来 */
+const pick = (product: Product, event: MouseEvent) => {
+  if (isSoldOut(product)) return;
+  const origin = (event.currentTarget as HTMLElement).querySelector('img');
+  emit('select-product', product, origin);
 };
 
 /**
@@ -205,46 +229,37 @@ const handleSuggestionClick = (p: Product) => {
 <template>
   <div class="flex flex-col md:flex-row h-full bg-background-light relative z-0">
 
-    <!-- Sidebar (iPad): quiet list; a thin green bar springs to the selected category -->
-    <aside class="hidden md:flex flex-col w-[104px] shrink-0 bg-surface-light border-r border-line h-full">
-       <nav class="relative flex-1 overflow-y-auto no-scrollbar py-4 flex flex-col gap-1" :aria-label="lang === 'cn' ? '商品分类' : 'Categories'">
+    <!-- Sidebar (iPad): a numbered text index; a white highlight springs to the selected category -->
+    <aside class="hidden md:flex flex-col w-[184px] shrink-0 border-r border-line h-full">
+       <p class="px-7 pt-10 pb-5 eyebrow">{{ lang === 'cn' ? '菜单' : 'Menu' }}</p>
+       <nav class="relative flex-1 overflow-y-auto no-scrollbar px-3" :aria-label="lang === 'cn' ? '商品分类' : 'Categories'">
           <span
-            class="absolute left-0 top-[38px] h-8 w-[3px] rounded-r-full bg-primary transition-[transform,opacity] duration-spring ease-spring pointer-events-none"
+            class="absolute left-3 right-3 top-0 h-14 rounded-tile bg-surface-light border border-line transition-[transform,opacity] duration-spring ease-spring pointer-events-none"
             :class="searchTerm ? 'opacity-0' : 'opacity-100'"
-            :style="{ transform: `translateY(${activeIndex * 80}px)` }"
+            :style="{ transform: `translate3d(0, ${activeIndex * SIDEBAR_ROW}px, 0)` }"
             aria-hidden="true"
           ></span>
           <button
-            v-for="cat in CATEGORIES"
+            v-for="(cat, i) in CATEGORIES"
             :key="cat.id"
             type="button"
             @click="handleCategoryClick(cat.id)"
             data-testid="category-nav"
             :aria-pressed="activeCategory === cat.id && !searchTerm"
-            class="flex flex-col items-center justify-center gap-1.5 h-[76px] px-1 transition-colors duration-color"
-            :class="activeCategory === cat.id && !searchTerm ? 'text-text-main' : 'text-text-sub active:text-text-main'"
+            class="relative z-10 w-full h-14 px-4 flex items-center gap-3 text-left transition-colors duration-color"
+            :class="activeCategory === cat.id && !searchTerm ? 'text-text-main' : 'text-text-sub hover:text-text-main'"
           >
-             <AppIcon
-               :name="cat.icon"
-               :weight="activeCategory === cat.id && !searchTerm ? 'fill' : 'regular'"
-               class="text-2xl transition-colors duration-color"
-               :class="activeCategory === cat.id && !searchTerm ? 'text-primary' : ''"
-             />
-             <span class="text-[12px] leading-tight text-center" :class="activeCategory === cat.id && !searchTerm ? 'font-semibold' : 'font-medium'">
+             <span class="w-5 text-[11px] tabular-nums text-text-sub/70">{{ String(i + 1).padStart(2, '0') }}</span>
+             <span class="text-[15px] leading-tight" :class="activeCategory === cat.id && !searchTerm ? 'font-medium' : ''">
                 {{ lang === 'cn' ? cat.nameCN : cat.name }}
              </span>
           </button>
        </nav>
 
        <!-- Language Switcher -->
-       <div class="px-3 pb-4 pt-2">
-          <button
-            type="button"
-            @click="emit('toggle-lang')"
-            class="w-full h-10 rounded-full border border-line text-text-sub text-[13px] font-medium flex items-center justify-center gap-1.5 active:text-text-main"
-          >
-             <AppIcon name="translate" class="text-base" />
-             {{ lang === 'en' ? '中文' : 'EN' }}
+       <div class="px-5 pb-6 pt-3">
+          <button type="button" @click="emit('toggle-lang')" class="btn btn-outline btn-sm w-full">
+             {{ lang === 'en' ? '中文' : 'English' }}
           </button>
        </div>
     </aside>
@@ -252,33 +267,28 @@ const handleSuggestionClick = (p: Product) => {
     <!-- Main Content Area -->
     <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
 
-       <!-- Categories (phone): one scrollable row of chips -->
-       <div class="md:hidden flex overflow-x-auto no-scrollbar px-5 pt-4 pb-1 gap-2 shrink-0">
-           <button
-             v-for="cat in CATEGORIES"
-             :key="cat.id"
-             type="button"
-             @click="handleCategoryClick(cat.id)"
-             :aria-pressed="activeCategory === cat.id && !searchTerm"
-             class="flex-none h-10 px-4 rounded-full flex items-center gap-1.5 text-[14px] border transition-colors duration-color"
-             :class="activeCategory === cat.id && !searchTerm
-                ? 'bg-primary border-primary text-white font-medium'
-                : 'bg-transparent border-line text-text-sub'"
-           >
-              <AppIcon :name="cat.icon" :weight="activeCategory === cat.id && !searchTerm ? 'fill' : 'regular'" class="text-base" />
-              {{ lang === 'cn' ? cat.nameCN : cat.name }}
-           </button>
+       <!-- Categories (phone): text tabs with an underline that glides -->
+       <div class="md:hidden shrink-0 overflow-x-auto no-scrollbar px-5 pt-3 border-b border-line">
+          <SlidingTabs v-model="categoryModel" :options="categoryOptions" :label="lang === 'cn' ? '商品分类' : 'Categories'" />
        </div>
 
        <!-- Header & Search -->
-       <header class="px-5 md:px-10 pt-5 md:pt-9 pb-5 md:pb-7 flex items-end justify-between gap-6 shrink-0 z-30">
+       <header class="px-5 md:px-10 pt-6 md:pt-10 pb-5 md:pb-8 flex items-end justify-between gap-6 shrink-0 z-30">
           <div class="min-w-0">
-             <p class="text-[12px] font-medium tracking-[0.14em] uppercase text-text-sub">{{ countLabel }}</p>
-             <h1 class="mt-1 font-serif text-[30px] md:text-[40px] font-medium leading-tight tracking-[-0.01em] text-text-main truncate">{{ pageTitle }}</h1>
+             <p class="eyebrow flex items-center gap-1">
+                <RollingNumber :value="filteredProducts.length" />
+                <span>{{ countUnit }}</span>
+             </p>
+             <!-- The title rolls to the new category's name -->
+             <h1 class="mt-1 grid grid-cols-[minmax(0,1fr)] overflow-hidden py-0.5 font-serif text-[30px] md:text-[42px] font-medium leading-[1.15] tracking-[-0.015em] text-text-main">
+                <Transition :name="gridDir === 'next' ? 'roll-up' : 'roll-down'">
+                   <span :key="pageTitle" class="col-start-1 row-start-1 truncate">{{ pageTitle }}</span>
+                </Transition>
+             </h1>
           </div>
 
           <div ref="searchContainerRef" class="relative w-40 md:w-72 shrink-0">
-             <AppIcon name="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-text-sub pointer-events-none z-10" />
+             <AppIcon name="search" weight="light" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-text-sub pointer-events-none z-10" />
              <input
                 type="text"
                 v-model="searchTerm"
@@ -291,7 +301,7 @@ const handleSuggestionClick = (p: Product) => {
                 @input="showSuggestions = true"
                 @keydown.enter="($event.target as HTMLInputElement).blur()"
                 :placeholder="t.search"
-                class="w-full h-11 pl-10 pr-4 rounded-full bg-cream border border-transparent text-[15px] text-text-main placeholder:text-text-sub outline-none transition-[background-color,border-color] duration-color focus:bg-surface-light focus:border-line"
+                class="w-full h-11 pl-10 pr-4 rounded-full bg-cream border border-transparent text-[15px] text-text-main placeholder:text-text-sub outline-none transition-[background-color,border-color] duration-color focus:bg-surface-light focus:border-line-strong"
              />
 
              <!-- Suggestions -->
@@ -304,7 +314,7 @@ const handleSuggestionClick = (p: Product) => {
                   :key="p.id"
                   type="button"
                   @click="handleSuggestionClick(p)"
-                  class="w-full min-h-[52px] flex items-center gap-3 p-2 rounded-tile text-left active:bg-cream"
+                  class="w-full min-h-[52px] flex items-center gap-3 p-2 rounded-tile text-left hover:bg-cream active:bg-cream"
                 >
                    <img :src="p.image" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" alt="" decoding="async" />
                    <span class="min-w-0 flex-1">
@@ -317,17 +327,17 @@ const handleSuggestionClick = (p: Product) => {
        </header>
 
        <!-- Product Grid -->
-       <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto no-scrollbar px-5 md:px-10 pt-1 pb-40">
-          <Transition name="grid-fade" mode="out-in">
-             <div :key="gridKey" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-4 md:gap-x-6 gap-y-7 md:gap-y-9" :class="{ 'stagger-in': firstPaint }">
+       <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-5 md:px-10 pt-1 pb-40">
+          <Transition :name="`grid-${gridDir}`" mode="out-in">
+             <div :key="gridKey" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-4 md:gap-x-6 gap-y-8 md:gap-y-10" :class="firstPaint ? 'stagger-in' : 'stagger-quick'">
                 <!-- Product: the photo is the card -->
                 <article
                    v-for="product in filteredProducts"
                    :key="product.id"
-                   @click="!isSoldOut(product) && emit('select-product', product)"
+                   @click="pick(product, $event)"
                    data-testid="product-card"
                    class="group relative flex flex-col cursor-pointer"
-                   :class="{ 'opacity-50 pointer-events-none': isSoldOut(product) }"
+                   :class="{ 'pointer-events-none': isSoldOut(product) }"
                 >
                    <div class="relative aspect-square rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.98]">
                       <img
@@ -335,48 +345,35 @@ const handleSuggestionClick = (p: Product) => {
                          :alt="lang === 'cn' ? product.nameCN : product.name"
                          loading="lazy"
                          decoding="async"
-                         class="w-full h-full object-cover"
-                         :class="{ 'grayscale': isSoldOut(product) }"
+                         class="w-full h-full object-cover transition-transform duration-spring-soft ease-out group-hover:scale-[1.04]"
+                         :class="{ 'grayscale opacity-60': isSoldOut(product) }"
                       />
 
-                      <span v-if="isSoldOut(product)" class="absolute top-3 left-3 h-6 px-2.5 rounded-full bg-text-main/85 text-white text-[11px] font-medium flex items-center">
+                      <span v-if="isSoldOut(product)" class="absolute top-3 left-3 chip bg-white/90 text-text-main">
                          {{ lang === 'cn' ? '已售罄' : 'Sold out' }}
                       </span>
-                      <span v-else-if="product.isPopular && activeCategory !== 'top'" class="absolute top-3 left-3 h-6 px-2 rounded-full bg-white/95 text-text-main text-[11px] font-medium flex items-center gap-1">
-                         <AppIcon name="star" weight="fill" class="text-secondary text-xs" />
-                         {{ t.bestSeller }}
-                      </span>
 
-                      <!-- Quantity in cart; keyed by count so it pops on every add -->
+                      <!-- Quantity in cart; the digits roll on every add -->
                       <span
                          v-if="cartCounts.get(product.id)"
-                         :key="cartCounts.get(product.id)"
-                         class="absolute top-3 right-3 min-w-6 h-6 px-1.5 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center tabular-nums animate-cart-bump"
-                      >{{ cartCounts.get(product.id) }}</span>
+                         class="absolute top-3 right-3 min-w-6 h-6 px-1.5 rounded-full bg-text-main text-white text-xs font-semibold flex items-center justify-center leading-none animate-scale-in"
+                      ><RollingNumber :value="cartCounts.get(product.id) ?? 0" /></span>
                    </div>
 
-                   <div class="pt-3 flex items-start justify-between gap-3">
-                      <div class="min-w-0">
-                         <h3 class="text-[15px] md:text-base font-medium text-text-main leading-snug line-clamp-2 md:line-clamp-1">
-                            {{ lang === 'cn' ? product.nameCN : product.name }}
-                         </h3>
-                         <p class="mt-1 text-[14px] text-text-sub tabular-nums">¥{{ Number(product.price).toFixed(2) }}</p>
-                      </div>
-                      <span
-                         v-if="!isSoldOut(product)"
-                         class="mt-0.5 size-9 rounded-full border border-line text-text-main flex items-center justify-center shrink-0 transition-colors duration-color group-active:bg-primary group-active:border-primary group-active:text-white"
-                         aria-hidden="true"
-                      >
-                         <AppIcon name="plus" class="text-base" />
-                      </span>
+                   <div class="pt-3 min-w-0">
+                      <p v-if="product.isPopular && activeCategory !== 'top'" class="mb-1 text-[10px] font-medium uppercase tracking-[0.16em] text-secondary-content">{{ t.bestSeller }}</p>
+                      <h3 class="text-[15px] md:text-base font-medium leading-snug line-clamp-2 md:line-clamp-1" :class="isSoldOut(product) ? 'text-text-sub' : 'text-text-main'">
+                         {{ lang === 'cn' ? product.nameCN : product.name }}
+                      </h3>
+                      <p class="mt-1 text-[14px] text-text-sub tabular-nums">¥{{ Number(product.price).toFixed(2) }}</p>
                    </div>
                 </article>
              </div>
           </Transition>
 
           <!-- Nothing found -->
-          <div v-if="filteredProducts.length === 0" class="py-24 flex flex-col items-center text-text-sub">
-             <AppIcon name="search" class="text-3xl mb-3" />
+          <div v-if="filteredProducts.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
+             <AppIcon name="search" weight="light" class="text-3xl mb-3" />
              <p class="text-[15px]">{{ lang === 'cn' ? '没有找到相关商品' : 'Nothing matches that' }}</p>
           </div>
        </main>

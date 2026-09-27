@@ -1,29 +1,30 @@
 <script setup lang="ts">
 /**
  * OrderCard.vue
- * 
- * Premium order card for KDS display.
- * Features: Elegant styling, time tracking, item pills, action buttons.
+ *
+ * One order on the kitchen board: the pickup number the customer holds, how
+ * long it has waited, what to make, and the one next action. Late orders get
+ * a thin red edge and red wait time instead of alarm badges.
  */
 import AppIcon from '@shared/components/AppIcon.vue';
 import type { Order } from '../api';
 import { computed, ref, watch } from 'vue';
-import type { IconName } from '@shared/icons';
 
 const props = defineProps<{
   order: Order;
   globalTick?: number; // Parent provides this to trigger time recalculation
+  /** Arrived after the board loaded: flash once. */
+  fresh?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: 'update-status', orderId: number, status: string): void;
 }>();
 
-// Time elapsed - now computed, triggered by globalTick from parent
-// This eliminates the need for per-card setInterval (O(n) -> O(1) timers)
+// Time elapsed - computed, re-evaluated on the parent's globalTick
+// (one timer for the board instead of one per card).
 const timeElapsed = computed(() => {
-  // Access globalTick to trigger reactivity on parent's interval
-  const _ = props.globalTick;
+  void props.globalTick;
   const totalSec = Math.floor((Date.now() - new Date(props.order.created_at).getTime()) / 1000);
   const min = Math.floor(totalSec / 60);
   if (min < 60) {
@@ -42,7 +43,10 @@ const formatTime = (isoString: string) => {
   return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
-const waitMinutes = computed(() => Math.floor((Date.now() - new Date(props.order.created_at).getTime()) / 60000));
+const waitMinutes = computed(() => {
+  void props.globalTick;
+  return Math.floor((Date.now() - new Date(props.order.created_at).getTime()) / 60000);
+});
 
 const isUrgent = computed(() => {
   // Backend statuses: created / processing / ready / completed / refunded
@@ -50,22 +54,10 @@ const isUrgent = computed(() => {
   return waitMinutes.value > 10;
 });
 
-const nextAction = computed((): { label: string; action: string; icon: IconName; bgClass: string; textClass: string } | null => {
+const nextAction = computed((): { label: string; action: string; primary: boolean } | null => {
   const s = props.order.status.toLowerCase();
-  if (s === 'created') return {
-    label: 'Start Making',
-    action: 'processing',
-    icon: 'play',
-    bgClass: 'bg-primary hover:bg-primary/90',
-    textClass: 'text-white'
-  };
-  if (s === 'processing') return {
-    label: 'Mark Ready',
-    action: 'ready',
-    icon: 'check',
-    bgClass: 'bg-secondary hover:bg-secondary/90',
-    textClass: 'text-secondary-content'
-  };
+  if (s === 'created') return { label: 'Start making', action: 'processing', primary: false };
+  if (s === 'processing') return { label: 'Mark ready', action: 'ready', primary: true };
   return null;
 });
 
@@ -89,91 +81,60 @@ const runAction = () => {
 </script>
 
 <template>
-  <div 
-    class="bg-white p-3 md:p-4 rounded-[20px] relative overflow-hidden border border-gray-100/80 shadow-sm"
-    :class="{ 'ring-2 ring-red-400/60 border-red-200 bg-red-50/30': isUrgent }"
+  <article
+    class="relative overflow-hidden bg-surface-light rounded-card border p-4 md:p-5 transition-colors duration-fade"
+    :class="[isUrgent ? 'border-danger/35' : 'border-line', { flash: fresh }]"
   >
-    <!-- Order Header -->
-    <div class="flex items-center justify-between gap-3 mb-3 relative z-10">
-      <div class="flex items-center gap-3 min-w-0">
-        <!-- Pickup Number Badge: the number the customer holds -->
-        <div class="min-w-12 h-12 px-2 rounded-xl bg-gradient-to-br from-primary to-[#0A2921] text-white flex items-center justify-center font-black text-lg shadow-lg shadow-primary/20 tabular-nums shrink-0" :title="`Order ${order.id}`">
-          #{{ order.pickup_number ?? order.id }}
-        </div>
-        <div class="flex flex-col min-w-0">
-          <span class="text-sm font-bold text-text-main tabular-nums">{{ formatTime(order.created_at) }}</span>
-          <span class="text-xs font-bold flex items-center gap-1.5" :class="isUrgent ? 'text-red-600' : 'text-text-sub'">
-            <AppIcon :name="isUrgent ? 'warning' : 'clock'" :weight="isUrgent ? 'fill' : 'regular'" class="text-sm" />
-            {{ timeElapsed }} ago
-          </span>
-        </div>
+    <span v-if="isUrgent" class="absolute left-0 inset-y-0 w-[3px] bg-danger" aria-hidden="true"></span>
+
+    <!-- Pickup number + wait -->
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0">
+        <p class="font-serif text-[34px] md:text-[38px] font-medium leading-none tabular-nums" :title="`Order ${order.id}`">
+          {{ order.pickup_number ?? order.id }}
+        </p>
+        <p class="mt-2 text-[12px] tabular-nums text-text-sub">
+          {{ formatTime(order.created_at) }}
+          <span class="mx-1" aria-hidden="true">·</span>
+          <span :class="isUrgent ? 'text-danger font-medium' : ''">{{ timeElapsed }} ago</span>
+        </p>
       </div>
-      
-      <!-- Item Count & Urgent Badge -->
-      <div class="flex items-center gap-2 shrink-0">
-        <span class="hidden lg:inline text-[11px] font-bold text-text-sub bg-gray-100 px-2.5 py-1 rounded-lg">{{ itemCount }} {{ itemCount === 1 ? 'item' : 'items' }}</span>
-        <div v-if="isUrgent" class="size-8 rounded-lg bg-red-500 flex items-center justify-center shadow-lg shadow-red-500/30" aria-label="Waiting over 10 minutes">
-          <AppIcon name="exclamation" weight="fill" class="text-white text-base" />
-        </div>
-      </div>
+      <span class="text-[12px] text-text-sub shrink-0 pt-1">{{ itemCount }} {{ itemCount === 1 ? 'item' : 'items' }}</span>
     </div>
 
-    <!-- Items List -->
-    <div class="space-y-2 mb-3 relative z-10">
-      <div 
-        v-for="(item, i) in order.items" 
-        :key="i" 
-        class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 py-2 px-3 bg-background-light rounded-xl border border-gray-50"
-      >
-        <!-- Quantity Badge -->
-        <span class="size-7 rounded-lg bg-primary text-white text-xs font-black flex items-center justify-center shrink-0 shadow-sm">
-          {{ item.quantity }}×
+    <!-- What to make -->
+    <ul class="mt-4 space-y-2.5">
+      <li v-for="(item, i) in order.items" :key="i" class="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+        <span class="text-[15px] font-medium tabular-nums">{{ item.quantity }}×</span>
+        <span class="text-[15px] flex-1 min-w-[5rem] truncate">{{ item.name }}</span>
+        <span class="flex items-center gap-1.5 shrink-0">
+          <span
+            v-if="item.temperature"
+            class="chip"
+            :class="item.temperature === 'Hot' ? 'chip-warm' : 'bg-[#E9F1FA] text-[#1F5C99]'"
+          >{{ item.temperature }}</span>
+          <span v-if="item.sugar" class="chip chip-quiet">{{ item.sugar }}</span>
         </span>
-        
-        <!-- Item Name -->
-        <span class="text-sm font-bold text-text-main flex-1 min-w-[5rem] truncate">{{ item.name }}</span>
-        
-        <!-- Options Chips -->
-        <div class="flex items-center gap-1.5 shrink-0">
-          <span 
-            v-if="item.temperature" 
-            class="text-[10px] font-bold px-2 py-1 rounded-lg flex items-center gap-1" 
-            :class="item.temperature === 'Hot' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'"
-          >
-            <AppIcon :name="item.temperature === 'Hot' ? 'flame' : 'snowflake'" class="text-xs" />
-            {{ item.temperature }}
-          </span>
-          <span 
-            v-if="item.sugar" 
-            class="text-[10px] font-bold px-2 py-1 rounded-lg bg-amber-100 text-amber-700"
-          >
-            {{ item.sugar }}
-          </span>
-        </div>
-      </div>
-    </div>
+      </li>
+    </ul>
 
-    <!-- Action Button -->
-    <button 
+    <!-- The one next action -->
+    <button
       v-if="nextAction"
       type="button"
       @click="runAction"
       :disabled="pending"
-      class="w-full py-3 rounded-xl text-sm font-black shadow-lg disabled:opacity-60 flex items-center justify-center gap-2 relative z-10"
-      :class="[nextAction.bgClass, nextAction.textClass]"
+      class="btn w-full mt-5 disabled:!opacity-60"
+      :class="nextAction.primary ? 'btn-primary' : 'btn-outline'"
     >
-      <span v-if="pending" class="size-4 border-2 border-current border-r-transparent rounded-full animate-spin" aria-hidden="true"></span>
-      <AppIcon :name="nextAction.icon" v-else class="text-xl" />
+      <span v-if="pending" class="size-4 border-[1.5px] border-current border-r-transparent rounded-full animate-spin" aria-hidden="true"></span>
       <span>{{ nextAction.label }}</span>
     </button>
-    
-    <!-- Completed State -->
-    <div 
-      v-else 
-      class="w-full py-3 rounded-xl bg-emerald-100 text-emerald-700 text-sm font-bold text-center flex items-center justify-center gap-2 relative z-10"
-    >
-      <AppIcon name="check-circle" weight="fill" class="text-xl" />
-      <span>Ready for Pickup</span>
-    </div>
-  </div>
+
+    <!-- Ready -->
+    <p v-else class="mt-5 h-12 flex items-center justify-center gap-2 rounded-full bg-primary-soft text-primary text-[14px] font-medium">
+      <AppIcon name="check" class="text-base" />
+      Ready for pickup
+    </p>
+  </article>
 </template>

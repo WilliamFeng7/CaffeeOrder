@@ -41,10 +41,10 @@ const ICONS = {
   user: 'PhUser',
   'user-plus': 'PhUserPlus',
   users: 'PhUsers',
-  house: 'PhHouse',
+  house: 'PhHouseSimple',
   store: 'PhStorefront',
   coffee: 'PhCoffee',
-  bag: 'PhShoppingBag',
+  bag: 'PhBagSimple',
   cart: 'PhShoppingCart',
   receipt: 'PhReceipt',
   history: 'PhClockCounterClockwise',
@@ -86,9 +86,13 @@ const ICONS = {
   heart: 'PhHeart',
   eye: 'PhEye',
   'eye-slash': 'PhEyeSlash',
+  'arrow-up-right': 'PhArrowUpRight',
+  'caret-down': 'PhCaretDown',
+  'caret-left': 'PhCaretLeft',
 };
 
-const WEIGHTS = ['regular', 'fill', 'bold'];
+// light: the default for larger UI icons (minimal); regular for small ones.
+const WEIGHTS = ['light', 'regular', 'fill'];
 
 async function paths(component, weight) {
   const html = await renderToString(createSSRApp({ render: () => h(component, { weight }) }));

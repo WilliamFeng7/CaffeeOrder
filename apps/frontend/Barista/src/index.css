@@ -1,28 +1,28 @@
-/* Shared motion contract (press feedback, stagger, prefers-reduced-motion)
-   for Student / Admin / Barista. */
+/* Shared motion contract (tokens, press feedback, reveal, lists, reduced motion)
+   and the shared UI primitives (buttons, fields, chips) for all three apps. */
 @import '../../../../packages/shared/styles/motion.css';
+@import '../../../../packages/shared/styles/ui.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Body Styles (Same as Student App) */
 body {
-    background-color: #F2F7F5;
+    background-color: #FAFAF7;
     min-height: 100vh;
     margin: 0;
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
     touch-action: manipulation;
 }
 
 #root {
     width: 100vw;
     height: 100vh;
-    background-color: #F2F7F5;
+    background-color: #FAFAF7;
     position: relative;
     overflow: hidden;
 }
-
 
 /* NOTE: no custom .transform-gpu here — a plain `transform: translate3d(0,0,0)`
    rule after @tailwind utilities would clobber Tailwind translate/scale/rotate

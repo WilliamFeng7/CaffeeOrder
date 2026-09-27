@@ -60,6 +60,9 @@ const isLoading = ref(false);
 // 输入框本身的格式错误提示 (如: 手机号位数不对)
 const inputError = ref('');
 
+// 登录失败时表单左右晃一下 (shake once on a rejected sign-in)
+const rejected = ref(false);
+
 /**
  * 实时监听用户名输入 (Real-time Validation)
  * 校验规则:
@@ -190,6 +193,9 @@ const handleLogin = async () => {
         }
     }
 
+    // The form shakes once, like a head saying no.
+    rejected.value = false;
+    requestAnimationFrame(() => { rejected.value = true; });
   } finally {
     isLoading.value = false;
   }
@@ -199,36 +205,39 @@ const handleLogin = async () => {
 
 <template>
   <div class="fixed inset-0 z-[200] bg-background-light flex items-center justify-center p-6 overflow-y-auto">
-    <div class="w-full max-w-[380px] animate-slide-up-content">
+    <div class="w-full max-w-[380px]">
 
       <!-- Brand -->
-      <div class="text-center mb-12">
-        <AppIcon name="coffee" class="text-[32px] text-primary" />
-        <h1 class="mt-4 font-serif text-[40px] font-medium leading-none tracking-[-0.015em] text-text-main">OTIA Café</h1>
-        <p class="mt-3 text-[15px] text-text-sub">{{ lang === 'cn' ? '登录后开始点单' : 'Sign in to start your order' }}</p>
+      <div class="mb-14">
+        <p class="eyebrow animate-slide-up-content">{{ lang === 'cn' ? '欢迎回来' : 'Welcome back' }}</p>
+        <h1 class="mt-3 font-serif text-[46px] font-medium leading-none tracking-[-0.02em] text-text-main animate-text-reveal" style="animation-delay: 60ms">OTIA Café</h1>
+        <p class="mt-4 text-[15px] text-text-sub animate-slide-up-content" style="animation-delay: 120ms">{{ lang === 'cn' ? '登录后开始点单' : 'Sign in to start your order' }}</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="space-y-5">
-        <div>
-          <label for="username" class="block text-[12px] font-medium tracking-[0.14em] uppercase text-text-sub mb-2">{{ lang === 'cn' ? '账号' : 'Account' }}</label>
-          <input
-            id="username"
-            name="username"
-            v-model="username"
-            type="text"
-            autocomplete="username"
-            autocapitalize="off"
-            spellcheck="false"
-            enterkeyhint="next"
-            class="w-full min-h-[52px] px-4 rounded-tile bg-cream border border-transparent text-[16px] text-text-main outline-none transition-[background-color,border-color] duration-color focus:bg-surface-light focus:border-line placeholder:text-text-sub"
-            :placeholder="lang === 'cn' ? '用户名 / 手机号 / 邮箱' : 'Username, phone or email'"
-          />
-          <p v-if="inputError" class="mt-2 text-[13px] text-[#B42318] animate-fade-in">{{ inputError }}</p>
+      <form @submit.prevent="handleLogin" class="space-y-7" :class="{ shake: rejected }" @animationend="rejected = false">
+        <div class="animate-slide-up-content" style="animation-delay: 180ms">
+          <label for="username" class="eyebrow">{{ lang === 'cn' ? '账号' : 'Account' }}</label>
+          <div class="line-field mt-1">
+            <input
+              id="username"
+              name="username"
+              v-model="username"
+              type="text"
+              autocomplete="username"
+              autocapitalize="off"
+              spellcheck="false"
+              enterkeyhint="next"
+              :placeholder="lang === 'cn' ? '用户名 / 手机号 / 邮箱' : 'Username, phone or email'"
+            />
+          </div>
+          <Transition name="page">
+            <p v-if="inputError" class="mt-2 text-[13px] text-danger" role="alert">{{ inputError }}</p>
+          </Transition>
         </div>
 
-        <div>
-          <label for="password" class="block text-[12px] font-medium tracking-[0.14em] uppercase text-text-sub mb-2">{{ lang === 'cn' ? '密码' : 'Password' }}</label>
-          <div class="relative">
+        <div class="animate-slide-up-content" style="animation-delay: 230ms">
+          <label for="password" class="eyebrow">{{ lang === 'cn' ? '密码' : 'Password' }}</label>
+          <div class="line-field mt-1">
             <input
               id="password"
               name="password"
@@ -236,28 +245,31 @@ const handleLogin = async () => {
               :type="showPassword ? 'text' : 'password'"
               autocomplete="current-password"
               enterkeyhint="go"
-              class="w-full min-h-[52px] pl-4 pr-14 rounded-tile bg-cream border border-transparent text-[16px] text-text-main outline-none transition-[background-color,border-color] duration-color focus:bg-surface-light focus:border-line placeholder:text-text-sub"
+              class="!pr-12"
               :placeholder="lang === 'cn' ? '输入密码' : 'Enter your password'"
             />
-            <button
-              type="button"
-              @click="showPassword = !showPassword"
-              class="absolute right-1 top-1/2 -translate-y-1/2 size-11 rounded-full text-text-sub flex items-center justify-center active:text-text-main"
-              :aria-label="showPassword ? (lang === 'cn' ? '隐藏密码' : 'Hide password') : (lang === 'cn' ? '显示密码' : 'Show password')"
-            >
-              <AppIcon :name="showPassword ? 'eye-slash' : 'eye'" class="text-xl" />
-            </button>
+            <span class="absolute right-0 inset-y-0 flex items-center">
+              <button
+                type="button"
+                @click="showPassword = !showPassword"
+                class="icon-btn"
+                :aria-label="showPassword ? (lang === 'cn' ? '隐藏密码' : 'Hide password') : (lang === 'cn' ? '显示密码' : 'Show password')"
+              >
+                <AppIcon :name="showPassword ? 'eye-slash' : 'eye'" weight="light" class="text-xl" />
+              </button>
+            </span>
           </div>
         </div>
 
-        <button
-          type="submit"
-          :disabled="isLoading"
-          class="w-full h-14 !mt-8 rounded-full bg-primary text-white text-[16px] font-medium flex items-center justify-center gap-2 active:bg-primary-dark disabled:opacity-70"
-        >
-          <span v-if="isLoading" class="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
-          <span v-else>{{ lang === 'cn' ? '登录' : 'Sign In' }}</span>
-        </button>
+        <div class="pt-3 animate-slide-up-content" style="animation-delay: 280ms">
+          <button type="submit" :disabled="isLoading" class="btn btn-primary btn-lg w-full group">
+            <span v-if="isLoading" class="size-4 border-[1.5px] border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
+            <template v-else>
+              {{ lang === 'cn' ? '登录' : 'Sign In' }}
+              <AppIcon name="arrow-right" class="text-base nudge" />
+            </template>
+          </button>
+        </div>
       </form>
     </div>
   </div>

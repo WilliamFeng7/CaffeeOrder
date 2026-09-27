@@ -1,20 +1,35 @@
 <script setup lang="ts">
+/**
+ * DashboardView.vue
+ *
+ * 经营概览: today's numbers, the live order funnel, the 24h trend, best
+ * sellers and sold-out items. Polls every 2 seconds.
+ *
+ * Motion: numbers count up on first load and count to new values when they
+ * change; bars grow in and glide to new lengths; lower sections rise in as
+ * they scroll into view.
+ */
 import AppIcon from '@shared/components/AppIcon.vue';
-import { ref, onMounted, onUnmounted } from 'vue';
+import AnimatedNumber from '@shared/components/AnimatedNumber.vue';
+import SlidingTabs from '@shared/components/SlidingTabs.vue';
+import { vReveal } from '@shared/reveal';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { api, type DashboardStats } from '../api';
 import TrendChart from '../components/charts/TrendChart.vue';
 
 const stats = ref<DashboardStats | null>(null);
 const loading = ref(true);
 const error = ref(false);
+const updatedAt = ref('');
 let timer: ReturnType<typeof setInterval> | null = null;
 
 const fetchData = async () => {
-    // frequent polling shouldn't show loading spinner every time if we already have data
-    if (!stats.value) loading.value = true; 
+    // Polling must not flash a spinner once there is data on screen.
+    if (!stats.value) loading.value = true;
     error.value = false;
     try {
         stats.value = await api.getDashboardStats();
+        updatedAt.value = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     } catch (e) {
         error.value = true;
         console.error(e);
@@ -23,9 +38,11 @@ const fetchData = async () => {
     }
 };
 
-const refreshPage = () => {
-    loading.value = true; // Force spinner on manual refresh
-    fetchData();
+const refreshing = ref(false);
+const refreshPage = async () => {
+    refreshing.value = true;
+    await fetchData();
+    refreshing.value = false;
 };
 
 onMounted(() => {
@@ -38,267 +55,197 @@ onUnmounted(() => {
 });
 
 // Utilities
-const formatCurrency = (val: number) => {
-    return val.toLocaleString('zh-CN', { style: 'currency', currency: 'CNY' });
-};
+const money = (val: number) => val.toLocaleString('zh-CN', { style: 'currency', currency: 'CNY' });
+const percent = (val: number) => `${val > 0 ? '+' : ''}${val}%`;
 
-const formatPercent = (val: number) => {
-    return `${val > 0 ? '+' : ''}${val}%`;
-};
+const funnel = computed(() => {
+    const f = stats.value?.operations.funnel;
+    if (!f) return [];
+    const total = Math.max(f.pending + f.processing + f.ready, 1);
+    return [
+        { label: '待接单 / 待制作', value: f.pending, share: f.pending / total },
+        { label: '制作中', value: f.processing, share: f.processing / total },
+        { label: '请取餐', value: f.ready, share: f.ready / total },
+    ];
+});
+
+const topSales = computed(() => stats.value?.inventory.top_selling_items[0]?.sales || 1);
+
+// Orders and revenue have different units: one at a time, on one axis.
+const trendMetric = ref<'orders' | 'revenue'>('orders');
+const trendOptions = [
+    { value: 'orders' as const, label: '订单量' },
+    { value: 'revenue' as const, label: '销售额' },
+];
 </script>
 
 <template>
-  <div v-if="loading" class="flex items-center justify-center h-[500px]">
-      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-  </div>
-  
-  <div v-else-if="error" class="flex flex-col items-center justify-center h-[500px] text-center">
-      <AppIcon name="warning-circle" class="text-6xl text-red-500 mb-4" />
-      <h3 class="text-xl font-bold text-gray-800">加载数据失败</h3>
-      <button @click="refreshPage" class="mt-4 px-6 py-2 bg-primary text-white rounded-xl font-bold">重试</button>
+  <div v-if="loading" class="flex items-center justify-center h-[480px]">
+      <div class="size-8 rounded-full border-[1.5px] border-line border-t-text-main animate-spin" aria-label="加载中"></div>
   </div>
 
-  <div v-else-if="stats" class="space-y-8 animate-fade-in pb-12">
-      <!-- 1. Header & Quick Actions -->
-      <div class="flex justify-between items-end">
+  <div v-else-if="error && !stats" class="flex flex-col items-center justify-center h-[480px] text-center animate-fade-in">
+      <AppIcon name="warning-circle" weight="light" class="text-4xl text-danger mb-4" />
+      <h3 class="font-serif text-[22px] font-medium">加载数据失败</h3>
+      <button type="button" @click="refreshPage" class="btn btn-outline btn-sm mt-5">重试</button>
+  </div>
+
+  <div v-else-if="stats" class="space-y-6 pb-4">
+      <!-- Title -->
+      <div class="flex items-end justify-between gap-4 animate-slide-up-content">
           <div>
-              <h1 class="text-3xl font-black text-primary tracking-tight">运营概览 Dashboard</h1>
-              <p class="text-gray-500 font-medium mt-1">
-                 实时数据更新于 {{ new Date().toLocaleTimeString('zh-CN', {hour: '2-digit', minute:'2-digit'}) }}
+              <p class="eyebrow flex items-center gap-2">
+                  <span class="relative flex size-1.5">
+                      <span :key="updatedAt" class="absolute inset-0 rounded-full bg-primary ping" aria-hidden="true"></span>
+                      <span class="relative size-1.5 rounded-full bg-primary" aria-hidden="true"></span>
+                  </span>
+                  实时 · 更新于 {{ updatedAt }}
               </p>
+              <h1 class="mt-2 font-serif text-[34px] font-medium leading-tight tracking-[-0.015em]">经营概览</h1>
           </div>
-          <button @click="refreshPage" class="px-5 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm">
-              <AppIcon name="refresh" class="text-lg" />
-              刷新数据
+          <button type="button" @click="refreshPage" class="btn btn-outline btn-sm">
+              <AppIcon name="refresh" weight="light" class="text-base" :class="{ 'animate-spin': refreshing }" />
+              刷新
           </button>
       </div>
 
-      <!-- 2. Key Metrics Cards (Top Row) -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <!-- Card 1: Revenue -->
-          <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 relative overflow-hidden group">
-              <div class="flex justify-between items-start mb-2">
-                  <p class="text-gray-400 font-bold text-xs uppercase tracking-widest">今日营业额</p>
-                  <AppIcon name="money" class="text-primary/20 p-1.5 bg-primary/5 rounded-lg" />
-              </div>
-              <h3 class="text-2xl font-black text-primary tracking-tight mb-1">{{ formatCurrency(stats.overview.total_revenue_today) }}</h3>
-              <div class="flex items-center gap-1.5">
-                   <div class="px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5"
-                        :class="stats.overview.revenue_growth >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'">
-                       <AppIcon :name="stats.overview.revenue_growth >= 0 ? 'trend-up' : 'trend-down'" class="text-sm" />
-                       {{ formatPercent(stats.overview.revenue_growth) }}
-                   </div>
-                   <span class="text-[10px] text-gray-400">较昨日</span>
-              </div>
+      <!-- Key numbers: one card, hairline dividers -->
+      <section class="card grid grid-cols-2 lg:grid-cols-5 animate-slide-up-content [&>*]:border-line max-lg:[&>*:nth-child(n+3)]:border-t max-lg:[&>*:nth-child(even)]:border-l lg:divide-x lg:divide-line" style="animation-delay: 60ms">
+          <div class="p-6">
+              <p class="eyebrow">今日营业额</p>
+              <AnimatedNumber class="mt-3 block font-serif text-[28px] font-medium leading-none" :value="stats.overview.total_revenue_today" :format="money" />
+              <p class="mt-3 flex items-center gap-1 text-[12px]" :class="stats.overview.revenue_growth >= 0 ? 'text-primary' : 'text-danger'">
+                  <AppIcon :name="stats.overview.revenue_growth >= 0 ? 'trend-up' : 'trend-down'" class="text-sm" />
+                  {{ percent(stats.overview.revenue_growth) }}
+                  <span class="text-text-sub">较昨日</span>
+              </p>
           </div>
-
-          <!-- Card 2: Total Orders -->
-          <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 relative overflow-hidden group">
-              <div class="flex justify-between items-start mb-2">
-                  <p class="text-gray-400 font-bold text-xs uppercase tracking-widest">今日订单量</p>
-                  <AppIcon name="receipt" class="text-blue-500/20 p-1.5 bg-blue-50 rounded-lg text-blue-600" />
-              </div>
-              <h3 class="text-2xl font-black text-primary tracking-tight mb-1">{{ stats.overview.total_orders_today }}</h3>
-              <div class="flex items-center gap-1.5">
-                   <div class="px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5"
-                        :class="stats.overview.orders_growth >= 0 ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'">
-                       {{ formatPercent(stats.overview.orders_growth) }}
-                   </div>
-                   <span class="text-[10px] text-gray-400">较昨日</span>
-              </div>
+          <div class="p-6">
+              <p class="eyebrow">今日订单</p>
+              <AnimatedNumber class="mt-3 block font-serif text-[28px] font-medium leading-none" :value="stats.overview.total_orders_today" />
+              <p class="mt-3 flex items-center gap-1 text-[12px]" :class="stats.overview.orders_growth >= 0 ? 'text-primary' : 'text-danger'">
+                  <AppIcon :name="stats.overview.orders_growth >= 0 ? 'trend-up' : 'trend-down'" class="text-sm" />
+                  {{ percent(stats.overview.orders_growth) }}
+                  <span class="text-text-sub">较昨日</span>
+              </p>
           </div>
-
-          <!-- Card 3: AOV -->
-          <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 relative overflow-hidden group">
-              <div class="flex justify-between items-start mb-2">
-                  <p class="text-gray-400 font-bold text-xs uppercase tracking-widest">客单价 (AOV)</p>
-                  <AppIcon name="yuan" class="text-orange-500/20 p-1.5 bg-orange-50 rounded-lg text-orange-600" />
-              </div>
-              <h3 class="text-2xl font-black text-primary tracking-tight mb-1">{{ formatCurrency(stats.overview.aov_today) }}</h3>
-              <div class="flex items-center gap-1.5">
-                   <span class="text-[10px] text-gray-400">每单平均消费</span>
-              </div>
+          <div class="p-6">
+              <p class="eyebrow">客单价</p>
+              <AnimatedNumber class="mt-3 block font-serif text-[28px] font-medium leading-none" :value="stats.overview.aov_today" :format="money" />
+              <p class="mt-3 text-[12px] text-text-sub">每单平均消费</p>
           </div>
-
-           <!-- Card 4: Pending -->
-           <div class="bg-primary text-white p-5 rounded-[24px] shadow-lg shadow-primary/20 relative overflow-hidden group ring-4 ring-primary/5">
-              <div class="absolute -right-4 -top-4 size-24 bg-white/10 rounded-full blur-2xl"></div>
-              <div class="flex justify-between items-start mb-2 relative z-10">
-                  <p class="text-white/60 font-bold text-xs uppercase tracking-widest">当前制作中</p>
-                  <AppIcon name="coffee" class="text-white/30 p-1.5 bg-white/10 rounded-lg" />
-              </div>
-              <h3 class="text-3xl font-black text-white tracking-tight mb-1 relative z-10">{{ stats.overview.pending_orders_count }}</h3>
-              <div class="flex items-center gap-1.5 relative z-10">
-                   <div class="px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5 bg-white/20">
-                       <AppIcon name="sync" class="text-sm" />
-                       需关注
-                   </div>
-              </div>
+          <div class="p-6">
+              <p class="eyebrow">当前制作中</p>
+              <p class="mt-3 flex items-baseline gap-2">
+                  <AnimatedNumber class="font-serif text-[28px] font-medium leading-none" :value="stats.overview.pending_orders_count" />
+                  <span v-if="stats.overview.pending_orders_count > 0" class="size-1.5 rounded-full bg-secondary animate-pulse self-center" aria-hidden="true"></span>
+              </p>
+              <p class="mt-3 text-[12px] text-text-sub">进行中的订单</p>
           </div>
-
-          <!-- Card 5: New Members -->
-          <div class="bg-white p-5 rounded-[24px] shadow-sm border border-gray-100 relative overflow-hidden group">
-              <div class="flex justify-between items-start mb-2">
-                  <p class="text-gray-400 font-bold text-xs uppercase tracking-widest">今日新增会员</p>
-                  <AppIcon name="user-plus" class="text-purple-500/20 p-1.5 bg-purple-50 rounded-lg text-purple-600" />
-              </div>
-              <h3 class="text-2xl font-black text-primary tracking-tight mb-1">{{ stats.overview.new_members_today }}</h3>
-              <div class="flex items-center gap-1.5">
-                   <span class="text-[10px] text-gray-400">累计注册用户</span>
-              </div>
+          <div class="p-6 max-lg:col-span-2 max-lg:!border-l-0">
+              <p class="eyebrow">今日新增会员</p>
+              <AnimatedNumber class="mt-3 block font-serif text-[28px] font-medium leading-none" :value="stats.overview.new_members_today" />
+              <p class="mt-3 text-[12px] text-text-sub">注册用户</p>
           </div>
-      </div>
+      </section>
 
-      <!-- 3. Operations Center (Middle Row) -->
+      <!-- Operations -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <!-- Left: Real-time Funnel & Wait Time -->
-          <div class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 flex flex-col gap-6">
-              <div class="flex items-center justify-between">
-                 <h3 class="text-lg font-black text-primary">实时订单漏斗</h3>
-                 <div class="flex items-center gap-2 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-                    <span class="size-2 rounded-full" :class="stats.operations.estimated_wait_minutes > 15 ? 'bg-red-500 animate-pulse' : 'bg-green-500'"></span>
-                    <span class="text-xs font-bold text-gray-500">预计等待 {{ stats.operations.estimated_wait_minutes }} 分钟</span>
-                 </div>
+          <!-- Live funnel -->
+          <section class="card p-6 flex flex-col animate-slide-up-content" style="animation-delay: 120ms">
+              <div class="flex items-center justify-between gap-3">
+                 <h3 class="text-[15px] font-medium">实时订单</h3>
+                 <span class="text-[12px] flex items-center gap-1.5" :class="stats.operations.estimated_wait_minutes > 15 ? 'text-danger' : 'text-text-sub'">
+                    <span class="dot" aria-hidden="true"></span>
+                    预计等待 {{ stats.operations.estimated_wait_minutes }} 分钟
+                 </span>
               </div>
 
-              <!-- Funnel Steps -->
-              <div class="space-y-4 flex-1 justify-center flex flex-col">
-                  <!-- Step 1 Pending -->
-                  <div class="flex items-center gap-4 group">
-                      <div class="size-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center font-bold text-lg shadow-sm group-hover:scale-110 transition-transform">
-                          {{ stats.operations.funnel.pending }}
+              <div class="mt-7 space-y-6 flex-1">
+                  <div v-for="step in funnel" :key="step.label">
+                      <div class="flex items-baseline justify-between gap-3">
+                          <span class="text-[13px] text-text-sub">{{ step.label }}</span>
+                          <AnimatedNumber class="font-serif text-[22px] font-medium leading-none" :value="step.value" />
                       </div>
-                      <div class="flex-1 border-b border-gray-100 pb-2">
-                          <p class="font-bold text-gray-800 text-sm">待接单 / 待制作</p>
-                          <div class="h-1.5 w-full bg-gray-100 rounded-full mt-1 overflow-hidden">
-                              <div class="h-full bg-orange-400 rounded-full" 
-                                   :style="{ width: `${Math.max((stats.operations.funnel.pending / (Math.max(stats.operations.funnel.pending + stats.operations.funnel.processing + stats.operations.funnel.ready, 1))) * 100, 5)}%` }"></div>
-                          </div>
-                      </div>
-                  </div>
-                  <!-- Step 2 Processing -->
-                  <div class="flex items-center gap-4 group">
-                      <div class="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-lg shadow-sm group-hover:scale-110 transition-transform">
-                          {{ stats.operations.funnel.processing }}
-                      </div>
-                      <div class="flex-1 border-b border-gray-100 pb-2">
-                          <p class="font-bold text-gray-800 text-sm">制作中</p>
-                          <div class="h-1.5 w-full bg-gray-100 rounded-full mt-1 overflow-hidden">
-                              <div class="h-full bg-blue-400 rounded-full" 
-                                   :style="{ width: `${Math.max((stats.operations.funnel.processing / (Math.max(stats.operations.funnel.pending + stats.operations.funnel.processing + stats.operations.funnel.ready, 1))) * 100, 5)}%` }"></div>
-                          </div>
-                      </div>
-                  </div>
-                  <!-- Step 3 Ready -->
-                  <div class="flex items-center gap-4 group">
-                      <div class="size-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center font-bold text-lg shadow-sm group-hover:scale-110 transition-transform">
-                          {{ stats.operations.funnel.ready }}
-                      </div>
-                      <div class="flex-1 border-b border-gray-100 pb-2">
-                          <p class="font-bold text-gray-800 text-sm">请取餐</p>
-                          <div class="h-1.5 w-full bg-gray-100 rounded-full mt-1 overflow-hidden">
-                              <div class="h-full bg-green-400 rounded-full" 
-                                   :style="{ width: `${Math.max((stats.operations.funnel.ready / (Math.max(stats.operations.funnel.pending + stats.operations.funnel.processing + stats.operations.funnel.ready, 1))) * 100, 5)}%` }"></div>
-                          </div>
-                      </div>
-                  </div>
-                  
-                  <!-- Completed/Cancelled Stats Small -->
-                  <div class="grid grid-cols-2 gap-4 mt-2">
-                      <div class="bg-gray-50 rounded-xl p-3 text-center">
-                          <p class="text-[10px] text-gray-400 font-bold uppercase">今日已完成</p>
-                          <p class="text-xl font-black text-gray-600">{{ stats.operations.funnel.completed }}</p>
-                      </div>
-                      <div class="bg-gray-50 rounded-xl p-3 text-center">
-                          <p class="text-[10px] text-gray-400 font-bold uppercase">已取消/退单</p>
-                          <p class="text-xl font-black text-gray-400">{{ stats.operations.funnel.cancelled }}</p>
+                      <div class="mt-2.5 h-1 rounded-full bg-line overflow-hidden">
+                          <div
+                              class="h-full rounded-full bg-text-main grow-x transition-transform duration-spring-soft ease-spring-soft"
+                              :style="{ transform: `scaleX(${Math.max(step.share, 0.02)})` }"
+                          ></div>
                       </div>
                   </div>
               </div>
-          </div>
 
-          <!-- Right: Trend Chart -->
-          <div class="lg:col-span-2 bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 flex flex-col">
-              <div class="flex items-center justify-between mb-6">
-                 <h3 class="text-lg font-black text-primary">24小时销售趋势</h3>
-                 <div class="flex items-center gap-4 text-xs font-bold text-gray-400">
-                     <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-[#103E32]"></span> 订单量</span>
-                     <span class="flex items-center gap-1.5"><span class="size-2 rounded-full bg-[#DCCA98]"></span> 销售额</span>
-                 </div>
+              <div class="mt-7 pt-5 border-t border-line grid grid-cols-2 gap-4">
+                  <div>
+                      <p class="eyebrow">今日已完成</p>
+                      <AnimatedNumber class="mt-1.5 block font-serif text-[20px] font-medium" :value="stats.operations.funnel.completed" />
+                  </div>
+                  <div>
+                      <p class="eyebrow">已取消 / 退单</p>
+                      <AnimatedNumber class="mt-1.5 block font-serif text-[20px] font-medium text-text-sub" :value="stats.operations.funnel.cancelled" />
+                  </div>
               </div>
-              <div class="flex-1 min-h-[300px]">
-                  <TrendChart :data="stats.operations.trend" />
+          </section>
+
+          <!-- 24h trend -->
+          <section class="lg:col-span-2 card p-6 flex flex-col animate-slide-up-content" style="animation-delay: 180ms">
+              <div class="flex items-center justify-between gap-4">
+                 <h3 class="text-[15px] font-medium">24 小时趋势</h3>
+                 <SlidingTabs v-model="trendMetric" :options="trendOptions" variant="segment" size="sm" label="趋势指标" />
               </div>
-          </div>
+              <div class="mt-6 flex-1 min-h-[300px]">
+                  <TrendChart :data="stats.operations.trend" :metric="trendMetric" />
+              </div>
+          </section>
       </div>
 
-      <!-- 4. Inventory Insights (Bottom Row) -->
+      <!-- Inventory -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- Top Selling -->
-          <div class="bg-[#103E32] rounded-[32px] p-8 text-white relative overflow-hidden">
-               <div class="absolute top-0 right-0 -mr-16 -mt-16 size-64 bg-[#DCCA98] rounded-full blur-[100px] opacity-20 pointer-events-none"></div>
-               <h3 class="text-xl font-black mb-6 flex items-center gap-2">
-                   <AppIcon name="trophy" class="text-[#DCCA98]" />
-                   热销商品排行榜 TOP 3
-               </h3>
-               
-               <div class="space-y-4 relative z-10">
-                   <div v-if="!stats.inventory.top_selling_items.length" class="text-white/30 text-center py-8 italic font-medium">暂无数据</div>
-                   <div v-else v-for="(item, idx) in stats.inventory.top_selling_items" :key="idx" class="flex items-center gap-4">
-                       <div class="size-10 rounded-full bg-white/10 text-[#DCCA98] font-black text-xl flex items-center justify-center border border-[#DCCA98]/20">{{ idx + 1 }}</div>
-                       <div class="flex-1">
-                           <p class="font-bold text-lg">{{ item.name }}</p>
-                           <div class="h-1.5 w-full bg-black/20 rounded-full mt-1.5 overflow-hidden">
-                               <div class="h-full bg-[#DCCA98]" :style="{ width: `${(item.sales / stats.inventory.top_selling_items[0].sales) * 100}%` }"></div>
-                           </div>
+          <!-- Best sellers -->
+          <section v-reveal class="card p-6">
+               <h3 class="text-[15px] font-medium">热销排行</h3>
+               <div v-if="!stats.inventory.top_selling_items.length" class="py-12 text-center text-[13px] text-text-sub">暂无数据</div>
+               <ol v-else class="mt-6 space-y-6">
+                   <li v-for="(item, idx) in stats.inventory.top_selling_items" :key="item.name">
+                       <div class="flex items-baseline gap-4">
+                           <span class="w-6 font-serif text-[15px] text-text-sub tabular-nums">{{ String(idx + 1).padStart(2, '0') }}</span>
+                           <span class="flex-1 min-w-0 truncate text-[15px] font-medium">{{ item.name }}</span>
+                           <AnimatedNumber class="font-serif text-[20px] font-medium" :value="item.sales" />
+                           <span class="text-[12px] text-text-sub">已售</span>
                        </div>
-                       <div class="text-right">
-                           <p class="text-2xl font-black text-white">{{ item.sales }}</p>
-                           <p class="text-[10px] text-white/50 font-bold uppercase">已售</p>
+                       <div class="mt-2.5 ml-10 h-1 rounded-full bg-line overflow-hidden">
+                           <div
+                               class="h-full rounded-full bg-primary grow-x transition-transform duration-spring-soft ease-spring-soft"
+                               :style="{ transform: `scaleX(${item.sales / topSales})`, animationDelay: `${300 + idx * 90}ms` }"
+                           ></div>
                        </div>
-                   </div>
-               </div>
-          </div>
+                   </li>
+               </ol>
+          </section>
 
-          <!-- Sold Out Alerts -->
-          <div class="bg-white rounded-[32px] p-8 shadow-sm border border-gray-100 flex flex-col h-[350px]">
-               <div class="flex items-center justify-between mb-4">
-                   <h3 class="text-xl font-black text-red-600 flex items-center gap-2">
-                       <AppIcon name="warning" />
-                       售罄商品
-                   </h3>
-                   <span v-if="stats.inventory.sold_out_items.length" class="bg-red-50 text-red-600 px-3 py-1 rounded-full text-xs font-bold">{{ stats.inventory.sold_out_items.length }} Items</span>
+          <!-- Sold out -->
+          <section v-reveal="80" class="card p-6 flex flex-col h-[340px]">
+               <div class="flex items-center justify-between gap-3">
+                   <h3 class="text-[15px] font-medium">售罄商品</h3>
+                   <span v-if="stats.inventory.sold_out_items.length" class="chip chip-danger">{{ stats.inventory.sold_out_items.length }} 款</span>
                </div>
 
-               <div v-if="!stats.inventory.sold_out_items.length" class="flex-1 flex flex-col items-center justify-center text-gray-400">
-                   <AppIcon name="check-circle" class="text-6xl opacity-20 text-green-500 mb-2" />
-                   <p class="font-bold opacity-50">库存充足</p>
+               <div v-if="!stats.inventory.sold_out_items.length" class="flex-1 flex flex-col items-center justify-center gap-2 text-text-sub">
+                   <AppIcon name="check-circle" weight="light" class="text-3xl text-primary" />
+                   <p class="text-[13px]">库存充足</p>
                </div>
 
-               <div v-else class="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
-                   <div v-for="(item, idx) in stats.inventory.sold_out_items" :key="idx" class="flex items-center justify-between p-4 bg-red-50 rounded-2xl border border-red-100">
-                       <div>
-                           <p class="font-black text-gray-800">{{ item.name }}</p>
-                           <p class="text-xs text-red-400 font-bold mt-0.5 uppercase tracking-wider">{{ item.category }}</p>
+               <ul v-else class="mt-4 flex-1 overflow-y-auto quiet-scrollbar divide-y divide-line">
+                   <li v-for="item in stats.inventory.sold_out_items" :key="item.name" class="py-3.5 flex items-center justify-between gap-4">
+                       <div class="min-w-0">
+                           <p class="text-[14px] font-medium truncate">{{ item.name }}</p>
+                           <p class="mt-0.5 eyebrow !text-[10px]">{{ item.category }}</p>
                        </div>
-                       <!-- Placeholder for future functionality -->
-                       <button class="text-xs bg-white border border-red-200 text-red-600 px-3 py-1.5 rounded-lg font-bold hover:bg-red-500 hover:text-white transition-colors shadow-sm">
-                           补货
-                       </button>
-                   </div>
-               </div>
-          </div>
+                       <router-link to="/products" class="btn btn-outline btn-sm">补货</router-link>
+                   </li>
+               </ul>
+          </section>
       </div>
   </div>
 </template>
-
-<style scoped>
-.animate-fade-in {
-    animation: fadeIn 0.6s ease-out forwards;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-</style>

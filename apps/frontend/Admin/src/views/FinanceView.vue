@@ -1,9 +1,21 @@
 <script setup lang="ts">
+/**
+ * FinanceView.vue
+ *
+ * 财务分析: today's sales / top-ups / outstanding balances, money in vs money
+ * spent over the chosen period, how top-ups are distributed by amount, and the
+ * ledger. Polls every 2 seconds.
+ *
+ * Motion: numbers count to new values, distribution bars grow, the period and
+ * ledger switches slide their indicator and crossfade the table.
+ */
 import AppIcon from '@shared/components/AppIcon.vue';
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import AnimatedNumber from '@shared/components/AnimatedNumber.vue';
+import SlidingTabs from '@shared/components/SlidingTabs.vue';
+import { vReveal } from '@shared/reveal';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { api } from '../api';
 import FinanceChart from '../components/charts/FinanceChart.vue';
-import PieChart from '../components/charts/PieChart.vue';
 
 const stats = ref<any>({});
 const chartData = ref<any>({ line_chart: [], pie_chart: [] });
@@ -14,8 +26,20 @@ const page = ref(1);
 const dateRange = ref(7); // Default 7 days
 let timer: ReturnType<typeof setInterval> | null = null;
 
+const rangeOptions = [
+    { value: 1, label: '今日' },
+    { value: 7, label: '7 天' },
+    { value: 30, label: '30 天' },
+    { value: 90, label: '90 天' },
+];
+
+const ledgerOptions = [
+    { value: 'transactions' as const, label: '消费流水' },
+    { value: 'deposits' as const, label: '充值记录' },
+];
+
 const fetchData = async () => {
-    // Only show full loading state on first load or manual change
+    // Only show the full loading state on first load or a manual change
     if (!stats.value.total_liability) loading.value = true;
     try {
         const [s, c, t] = await Promise.all([
@@ -34,8 +58,8 @@ const fetchData = async () => {
 };
 
 watch(dateRange, () => {
-    loading.value = true; // Force spinner when changing range
-    fetchData(); 
+    loading.value = true;
+    fetchData();
 });
 
 const handleTabChange = (tab: 'transactions' | 'deposits') => {
@@ -49,11 +73,11 @@ const exportData = () => {
     const rows = transactions.value.map(t => [
         t.id, t.username, t.amount/100, t.balance_after/100, t.created_at, t.description
     ]);
-    
-    let csvContent = "data:text/csv;charset=utf-8," 
-        + headers.join(",") + "\n" 
+
+    let csvContent = "data:text/csv;charset=utf-8,"
+        + headers.join(",") + "\n"
         + rows.map(e => e.join(",")).join("\n");
-        
+
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
@@ -70,205 +94,153 @@ onMounted(() => {
 onUnmounted(() => {
     if (timer) clearInterval(timer);
 });
+
+const yuan = (n: number) => `¥${n.toFixed(2)}`;
+
+// Top-ups by amount (ordered by amount), as bars rather than pie slices:
+// lengths compare more accurately than angles, and custom amounts can add
+// many small categories.
+const distribution = computed(() => {
+    const rows: Array<{ name: string; value: number }> = chartData.value.pie_chart ?? [];
+    const total = rows.reduce((sum, r) => sum + r.value, 0) || 1;
+    const max = Math.max(1, ...rows.map(r => r.value));
+    return rows.map(r => ({ ...r, share: r.value / total, length: r.value / max }));
+});
 </script>
 
 <template>
-<div class="space-y-8 animate-fade-in pb-12">
+<div class="space-y-6 pb-4">
     <!-- Header -->
-    <div class="flex justify-between items-end">
+    <div class="flex flex-wrap items-end justify-between gap-4 animate-slide-up-content">
         <div>
-            <h1 class="text-3xl font-black text-primary tracking-tight">财务分析</h1>
-            <p class="text-gray-500 font-medium mt-1">
-                实时营收、充值与资金风险概览
-            </p>
+            <p class="eyebrow">营收 · 充值 · 资金</p>
+            <h1 class="mt-2 font-serif text-[34px] font-medium leading-tight tracking-[-0.015em]">财务分析</h1>
         </div>
-        <div class="flex gap-3">
-             <button @click="exportData" class="px-5 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm">
-                 <AppIcon name="download" class="text-lg" />
-                 导出
-             </button>
-             <select v-model="dateRange" class="px-5 py-2.5 bg-[#103E32] text-white rounded-xl font-bold text-sm shadow-lg shadow-primary/20 flex items-center gap-2 outline-none cursor-pointer hover:bg-opacity-90 transition-all">
-                 <option :value="1">统计周期：今日</option>
-                 <option :value="7">统计周期：近 7 天</option>
-                 <option :value="30">统计周期：近 30 天</option>
-                 <option :value="90">统计周期：自定义时间</option>
-             </select>
+        <div class="flex items-center gap-3">
+            <SlidingTabs v-model="dateRange" :options="rangeOptions" variant="segment" size="sm" label="统计周期" />
+            <button type="button" @click="exportData" class="btn btn-outline btn-sm">
+                <AppIcon name="download" weight="light" class="text-base" />
+                导出
+            </button>
         </div>
     </div>
 
-    <!-- Metrics Cards (Sync with Dashboard Styles) -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <!-- Revenue -->
-        <div class="bg-white p-6 rounded-[28px] border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-            <div class="flex justify-between items-start mb-4">
-                <div class="size-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                    <AppIcon name="money" />
-                </div>
-                <span class="text-[10px] font-black text-gray-300 uppercase tracking-widest">今日营收</span>
-            </div>
-            <div class="flex items-baseline gap-1">
-                 <span class="text-3xl font-black text-primary">¥{{ (stats.today_sales / 100 || 0).toFixed(2) }}</span>
-            </div>
-            <p class="text-[10px] text-gray-400 font-bold mt-3">已完成订单实收金额</p>
+    <!-- Key numbers -->
+    <section class="card grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-line animate-slide-up-content" style="animation-delay: 60ms">
+        <div class="p-6">
+            <p class="eyebrow">今日营收</p>
+            <AnimatedNumber class="mt-3 block font-serif text-[30px] font-medium leading-none" :value="(stats.today_sales || 0) / 100" :format="yuan" />
+            <p class="mt-3 text-[12px] text-text-sub">已完成订单实收金额</p>
         </div>
-
-        <!-- Deposits -->
-        <div class="bg-white p-6 rounded-[28px] border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
-            <div class="flex justify-between items-start mb-4">
-                <div class="size-10 rounded-xl bg-green-50 text-green-600 flex items-center justify-center font-bold">
-                    <AppIcon name="wallet" />
-                </div>
-                <span class="text-[10px] font-black text-gray-300 uppercase tracking-widest">今日充值</span>
-            </div>
-             <div class="flex items-baseline gap-1">
-                 <span class="text-3xl font-black text-primary">¥{{ (stats.today_deposits / 100 || 0).toFixed(2) }}</span>
-            </div>
-             <p class="text-[10px] text-gray-400 font-bold mt-3">用户充值到账金额</p>
+        <div class="p-6">
+            <p class="eyebrow">今日充值</p>
+            <AnimatedNumber class="mt-3 block font-serif text-[30px] font-medium leading-none" :value="(stats.today_deposits || 0) / 100" :format="yuan" />
+            <p class="mt-3 text-[12px] text-text-sub">用户充值到账金额</p>
         </div>
-
-        <!-- Liability -->
-        <div class="bg-red-50 p-6 rounded-[28px] border border-red-100 shadow-sm relative overflow-hidden group">
-            <div class="absolute -right-6 -top-6 size-24 bg-red-100 rounded-full blur-2xl opacity-50"></div>
-            <div class="flex justify-between items-start mb-4 relative z-10">
-                <div class="size-10 rounded-xl bg-white text-red-600 flex items-center justify-center font-bold shadow-sm">
-                    <AppIcon name="coins" />
-                </div>
-                <span class="text-[10px] font-black text-red-400 uppercase tracking-widest">待结算余额</span>
-            </div>
-             <div class="flex items-baseline gap-1 relative z-10">
-                 <span class="text-3xl font-black text-red-600">¥{{ (stats.total_liability / 100 || 0).toFixed(2) }}</span>
-            </div>
-             <p class="text-[10px] text-red-400 font-bold mt-3 relative z-10">用户账户中尚未结算金额（非异常）</p>
+        <div class="p-6">
+            <p class="eyebrow">待结算余额</p>
+            <AnimatedNumber class="mt-3 block font-serif text-[30px] font-medium leading-none" :value="(stats.total_liability || 0) / 100" :format="yuan" />
+            <p class="mt-3 text-[12px] text-text-sub">用户账户中尚未消费的金额（非异常）</p>
         </div>
-    </div>
+    </section>
 
-    <!-- Charts Area -->
+    <!-- Charts -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Dual Line Chart -->
-        <div class="lg:col-span-2 bg-white p-8 rounded-[36px] border border-gray-100 shadow-sm">
-             <div class="flex justify-between items-center mb-8">
-                 <h3 class="font-black text-primary text-xl">资金流动趋势（充值 vs 消费）</h3>
-                 <div class="flex gap-4">
-                     <div class="flex items-center gap-2">
-                         <span class="size-3 rounded-full bg-[#10B981]"></span>
-                         <span class="text-xs font-bold text-gray-400 uppercase tracking-tighter">充值</span>
-                     </div>
-                     <div class="flex items-center gap-2">
-                         <span class="size-3 rounded-full bg-[#F87171]"></span>
-                         <span class="text-xs font-bold text-gray-400 uppercase tracking-tighter">消费</span>
-                     </div>
+        <section class="lg:col-span-2 card p-6 animate-slide-up-content" style="animation-delay: 120ms">
+             <div class="flex items-center justify-between gap-4">
+                 <h3 class="text-[15px] font-medium">资金流动</h3>
+                 <div class="flex items-center gap-5 text-[12px] text-text-sub">
+                     <span class="flex items-center gap-2"><span class="w-4 h-[2px] rounded-full bg-primary"></span>充值</span>
+                     <span class="flex items-center gap-2"><span class="w-4 h-[2px] rounded-full bg-secondary"></span>消费</span>
                  </div>
              </div>
-             <div class="h-[300px]">
+             <div class="mt-6 h-[300px]">
                  <FinanceChart v-if="chartData.line_chart.length > 0" :data="chartData.line_chart" />
-                 <div v-else class="h-full flex items-center justify-center text-gray-300 font-bold bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                 <div v-else class="h-full flex items-center justify-center text-[13px] text-text-sub rounded-tile border border-dashed border-line">
                      暂无趋势数据
                  </div>
              </div>
-        </div>
-        
-        <!-- Pie Chart -->
-        <div class="bg-white p-8 rounded-[36px] border border-gray-100 shadow-sm">
-             <h3 class="font-black text-primary text-xl mb-8">充值额度分布</h3>
-             <div class="h-[300px] relative">
-                 <PieChart v-if="chartData.pie_chart.length > 0" :data="chartData.pie_chart" />
-                 <div v-else class="absolute inset-0 flex flex-col items-center justify-center text-gray-300 font-bold bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 gap-2">
-                     <span>暂无充值记录</span>
-                     <span class="text-xs font-normal opacity-70">当前统计周期内未产生充值行为</span>
-                 </div>
+        </section>
+
+        <section class="card p-6 flex flex-col animate-slide-up-content" style="animation-delay: 180ms">
+             <h3 class="text-[15px] font-medium">充值额度分布</h3>
+             <ul v-if="distribution.length" class="mt-6 space-y-5 flex-1">
+                 <li v-for="(row, i) in distribution" :key="row.name">
+                     <div class="flex items-baseline justify-between gap-3">
+                         <span class="font-serif text-[17px] font-medium tabular-nums">{{ row.name }}</span>
+                         <span class="text-[12px] text-text-sub tabular-nums">
+                             <AnimatedNumber :value="row.value" /> 笔 · {{ Math.round(row.share * 100) }}%
+                         </span>
+                     </div>
+                     <div class="mt-2 h-1 rounded-full bg-line overflow-hidden">
+                         <div
+                             class="h-full rounded-full bg-primary grow-x transition-transform duration-spring-soft ease-spring-soft"
+                             :style="{ transform: `scaleX(${row.length})`, animationDelay: `${300 + i * 80}ms` }"
+                         ></div>
+                     </div>
+                 </li>
+             </ul>
+             <div v-else class="mt-6 flex-1 min-h-[240px] flex flex-col items-center justify-center gap-1 text-center rounded-tile border border-dashed border-line">
+                 <span class="text-[13px] text-text-sub">暂无充值记录</span>
+                 <span class="text-[12px] text-text-sub/70">当前统计周期内未产生充值</span>
              </div>
-        </div>
+        </section>
     </div>
 
-    <!-- Detailed Logs -->
-    <div class="bg-white rounded-[36px] border border-gray-100 shadow-sm overflow-hidden mb-12">
-        <div class="flex bg-gray-50/50 p-2 gap-2">
-            <button 
-                @click="handleTabChange('transactions')" 
-                class="px-8 py-3.5 text-sm font-black rounded-2xl transition-all flex items-center gap-2"
-                :class="activeTab === 'transactions' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-primary hover:bg-white'"
-            >
-                <AppIcon name="receipt" class="text-lg" />
-                消费流水
-            </button>
-            <button 
-                @click="handleTabChange('deposits')" 
-                class="px-8 py-3.5 text-sm font-black rounded-2xl transition-all flex items-center gap-2"
-                :class="activeTab === 'deposits' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-gray-400 hover:text-primary hover:bg-white'"
-            >
-                <AppIcon name="wallet" class="text-lg" />
-                充值记录
-            </button>
+    <!-- Ledger -->
+    <section v-reveal class="card overflow-hidden">
+        <div class="px-6 pt-3 border-b border-line">
+            <SlidingTabs :model-value="activeTab" @update:model-value="handleTabChange" :options="ledgerOptions" label="流水类型" />
         </div>
 
-        <div class="p-0">
-             <table class="w-full">
+        <div class="overflow-x-auto quiet-scrollbar">
+            <Transition name="page" mode="out-in">
+             <table :key="activeTab" class="w-full text-left">
                  <thead>
-                     <tr class="text-gray-400 border-b border-gray-100">
-                         <th class="py-5 px-8 text-left text-[10px] font-black uppercase tracking-widest">流水号</th>
-                         <th class="py-5 px-8 text-left text-[10px] font-black uppercase tracking-widest">用户详情</th>
-                         <th class="py-5 px-8 text-left text-[10px] font-black uppercase tracking-widest">金额</th>
-                         <th class="py-5 px-8 text-left text-[10px] font-black uppercase tracking-widest">变动后余额</th>
-                         <th class="py-5 px-8 text-left text-[10px] font-black uppercase tracking-widest">交易时间</th>
-                         <th class="py-5 px-8 text-left text-[10px] font-black uppercase tracking-widest">交易备注</th>
+                     <tr class="border-b border-line">
+                         <th class="py-3.5 px-6 eyebrow font-medium">流水号</th>
+                         <th class="py-3.5 px-6 eyebrow font-medium">用户</th>
+                         <th class="py-3.5 px-6 eyebrow font-medium text-right">金额</th>
+                         <th class="py-3.5 px-6 eyebrow font-medium text-right">变动后余额</th>
+                         <th class="py-3.5 px-6 eyebrow font-medium">时间</th>
+                         <th class="py-3.5 px-6 eyebrow font-medium">备注</th>
                      </tr>
                  </thead>
-                 <tbody class="divide-y divide-gray-50">
-                     <tr v-for="row in transactions" :key="row.id" class="hover:bg-gray-50/80 transition-colors group">
-                         <td class="py-5 px-8">
-                             <span class="text-xs font-bold text-gray-400 font-mono bg-gray-100 px-2 py-1 rounded-md">{{ (row.id || '').substring(0, 10) }}...</span>
+                 <tbody class="stagger-in">
+                     <tr v-for="row in transactions" :key="row.id" class="border-b border-line last:border-0 hover:bg-background-light transition-colors duration-color">
+                         <td class="py-4 px-6">
+                             <span class="font-mono text-[12px] text-text-sub" :title="row.id">{{ (row.id || '').substring(0, 10) }}…</span>
                          </td>
-                         <td class="py-5 px-8">
-                             <div class="flex flex-col">
-                                 <span class="text-sm font-black text-primary">{{ row.user_name }}</span>
-                                 <span class="text-[10px] text-gray-500 font-bold">{{ row.username }}</span>
-                             </div>
+                         <td class="py-4 px-6">
+                             <p class="text-[14px] font-medium">{{ row.user_name }}</p>
+                             <p class="text-[12px] text-text-sub">{{ row.username }}</p>
                          </td>
-                         <td class="py-5 px-8">
-                             <span :class="row.amount < 0 ? 'text-red-600 bg-red-50' : 'text-green-600 bg-green-50'" class="font-black px-3 py-1 rounded-full text-sm">
-                                 {{ row.amount < 0 ? '-' : '+' }}¥ {{ (Math.abs(row.amount)/100).toFixed(2) }}
+                         <td class="py-4 px-6 text-right">
+                             <span class="font-serif text-[16px] font-medium tabular-nums" :class="row.amount < 0 ? 'text-text-main' : 'text-primary'">
+                                 {{ row.amount < 0 ? '−' : '+' }}¥{{ (Math.abs(row.amount)/100).toFixed(2) }}
                              </span>
                          </td>
-                         <td class="py-5 px-8 text-sm font-black text-gray-700">¥ {{ (row.balance_after/100).toFixed(2) }}</td>
-                         <td class="py-5 px-8">
-                             <div class="flex flex-col">
-                                 <span class="text-xs font-bold text-gray-600">{{ new Date(row.created_at).toLocaleDateString() }}</span>
-                                 <span class="text-[10px] text-gray-400 font-medium">{{ new Date(row.created_at).toLocaleTimeString() }}</span>
-                             </div>
+                         <td class="py-4 px-6 text-right text-[14px] tabular-nums text-text-sub">¥{{ (row.balance_after/100).toFixed(2) }}</td>
+                         <td class="py-4 px-6 whitespace-nowrap">
+                             <p class="text-[13px] tabular-nums">{{ new Date(row.created_at).toLocaleDateString() }}</p>
+                             <p class="text-[12px] text-text-sub tabular-nums">{{ new Date(row.created_at).toLocaleTimeString() }}</p>
                          </td>
-                         <td class="py-5 px-8">
-                             <span class="text-xs text-gray-500 font-medium max-w-[200px] truncate block">{{ row.description }}</span>
+                         <td class="py-4 px-6">
+                             <span class="text-[13px] text-text-sub max-w-[220px] truncate block">{{ row.description }}</span>
                          </td>
                      </tr>
                      <tr v-if="transactions.length === 0">
                          <td colspan="6" class="py-20 text-center">
-                             <div class="flex flex-col items-center gap-2 opacity-20">
-                                 <AppIcon name="database" class="text-6xl" />
-                                 <p class="font-black text-xl uppercase tracking-widest">暂无记录</p>
+                             <div class="flex flex-col items-center gap-2 text-text-sub">
+                                 <AppIcon name="database" weight="light" class="text-3xl" />
+                                 <p class="text-[13px]">暂无记录</p>
                              </div>
                          </td>
                      </tr>
                  </tbody>
              </table>
+            </Transition>
         </div>
-    </div>
+    </section>
 </div>
 </template>
-
-<style scoped>
-.animate-fade-in {
-    animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #E5E7EB;
-  border-radius: 10px;
-}
-</style>

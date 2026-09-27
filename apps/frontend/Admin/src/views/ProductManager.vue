@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import AppIcon from '@shared/components/AppIcon.vue';
+import AppModal from '@shared/components/AppModal.vue';
+import AppSwitch from '@shared/components/AppSwitch.vue';
+import { pinLeaving } from '@shared/list';
 import { ref, onMounted, computed } from 'vue';
 import { api } from '../api';
 import { useToastStore } from '../stores/toast';
@@ -59,6 +62,11 @@ const handleDelete = (id: number) => {
     showDeleteModal.value = true;
 };
 
+const deleteName = computed(() => products.value.find(p => p.id === deleteId.value)?.name ?? '');
+
+const CATEGORY_LABEL: Record<string, string> = { seasonal: '当季', coffee: '咖啡', fruit: '果茶', bakery: '烘焙' };
+const categoryLabel = (c: string) => CATEGORY_LABEL[c] ?? c;
+
 const confirmDelete = async () => {
     if (deleteId.value) {
         await api.deleteProduct(deleteId.value);
@@ -107,205 +115,160 @@ const handleFileUpload = async (event: Event) => {
     }
 };
 
-onMounted(fetchProducts);
+// The first load cascades in; after that, cards entering or leaving (search,
+// create, delete) use the list transition instead.
+const settled = ref(false);
+onMounted(async () => {
+    await fetchProducts();
+    window.setTimeout(() => { settled.value = true; }, 1000);
+});
 </script>
 
 <template>
-  <div class="space-y-6 animate-fade-in">
-     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-         <h1 class="text-3xl font-black text-primary tracking-tight">商品管理</h1>
-         
-         <div class="flex gap-4 w-full md:w-auto">
-             <div class="relative flex-1 md:w-64">
-                 <AppIcon name="search" class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                 <input 
-                    v-model="searchQuery" 
-                    type="text" 
-                    placeholder="搜索商品..." 
-                    class="w-full h-12 pl-12 pr-4 bg-white border border-gray-100 rounded-2xl font-bold text-sm outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
-                 />
-             </div>
-             
-             <button @click="handleCreate" class="px-6 h-12 bg-[#103E32] text-white rounded-2xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 transition-transform flex items-center gap-2 shrink-0">
-                 <AppIcon name="plus-circle" />
+  <div class="space-y-6">
+     <div class="flex flex-wrap items-end justify-between gap-4 animate-slide-up-content">
+         <div>
+             <p class="eyebrow">{{ products.length }} 款商品</p>
+             <h1 class="mt-2 font-serif text-[34px] font-medium leading-tight tracking-[-0.015em]">商品管理</h1>
+         </div>
+
+         <div class="flex items-center gap-3 w-full md:w-auto">
+             <label class="relative flex-1 md:w-64">
+                 <span class="sr-only">搜索商品</span>
+                 <AppIcon name="search" weight="light" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-text-sub pointer-events-none" />
+                 <input v-model="searchQuery" type="text" placeholder="搜索名称或分类" class="field !h-10 !rounded-full pl-10" />
+             </label>
+             <button type="button" @click="handleCreate" class="btn btn-primary btn-sm shrink-0">
+                 <AppIcon name="plus" class="text-base" />
                  添加商品
              </button>
          </div>
      </div>
 
-     <!-- Grid Layout for Products -->
-     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-         <div v-for="prod in filteredProducts" :key="prod.id" class="bg-white p-5 rounded-[32px] border border-gray-100 shadow-sm flex gap-4 group hover:shadow-md transition-all duration-300 relative" :class="{ 'opacity-60': prod.inventory_count <= 0 }">
-             <!-- Sold Out Badge -->
-             <div v-if="prod.inventory_count <= 0" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg z-10">售罄</div>
-             
+     <!-- Products -->
+     <TransitionGroup tag="div" name="list" class="relative grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" :class="{ 'stagger-in': !settled }" @before-leave="pinLeaving">
+         <article
+             v-for="prod in filteredProducts"
+             :key="prod.id"
+             class="group card p-4 flex gap-4 hover:border-line-strong transition-colors duration-color"
+         >
              <!-- Image -->
-             <div class="size-24 rounded-2xl bg-gray-100 bg-cover bg-center shrink-0" :class="{ 'grayscale': prod.inventory_count <= 0 }" :style="{ backgroundImage: `url(${prod.image || '/coffee-cup.png'})` }"></div>
-             
-             <div class="flex-1 min-w-0 flex flex-col justify-between py-1">
-                 <div>
-                     <div class="flex justify-between items-start gap-2">
-                         <h3 class="font-bold text-gray-900 truncate">{{ prod.name }}</h3>
-                         <div class="flex gap-1 shrink-0">
-                             <span v-if="prod.inventory_count <= 0" class="px-2 py-0.5 bg-red-100 text-red-600 rounded-md text-[10px] font-black">售罄</span>
-                             <span class="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-md text-[10px] font-black uppercase">{{ prod.category }}</span>
-                         </div>
+             <div class="relative size-[88px] rounded-tile bg-cream bg-cover bg-center shrink-0 overflow-hidden" :class="{ 'grayscale opacity-60': prod.inventory_count <= 0 }" :style="{ backgroundImage: `url(${prod.image || '/coffee-cup.png'})` }"></div>
+
+             <div class="flex-1 min-w-0 flex flex-col">
+                 <div class="flex items-start justify-between gap-2">
+                     <div class="min-w-0">
+                         <p class="eyebrow !text-[10px]">
+                             {{ categoryLabel(prod.category) }}
+                             <span v-if="prod.is_recommend" class="ml-1 !text-secondary-content">· 推荐</span>
+                         </p>
+                         <h3 class="mt-1 text-[15px] font-medium truncate">{{ prod.name }}</h3>
                      </div>
-                     <p class="text-xs text-gray-400 mt-1 line-clamp-2">{{ prod.description }}</p>
+                     <span v-if="prod.inventory_count <= 0" class="chip chip-danger shrink-0">售罄</span>
                  </div>
-                 
-                 <div class="flex justify-between items-end mt-2">
+                 <p class="mt-1 text-[12px] text-text-sub line-clamp-1">{{ prod.description }}</p>
+
+                 <div class="mt-auto pt-2 flex items-end justify-between gap-2">
                      <div class="flex items-baseline gap-2">
-                         <span class="font-black text-xl text-primary">¥{{ prod.price.toFixed(2) }}</span>
-                         <span class="text-[10px] font-bold text-gray-400">库存: {{ prod.inventory_count }}</span>
+                         <span class="font-serif text-[18px] font-medium tabular-nums">¥{{ prod.price.toFixed(2) }}</span>
+                         <span class="text-[12px] text-text-sub tabular-nums">库存 {{ prod.inventory_count }}</span>
                      </div>
-                     
+
                      <!-- Hidden until hover with a mouse; always shown on touch, where hover never happens -->
-                     <div class="flex gap-2 opacity-100 [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                         <button type="button" @click="handleEdit(prod)" aria-label="编辑" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100">
-                             <AppIcon name="edit" class="text-sm [@media(pointer:coarse)]:text-xl" />
+                     <div class="flex gap-1 opacity-100 [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-color">
+                         <button type="button" @click="handleEdit(prod)" aria-label="编辑" title="编辑" class="icon-btn size-8 [@media(pointer:coarse)]:size-11">
+                             <AppIcon name="edit" weight="light" class="text-[18px]" />
                          </button>
-                         <button type="button" @click="handleDelete(prod.id)" aria-label="删除" class="size-8 [@media(pointer:coarse)]:size-11 rounded-full bg-red-50 text-red-600 flex items-center justify-center hover:bg-red-100">
-                             <AppIcon name="trash" class="text-sm [@media(pointer:coarse)]:text-xl" />
+                         <button type="button" @click="handleDelete(prod.id)" aria-label="删除" title="删除" class="icon-btn size-8 [@media(pointer:coarse)]:size-11 hover:!text-danger hover:!bg-danger-soft">
+                             <AppIcon name="trash" weight="light" class="text-[18px]" />
                          </button>
                      </div>
                  </div>
              </div>
-         </div>
-     </div>
-     
-     <div v-if="filteredProducts.length === 0 && !loading" class="text-center py-20 text-gray-400">
-         <p class="font-bold">暂无商品</p>
+         </article>
+     </TransitionGroup>
+
+     <div v-if="filteredProducts.length === 0 && !loading" class="py-20 flex flex-col items-center gap-2 text-text-sub animate-fade-in">
+         <AppIcon name="package" weight="light" class="text-3xl" />
+         <p class="text-[13px]">暂无商品</p>
      </div>
 
-     <!-- Modal -->
-     <Teleport to="body">
-     <div v-if="showModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-         <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showModal = false"></div>
-         <div class="bg-white w-full max-w-lg rounded-[32px] p-8 relative z-10 shadow-2xl animate-scale-in max-h-[85vh] overflow-y-auto">
-             <h3 class="text-2xl font-black text-primary mb-6">{{ editingProduct.id ? '编辑商品' : '添加商品' }}</h3>
-             
-             <div class="space-y-4">
+     <!-- Edit / create -->
+     <AppModal :open="showModal" size="lg" :title="editingProduct?.id ? '编辑商品' : '添加商品'" @close="showModal = false">
+         <div v-if="editingProduct" class="space-y-5">
+             <label class="block">
+                 <span class="label">商品名称</span>
+                 <input v-model="editingProduct.name" class="field" placeholder="例如：拿铁" />
+             </label>
+             <div class="grid grid-cols-2 gap-4">
+                 <label class="block">
+                     <span class="label">价格 (¥)</span>
+                     <input v-model.number="editingProduct.price" type="number" step="0.5" class="field tabular-nums" />
+                 </label>
+                 <label class="block">
+                     <span class="label">分类</span>
+                     <select v-model="editingProduct.category" class="field">
+                         <option value="seasonal">当季特供</option>
+                         <option value="coffee">咖啡</option>
+                         <option value="fruit">果茶</option>
+                         <option value="bakery">烘焙</option>
+                     </select>
+                 </label>
+             </div>
+
+             <div>
+                 <span class="label">商品图片</span>
+                 <div class="flex gap-4 items-center">
+                     <div class="size-20 rounded-tile bg-cream bg-cover bg-center shrink-0 border border-line" :style="{ backgroundImage: `url(${editingProduct.image || '/coffee-cup.png'})` }"></div>
+                     <div class="flex-1 min-w-0">
+                         <input
+                             type="file"
+                             accept="image/*"
+                             @change="handleFileUpload"
+                             class="block w-full text-[13px] text-text-sub file:mr-3 file:h-9 file:px-4 file:rounded-full file:border file:border-solid file:border-line-strong file:bg-transparent file:text-[13px] file:font-medium file:text-text-main hover:file:border-text-main file:cursor-pointer"
+                         />
+                         <p class="mt-2 text-[12px] text-text-sub">PNG、JPG、WEBP，最大 5MB</p>
+                     </div>
+                 </div>
+             </div>
+
+             <label class="block">
+                 <span class="label">商品描述</span>
+                 <textarea v-model="editingProduct.description" rows="3" class="field"></textarea>
+             </label>
+
+             <div class="flex items-center justify-between gap-4 py-1">
                  <div>
-                     <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">商品名称</label>
-                     <input v-model="editingProduct.name" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20" placeholder="例如：拿铁" />
+                     <p id="recommend-label" class="text-[14px] font-medium">设为店长推荐</p>
+                     <p class="text-[12px] text-text-sub">出现在学生端「店长推荐」分类</p>
                  </div>
-                                  <div class="grid grid-cols-2 gap-4">
-                      <div>
-                          <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">价格 (¥)</label>
-                          <input v-model.number="editingProduct.price" type="number" step="0.5" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20" />
-                      </div>
-                      <div>
-                          <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">分类</label>
-                          <select v-model="editingProduct.category" class="w-full h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20">
-                              <option value="seasonal">当季特供 (Seasonal)</option>
-                              <option value="coffee">咖啡 (Coffee)</option>
-                              <option value="fruit">果茶 (Fruit Tea)</option>
-                              <option value="bakery">烘焙 (Bakery)</option>
-                          </select>
-                      </div>
-                  </div>
+                 <AppSwitch v-model="editingProduct.is_recommend" label="设为店长推荐" />
+             </div>
 
-                  <div>
-                      <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">商品图片</label>
-                      <div class="flex gap-4 items-center">
-                           <div class="size-20 rounded-2xl bg-gray-100 bg-cover bg-center shrink-0 border border-gray-200" 
-                                :style="{ backgroundImage: `url(${editingProduct.image || '/coffee-cup.png'})` }">
-                           </div>
-                           <div class="flex-1">
-                               <input 
-                                   type="file" 
-                                   accept="image/*"
-                                   @change="handleFileUpload"
-                                   class="block w-full text-sm text-gray-500
-                                          file:mr-4 file:py-2 file:px-4
-                                          file:rounded-full file:border-0
-                                          file:text-xs file:font-semibold
-                                          file:bg-primary/10 file:text-primary
-                                          hover:file:bg-primary/20
-                                   "
-                               />
-                               <p class="text-[10px] text-gray-400 mt-2">支持 PNG, JPG, WEBP. (Max 5MB)</p>
-                           </div>
-                      </div>
-                  </div>
-
-                  <div>
-                      <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">商品描述</label>
-                      <textarea v-model="editingProduct.description" class="w-full h-24 bg-gray-50 rounded-xl p-4 font-medium outline-none focus:ring-2 focus:ring-primary/20 resize-none"></textarea>
-                  </div>
-
-                  <div class="flex items-center gap-3 bg-yellow-50 p-4 rounded-xl border border-yellow-100 cursor-pointer" @click="editingProduct.is_recommend = !editingProduct.is_recommend">
-                      <div class="size-6 rounded-full border-2 flex items-center justify-center transition-colors"
-                           :class="editingProduct.is_recommend ? 'bg-yellow-500 border-yellow-500' : 'border-gray-300 bg-white'">
-                          <AppIcon name="check" v-if="editingProduct.is_recommend" class="text-white text-sm" />
-                      </div>
-                       <span class="font-bold text-gray-700 text-sm">设为店长推荐 (Store Manager Recommend)</span>
-                   </div>
-
-                   <!-- Inventory Control -->
-                   <div>
-                       <label class="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">库存数量 (设为 0 表示售罄)</label>
-                       <div class="flex items-center gap-4">
-                           <input v-model.number="editingProduct.inventory_count" type="number" min="0" 
-                               class="flex-1 h-12 bg-gray-50 rounded-xl px-4 font-bold outline-none focus:ring-2 focus:ring-primary/20" 
-                               placeholder="999" />
-                           <button type="button" @click="editingProduct.inventory_count = 0" 
-                               class="h-12 px-4 bg-red-50 text-red-600 rounded-xl font-bold text-sm hover:bg-red-100 transition-colors flex items-center gap-2">
-                               <AppIcon name="prohibit" class="text-lg" />
-                               设为售罄
-                           </button>
-                           <button type="button" @click="editingProduct.inventory_count = 999" 
-                               class="h-12 px-4 bg-green-50 text-green-600 rounded-xl font-bold text-sm hover:bg-green-100 transition-colors flex items-center gap-2">
-                               <AppIcon name="package" class="text-lg" />
-                               恢复库存
-                           </button>
-                       </div>
-                       <p class="text-[10px] text-gray-400 mt-2 ml-2">提示: 库存为 0 时商品将显示为售罄状态，学生无法下单购买</p>
-                   </div>
-                 
-                 <div class="pt-4 flex gap-3">
-                     <button @click="handleSave" class="flex-1 h-14 bg-primary text-white rounded-xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform">保存商品</button>
-                     <button @click="showModal = false" class="flex-1 h-14 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">取消</button>
+             <!-- Inventory -->
+             <div>
+                 <span class="label">库存数量（0 表示售罄）</span>
+                 <div class="flex items-center gap-2">
+                     <input v-model.number="editingProduct.inventory_count" type="number" min="0" class="field flex-1 tabular-nums" placeholder="999" />
+                     <button type="button" @click="editingProduct.inventory_count = 0" class="btn btn-outline btn-sm">设为售罄</button>
+                     <button type="button" @click="editingProduct.inventory_count = 999" class="btn btn-outline btn-sm">恢复库存</button>
                  </div>
+                 <p class="mt-2 text-[12px] text-text-sub">库存为 0 时商品显示为售罄，学生无法下单。</p>
              </div>
          </div>
-     </div>
-     </Teleport>
+         <template #footer>
+             <button type="button" @click="showModal = false" class="btn btn-ghost flex-1">取消</button>
+             <button type="button" @click="handleSave" class="btn btn-primary flex-1">保存商品</button>
+         </template>
+     </AppModal>
 
-     <!-- Delete Component -->
-     <Teleport to="body">
-     <div v-if="showDeleteModal" class="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-         <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showDeleteModal = false"></div>
-         <div class="bg-white w-full max-w-sm rounded-[32px] p-8 relative z-10 shadow-2xl animate-scale-in text-center">
-             <div class="size-16 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto mb-4">
-                 <AppIcon name="trash" class="text-3xl" />
-             </div>
-             <h3 class="text-xl font-black text-gray-900 mb-2">确认删除?</h3>
-             <p class="text-gray-500 text-sm font-bold mb-6">商品删除后无法恢复。</p>
-             <div class="flex gap-3">
-                 <button @click="confirmDelete" class="flex-1 h-12 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg shadow-red-600/20 transition-colors">确认删除</button>
-                 <button @click="showDeleteModal = false" class="flex-1 h-12 bg-gray-100 text-gray-600 rounded-xl font-bold hover:bg-gray-200">取消</button>
-             </div>
-         </div>
-     </div>
-     </Teleport>
+     <!-- Delete confirmation -->
+     <AppModal :open="showDeleteModal" size="sm" title="删除商品" :subtitle="deleteName" @close="showDeleteModal = false">
+         <p class="text-[14px] text-text-sub leading-relaxed">商品删除后无法恢复。</p>
+         <template #footer>
+             <button type="button" @click="showDeleteModal = false" class="btn btn-ghost flex-1">取消</button>
+             <button type="button" @click="confirmDelete" class="btn btn-danger flex-1">确认删除</button>
+         </template>
+     </AppModal>
   </div>
 </template>
-
-<style scoped>
-.animate-fade-in {
-    animation: fadeIn 0.4s ease-out forwards;
-}
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.animate-scale-in {
-    animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-@keyframes scaleIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
-}
-</style>

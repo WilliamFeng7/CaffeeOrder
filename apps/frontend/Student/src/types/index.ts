@@ -113,6 +113,12 @@ export interface Order {
 export type TabState = 'home' | 'order' | 'pickup' | 'profile';
 
 /**
+ * 商品面板关闭原因 (Why the product sheet closes)
+ * dismiss: 点关闭或背景; added: 加入购物车后; dragged: 下拉关闭 (already off-screen).
+ */
+export type SheetCloseReason = 'dismiss' | 'added' | 'dragged';
+
+/**
  * 视图状态类型 (View State)
  * 控制 App.vue 主视图的切换 (包括 Tab 页面和其他全屏页面如结算页)。
  */
