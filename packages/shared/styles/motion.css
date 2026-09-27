@@ -2,22 +2,62 @@
  * Shared motion stylesheet for Student / Admin / Barista.
  *
  * Imported from each app's index.css so that the three apps stop drifting apart
- * on the things that make motion feel consistent: press feedback, the reduced
- * motion contract, and list entrance staggering.
+ * on the things that make motion feel consistent: the timing tokens, press
+ * feedback, the reduced motion contract, and list entrance staggering.
  */
+
+/* --- Motion tokens --------------------------------------------------------- */
+/* One rhythm for everything (Tailwind exposes these through
+   tailwind-motion.mjs; drag gestures read them at runtime). Long, gliding
+   finishes instead of snaps: the earlier 150-300ms scale felt abrupt, so
+   entrances now take ~560ms on a strong ease-out, exits ~65% of that, and
+   things that travel across the screen use a spring. */
+:root {
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);       /* entering / leaving */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);   /* moving on screen */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);    /* sheets and drawers (iOS) */
+  /* Fallbacks for browsers without linear(); replaced below. */
+  --ease-spring: var(--ease-in-out);
+  --ease-spring-soft: var(--ease-drawer);
+
+  --dur-press: 140ms;        /* finger down: must feel immediate */
+  --dur-release: 380ms;      /* finger up: the part you actually see */
+  --dur-color: 260ms;        /* colour and opacity changes */
+  --dur-popover: 260ms;      /* small menus, suggestion lists */
+  --dur-fade: 360ms;         /* crossfades, content swaps */
+  --dur-scale-in: 460ms;     /* centered dialogs, chips popping in */
+  --dur-enter: 560ms;        /* content sliding into place */
+  --dur-sheet-in: 560ms;     /* bottom sheets, full-screen panels */
+  --dur-sheet-out: 380ms;    /* ...and leaving again (~65% of in) */
+  --dur-spring: 680ms;       /* settle time of --ease-spring */
+  --dur-spring-soft: 740ms;  /* settle time of --ease-spring-soft */
+}
+
+/* Apple-style springs (response 0.5s; bounce 0.2 and 0), sampled into CSS
+   linear() easings. The 0.2 one overshoots by 1.5%, just enough to feel
+   physical; the soft one has no overshoot, for sheets and drag release. */
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --ease-spring: linear(0, 0.0142 2.08%, 0.0515 4.17%, 0.1053 6.25%, 0.1701 8.33%, 0.2414 10.42%, 0.4630 16.67%, 0.5323 18.75%, 0.5973 20.83%, 0.6571 22.92%, 0.7115 25%, 0.7604 27.08%, 0.8037 29.17%, 0.8416 31.25%, 0.8746 33.33%, 0.9028 35.42%, 0.9267 37.5%, 0.9467 39.58%, 0.9632 41.67%, 0.9767 43.75%, 0.9959 47.92%, 1.0072 52.08%, 1.0144 58.33%, 1);
+    --ease-spring-soft: linear(0, 0.0163 2.08%, 0.0575 4.17%, 0.1143 6.25%, 0.1802 8.33%, 0.3894 14.58%, 0.4549 16.67%, 0.5162 18.75%, 0.5727 20.83%, 0.6243 22.92%, 0.6709 25%, 0.7127 27.08%, 0.7499 29.17%, 0.7829 31.25%, 0.8120 33.33%, 0.8376 35.42%, 0.8600 37.5%, 0.8795 39.58%, 0.9112 43.75%, 0.9349 47.92%, 0.9526 52.08%, 0.9707 58.33%, 0.9908 72.92%, 1);
+  }
+}
 
 /* --- Press feedback ------------------------------------------------------- */
 /* Applied once, globally, instead of `active:scale-95 transition-all` sprinkled
-   across hundreds of elements. `transition-property` is listed explicitly:
-   `transition-all` also animates layout-affecting properties (width/height/padding),
-   which is the single biggest source of dropped frames in these apps. */
+   across hundreds of elements. Asymmetric on purpose: the press lands quickly,
+   the release eases back slowly. Properties are listed explicitly because
+   `transition-all` also animates layout (width/height/padding). */
 button,
 .clickable,
 [role="button"] {
-  transition-property: transform, opacity, background-color, border-color, color,
-    box-shadow;
-  transition-duration: 160ms;
-  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  transition:
+    transform var(--dur-release) var(--ease-out),
+    opacity var(--dur-color) var(--ease-out),
+    background-color var(--dur-color) var(--ease-out),
+    border-color var(--dur-color) var(--ease-out),
+    color var(--dur-color) var(--ease-out),
+    box-shadow var(--dur-color) var(--ease-out);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
 }
@@ -25,13 +65,8 @@ button,
 button:active:not(:disabled),
 .clickable:active,
 [role="button"]:active {
-  transition-duration: 100ms;
-  transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  transition-duration: var(--dur-press);
   transform: scale(0.97);
-}
-
-button:disabled {
-  transition-duration: 150ms;
 }
 
 /* Visible keyboard focus. The apps previously relied on the UA outline being
@@ -69,24 +104,24 @@ img {
 /* Gives a container's children a cascading slide-up without any per-item inline
    `style="animation-delay: ..."` bookkeeping in the templates. */
 .stagger-in > * {
-  animation: slideUpContent 0.3s cubic-bezier(0.23, 1, 0.32, 1) backwards;
+  animation: slideUpContent var(--dur-enter) var(--ease-out) backwards;
 }
 
 .stagger-in > *:nth-child(1)  { animation-delay: 0ms; }
-.stagger-in > *:nth-child(2)  { animation-delay: 30ms; }
-.stagger-in > *:nth-child(3)  { animation-delay: 60ms; }
-.stagger-in > *:nth-child(4)  { animation-delay: 90ms; }
-.stagger-in > *:nth-child(5)  { animation-delay: 120ms; }
-.stagger-in > *:nth-child(6)  { animation-delay: 150ms; }
-.stagger-in > *:nth-child(7)  { animation-delay: 180ms; }
-.stagger-in > *:nth-child(8)  { animation-delay: 210ms; }
+.stagger-in > *:nth-child(2)  { animation-delay: 45ms; }
+.stagger-in > *:nth-child(3)  { animation-delay: 90ms; }
+.stagger-in > *:nth-child(4)  { animation-delay: 135ms; }
+.stagger-in > *:nth-child(5)  { animation-delay: 180ms; }
+.stagger-in > *:nth-child(6)  { animation-delay: 225ms; }
+.stagger-in > *:nth-child(7)  { animation-delay: 270ms; }
+.stagger-in > *:nth-child(8)  { animation-delay: 315ms; }
 /* Beyond the 8th child stop stacking delay - a long menu should not take
    several seconds to become readable. */
-.stagger-in > *:nth-child(n + 9) { animation-delay: 210ms; }
+.stagger-in > *:nth-child(n + 9) { animation-delay: 315ms; }
 
 @keyframes slideUpContent {
   from {
-    transform: translate3d(0, 12px, 0);
+    transform: translate3d(0, 16px, 0);
     opacity: 0;
   }
   to {
@@ -96,19 +131,17 @@ img {
 }
 
 /* --- Reduced motion ----------------------------------------------------- */
-/* The whole system is animation-heavy (blur-in heroes, jelly buttons, infinite
-   float and pulse loops). Users with vestibular disorders or motion sensitivity -
-   and anyone who set "reduce motion" at the OS level - had no way out, because
-   nothing in any of the three apps checked this media feature.
-   Entrances are collapsed to a quick opacity change and all looping motion is
-   stopped; opacity fades are kept because they are not disorienting. */
+/* Fewer and gentler, not none: nothing slides, scales or springs (transform
+   changes land instantly), while colour and opacity still fade so that state
+   changes stay perceivable. Entrances become a short fade and loops stop. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-property: opacity, color, background-color, border-color !important;
+    transition-duration: 200ms !important;
     scroll-behavior: auto !important;
   }
 
@@ -119,7 +152,7 @@ img {
   [class*="animate-slide-up-content"],
   [class*="animate-slide-down-content"],
   [class*="animate-blur-in"] {
-    animation: fadeOnly 150ms linear backwards !important;
+    animation: fadeOnly 200ms linear backwards !important;
   }
 
   button:active:not(:disabled),

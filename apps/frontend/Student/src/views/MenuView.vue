@@ -59,6 +59,9 @@ const gridKey = computed(() => (searchTerm.value.trim() ? 'search' : activeCateg
 
 const activeCategoryInfo = computed(() => CATEGORIES.find(c => c.id === activeCategory.value));
 
+// 侧栏指示条的位置 (每个分类固定 80px 高，含间距)
+const activeIndex = computed(() => Math.max(0, CATEGORIES.findIndex(c => c.id === activeCategory.value)));
+
 const pageTitle = computed(() => {
   if (searchTerm.value.trim()) return props.lang === 'cn' ? '搜索结果' : 'Search';
   const cat = activeCategoryInfo.value;
@@ -202,9 +205,15 @@ const handleSuggestionClick = (p: Product) => {
 <template>
   <div class="flex flex-col md:flex-row h-full bg-background-light relative z-0">
 
-    <!-- Sidebar (iPad): categories as a quiet list; the selected one is tinted, not a dark block -->
-    <aside class="hidden md:flex flex-col w-[104px] lg:w-[112px] shrink-0 bg-white border-r border-line h-full">
-       <nav class="flex-1 overflow-y-auto no-scrollbar px-2 py-4 flex flex-col gap-1" :aria-label="lang === 'cn' ? '商品分类' : 'Categories'">
+    <!-- Sidebar (iPad): quiet list; a thin green bar springs to the selected category -->
+    <aside class="hidden md:flex flex-col w-[104px] shrink-0 bg-surface-light border-r border-line h-full">
+       <nav class="relative flex-1 overflow-y-auto no-scrollbar py-4 flex flex-col gap-1" :aria-label="lang === 'cn' ? '商品分类' : 'Categories'">
+          <span
+            class="absolute left-0 top-[38px] h-8 w-[3px] rounded-r-full bg-primary transition-[transform,opacity] duration-spring ease-spring pointer-events-none"
+            :class="searchTerm ? 'opacity-0' : 'opacity-100'"
+            :style="{ transform: `translateY(${activeIndex * 80}px)` }"
+            aria-hidden="true"
+          ></span>
           <button
             v-for="cat in CATEGORIES"
             :key="cat.id"
@@ -212,10 +221,15 @@ const handleSuggestionClick = (p: Product) => {
             @click="handleCategoryClick(cat.id)"
             data-testid="category-nav"
             :aria-pressed="activeCategory === cat.id && !searchTerm"
-            class="relative flex flex-col items-center justify-center gap-1.5 min-h-[76px] px-1 rounded-tile transition-colors duration-150"
-            :class="activeCategory === cat.id && !searchTerm ? 'bg-primary-soft text-primary' : 'text-text-sub active:bg-cream/70'"
+            class="flex flex-col items-center justify-center gap-1.5 h-[76px] px-1 transition-colors duration-color"
+            :class="activeCategory === cat.id && !searchTerm ? 'text-text-main' : 'text-text-sub active:text-text-main'"
           >
-             <AppIcon :name="cat.icon" :weight="activeCategory === cat.id && !searchTerm ? 'fill' : 'regular'" class="text-[26px]" />
+             <AppIcon
+               :name="cat.icon"
+               :weight="activeCategory === cat.id && !searchTerm ? 'fill' : 'regular'"
+               class="text-2xl transition-colors duration-color"
+               :class="activeCategory === cat.id && !searchTerm ? 'text-primary' : ''"
+             />
              <span class="text-[12px] leading-tight text-center" :class="activeCategory === cat.id && !searchTerm ? 'font-semibold' : 'font-medium'">
                 {{ lang === 'cn' ? cat.nameCN : cat.name }}
              </span>
@@ -223,11 +237,11 @@ const handleSuggestionClick = (p: Product) => {
        </nav>
 
        <!-- Language Switcher -->
-       <div class="p-3 border-t border-line">
+       <div class="px-3 pb-4 pt-2">
           <button
             type="button"
             @click="emit('toggle-lang')"
-            class="w-full h-11 rounded-full border border-line text-text-sub text-[13px] font-semibold flex items-center justify-center gap-1.5 active:bg-cream/70"
+            class="w-full h-10 rounded-full border border-line text-text-sub text-[13px] font-medium flex items-center justify-center gap-1.5 active:text-text-main"
           >
              <AppIcon name="translate" class="text-base" />
              {{ lang === 'en' ? '中文' : 'EN' }}
@@ -239,32 +253,31 @@ const handleSuggestionClick = (p: Product) => {
     <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
 
        <!-- Categories (phone): one scrollable row of chips -->
-       <div class="md:hidden flex overflow-x-auto no-scrollbar px-4 pt-3 pb-1 gap-2 shrink-0">
+       <div class="md:hidden flex overflow-x-auto no-scrollbar px-5 pt-4 pb-1 gap-2 shrink-0">
            <button
              v-for="cat in CATEGORIES"
              :key="cat.id"
              type="button"
              @click="handleCategoryClick(cat.id)"
              :aria-pressed="activeCategory === cat.id && !searchTerm"
-             class="flex-none min-h-10 px-3.5 rounded-full flex items-center gap-1.5 text-[13px] font-medium border transition-colors duration-150"
+             class="flex-none h-10 px-4 rounded-full flex items-center gap-1.5 text-[14px] border transition-colors duration-color"
              :class="activeCategory === cat.id && !searchTerm
-                ? 'bg-primary border-primary text-white'
-                : 'bg-white border-line text-text-sub'"
+                ? 'bg-primary border-primary text-white font-medium'
+                : 'bg-transparent border-line text-text-sub'"
            >
               <AppIcon :name="cat.icon" :weight="activeCategory === cat.id && !searchTerm ? 'fill' : 'regular'" class="text-base" />
               {{ lang === 'cn' ? cat.nameCN : cat.name }}
            </button>
        </div>
 
-       <!-- Header & Search Bar -->
-       <header class="px-4 md:px-8 pt-3 md:pt-7 pb-3 md:pb-5 flex items-end justify-between gap-4 shrink-0 z-30">
+       <!-- Header & Search -->
+       <header class="px-5 md:px-10 pt-5 md:pt-9 pb-5 md:pb-7 flex items-end justify-between gap-6 shrink-0 z-30">
           <div class="min-w-0">
-             <h1 class="font-display text-[26px] md:text-[32px] font-bold tracking-tight leading-tight text-text-main truncate">{{ pageTitle }}</h1>
-             <p class="text-[13px] text-text-sub mt-0.5">{{ countLabel }}</p>
+             <p class="text-[12px] font-medium tracking-[0.14em] uppercase text-text-sub">{{ countLabel }}</p>
+             <h1 class="mt-1 font-serif text-[30px] md:text-[40px] font-medium leading-tight tracking-[-0.01em] text-text-main truncate">{{ pageTitle }}</h1>
           </div>
 
-          <!-- Search Input Container -->
-          <div ref="searchContainerRef" class="relative w-44 md:w-72 shrink-0">
+          <div ref="searchContainerRef" class="relative w-40 md:w-72 shrink-0">
              <AppIcon name="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-text-sub pointer-events-none z-10" />
              <input
                 type="text"
@@ -278,46 +291,45 @@ const handleSuggestionClick = (p: Product) => {
                 @input="showSuggestions = true"
                 @keydown.enter="($event.target as HTMLInputElement).blur()"
                 :placeholder="t.search"
-                class="w-full h-11 md:h-12 pl-10 pr-4 rounded-full bg-white border border-line text-[15px] text-text-main placeholder:text-text-sub/70 outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary/40 focus:ring-4 focus:ring-primary/10"
+                class="w-full h-11 pl-10 pr-4 rounded-full bg-cream border border-transparent text-[15px] text-text-main placeholder:text-text-sub outline-none transition-[background-color,border-color] duration-color focus:bg-surface-light focus:border-line"
              />
 
-             <!-- Suggestions Dropdown (Autocomplete) -->
+             <!-- Suggestions -->
              <div
-                class="absolute top-full right-0 mt-2 w-full md:w-80 bg-white rounded-card shadow-float border border-line p-1.5 origin-top transition-[opacity,transform] duration-150 ease-out z-40"
-                :class="showSuggestions && suggestions.length > 0 ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'"
+                class="absolute top-full right-0 mt-2 w-full md:w-80 bg-surface-light rounded-card shadow-float border border-line p-1.5 origin-top-right transition-[opacity,transform] duration-popover ease-out z-40"
+                :class="showSuggestions && suggestions.length > 0 ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-[0.97] -translate-y-1 pointer-events-none'"
              >
                 <button
                   v-for="p in suggestions"
                   :key="p.id"
                   type="button"
                   @click="handleSuggestionClick(p)"
-                  class="w-full min-h-[52px] flex items-center gap-3 p-2 rounded-tile text-left active:bg-cream/70"
+                  class="w-full min-h-[52px] flex items-center gap-3 p-2 rounded-tile text-left active:bg-cream"
                 >
                    <img :src="p.image" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" alt="" decoding="async" />
                    <span class="min-w-0 flex-1">
                       <span class="block text-[14px] font-medium text-text-main truncate">{{ lang === 'cn' ? p.nameCN : p.name }}</span>
-                      <span class="block text-[12px] text-text-sub tabular-nums">¥{{ Number(p.price).toFixed(2) }}</span>
+                      <span class="block text-[13px] text-text-sub tabular-nums">¥{{ Number(p.price).toFixed(2) }}</span>
                    </span>
                 </button>
              </div>
           </div>
        </header>
 
-       <!-- Product Grid Main Area -->
-       <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto no-scrollbar px-4 md:px-8 pt-1 pb-40">
+       <!-- Product Grid -->
+       <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto no-scrollbar px-5 md:px-10 pt-1 pb-40">
           <Transition name="grid-fade" mode="out-in">
-             <div :key="gridKey" class="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4" :class="{ 'stagger-in': firstPaint }">
-                <!-- Product Card -->
+             <div :key="gridKey" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-4 md:gap-x-6 gap-y-7 md:gap-y-9" :class="{ 'stagger-in': firstPaint }">
+                <!-- Product: the photo is the card -->
                 <article
                    v-for="product in filteredProducts"
                    :key="product.id"
                    @click="!isSoldOut(product) && emit('select-product', product)"
                    data-testid="product-card"
-                   class="group relative bg-white rounded-card shadow-card overflow-hidden flex flex-col transition-transform duration-150 ease-out active:scale-[0.98]"
-                   :class="{ 'opacity-60 pointer-events-none': isSoldOut(product) }"
+                   class="group relative flex flex-col cursor-pointer"
+                   :class="{ 'opacity-50 pointer-events-none': isSoldOut(product) }"
                 >
-                   <!-- Image -->
-                   <div class="relative aspect-[4/3] bg-cream overflow-hidden">
+                   <div class="relative aspect-square rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.98]">
                       <img
                          :src="product.image"
                          :alt="lang === 'cn' ? product.nameCN : product.name"
@@ -327,11 +339,10 @@ const handleSuggestionClick = (p: Product) => {
                          :class="{ 'grayscale': isSoldOut(product) }"
                       />
 
-                      <!-- Badges -->
-                      <span v-if="isSoldOut(product)" class="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-text-main/85 text-white text-[11px] font-semibold">
+                      <span v-if="isSoldOut(product)" class="absolute top-3 left-3 h-6 px-2.5 rounded-full bg-text-main/85 text-white text-[11px] font-medium flex items-center">
                          {{ lang === 'cn' ? '已售罄' : 'Sold out' }}
                       </span>
-                      <span v-else-if="product.isPopular && activeCategory !== 'top'" class="absolute top-2.5 left-2.5 flex items-center gap-1 px-2 py-1 rounded-full bg-white text-secondary-content text-[11px] font-semibold shadow-sm">
+                      <span v-else-if="product.isPopular && activeCategory !== 'top'" class="absolute top-3 left-3 h-6 px-2 rounded-full bg-white/95 text-text-main text-[11px] font-medium flex items-center gap-1">
                          <AppIcon name="star" weight="fill" class="text-secondary text-xs" />
                          {{ t.bestSeller }}
                       </span>
@@ -340,26 +351,24 @@ const handleSuggestionClick = (p: Product) => {
                       <span
                          v-if="cartCounts.get(product.id)"
                          :key="cartCounts.get(product.id)"
-                         class="absolute top-2.5 right-2.5 min-w-6 h-6 px-1.5 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center tabular-nums ring-2 ring-white animate-cart-bump"
+                         class="absolute top-3 right-3 min-w-6 h-6 px-1.5 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center tabular-nums animate-cart-bump"
                       >{{ cartCounts.get(product.id) }}</span>
                    </div>
 
-                   <!-- Text -->
-                   <div class="flex flex-col flex-1 p-3 md:p-4">
-                      <h3 class="text-[15px] md:text-[17px] font-semibold text-text-main leading-snug line-clamp-1">
-                         {{ lang === 'cn' ? product.nameCN : product.name }}
-                      </h3>
-                      <p class="hidden md:block mt-1 text-[13px] text-text-sub leading-relaxed line-clamp-2">
-                         {{ lang === 'cn' ? product.descriptionCN : product.description }}
-                      </p>
-                      <div class="mt-auto pt-3 flex items-center justify-between gap-2">
-                         <span class="text-[17px] md:text-xl font-bold text-text-main tabular-nums">
-                            <span class="text-[13px] md:text-sm font-semibold mr-0.5">¥</span>{{ Number(product.price).toFixed(2) }}
-                         </span>
-                         <span v-if="!isSoldOut(product)" class="size-9 md:size-10 rounded-full bg-primary text-white flex items-center justify-center transition-colors duration-150 group-active:bg-primary-dark" aria-hidden="true">
-                            <AppIcon name="plus" weight="bold" class="text-base md:text-lg" />
-                         </span>
+                   <div class="pt-3 flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                         <h3 class="text-[15px] md:text-base font-medium text-text-main leading-snug line-clamp-2 md:line-clamp-1">
+                            {{ lang === 'cn' ? product.nameCN : product.name }}
+                         </h3>
+                         <p class="mt-1 text-[14px] text-text-sub tabular-nums">¥{{ Number(product.price).toFixed(2) }}</p>
                       </div>
+                      <span
+                         v-if="!isSoldOut(product)"
+                         class="mt-0.5 size-9 rounded-full border border-line text-text-main flex items-center justify-center shrink-0 transition-colors duration-color group-active:bg-primary group-active:border-primary group-active:text-white"
+                         aria-hidden="true"
+                      >
+                         <AppIcon name="plus" class="text-base" />
+                      </span>
                    </div>
                 </article>
              </div>
@@ -367,8 +376,8 @@ const handleSuggestionClick = (p: Product) => {
 
           <!-- Nothing found -->
           <div v-if="filteredProducts.length === 0" class="py-24 flex flex-col items-center text-text-sub">
-             <AppIcon name="search" class="text-4xl mb-3 opacity-60" />
-             <p class="text-[15px] font-medium">{{ lang === 'cn' ? '没有找到相关商品' : 'Nothing matches that' }}</p>
+             <AppIcon name="search" class="text-3xl mb-3" />
+             <p class="text-[15px]">{{ lang === 'cn' ? '没有找到相关商品' : 'Nothing matches that' }}</p>
           </div>
        </main>
     </div>

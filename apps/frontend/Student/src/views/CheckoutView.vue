@@ -60,80 +60,68 @@ const { handlers: dragHandlers } = useSheetDrag({
 <template>
   <div ref="rootEl" class="flex flex-col h-full bg-background-light relative z-40 shadow-sheet">
     <!-- Header (also the drag handle: swipe down to go back to the menu) -->
-    <header class="relative flex items-center gap-3 px-4 md:px-8 py-3 md:py-4 bg-white border-b border-line shrink-0 sticky top-0 z-20 touch-none" v-on="dragHandlers">
-      <div class="absolute top-1.5 left-1/2 -translate-x-1/2 h-1 w-10 bg-line rounded-full" aria-hidden="true"></div>
+    <header class="relative flex items-center gap-3 px-4 md:px-8 py-3 md:py-4 bg-surface-light border-b border-line shrink-0 sticky top-0 z-20 touch-none" v-on="dragHandlers">
+      <div class="absolute top-1.5 left-1/2 -translate-x-1/2 h-1 w-9 bg-line rounded-full" aria-hidden="true"></div>
       <button
         type="button"
         @click="emit('navigate', 'order')"
         :aria-label="lang === 'cn' ? '返回' : 'Back'"
-        class="size-11 rounded-full bg-cream/70 text-text-main flex items-center justify-center active:bg-cream"
+        class="size-11 rounded-full text-text-main flex items-center justify-center active:bg-cream"
       >
          <AppIcon name="arrow-left" class="text-xl" />
       </button>
-      <h1 class="font-display text-xl md:text-2xl font-bold tracking-tight text-text-main">{{ t.reviewOrder }}</h1>
+      <h1 class="font-serif text-[22px] md:text-[26px] font-medium text-text-main">{{ t.reviewOrder }}</h1>
     </header>
 
-    <!-- Cart list & summary -->
-    <main class="flex-1 overflow-y-auto no-scrollbar p-4 md:p-8 pb-40 md:pb-10 flex flex-col md:flex-row gap-4 md:gap-6">
+    <main class="flex-1 overflow-y-auto no-scrollbar px-5 md:px-10 pt-6 pb-40 md:pb-10 flex flex-col md:flex-row gap-8 md:gap-10">
 
       <!-- Items -->
       <section class="flex-1 min-w-0">
-         <div class="bg-white rounded-card shadow-card p-4 md:p-6">
-            <h2 class="text-[13px] font-semibold text-text-sub mb-3">{{ t.items }} · {{ cart.length }}</h2>
+         <p class="text-[12px] font-medium tracking-[0.14em] uppercase text-text-sub pb-3 border-b border-line">{{ t.items }} · {{ cart.length }}</p>
 
-            <!-- Empty State -->
-            <div v-if="cart.length === 0" class="py-16 flex flex-col items-center text-text-sub">
-               <AppIcon name="bag" class="text-4xl mb-3 opacity-60" />
-               <p class="text-[15px] font-medium">{{ t.noOrders }}</p>
-            </div>
+         <div v-if="cart.length === 0" class="py-16 flex flex-col items-center text-text-sub">
+            <AppIcon name="bag" class="text-3xl mb-3" />
+            <p class="text-[15px]">{{ t.noOrders }}</p>
+         </div>
 
-            <!-- Cart Item Row -->
-            <div
-               v-else
-               v-for="(item, idx) in cart"
-               :key="item.cartId"
-               class="flex gap-3.5 md:gap-4 py-4 border-b border-line last:border-0 animate-slide-up-content"
-               :style="{ animationDelay: `${Math.min(idx, 6) * 40}ms` }"
-            >
-               <img :src="item.image" :alt="item.name" class="size-16 md:size-20 rounded-tile object-cover bg-cream shrink-0" decoding="async" />
+         <div
+            v-else
+            v-for="(item, idx) in cart"
+            :key="item.cartId"
+            class="flex gap-4 py-5 border-b border-line animate-slide-up-content"
+            :style="{ animationDelay: `${Math.min(idx, 6) * 45}ms` }"
+         >
+            <img :src="item.image" :alt="item.name" class="size-[72px] md:size-20 rounded-tile object-cover bg-cream shrink-0" decoding="async" />
 
-               <div class="flex-1 min-w-0 flex flex-col">
-                  <div class="flex items-start justify-between gap-3">
-                     <h3 class="text-[15px] md:text-base font-semibold text-text-main line-clamp-1">
-                        {{ lang === 'cn' ? item.nameCN : item.name }}
-                     </h3>
-                     <span class="text-[15px] md:text-base font-bold text-text-main tabular-nums shrink-0">¥{{ formatCents(toCents(item.price) * item.quantity) }}</span>
-                  </div>
-                  <!-- Options -->
-                  <div class="flex flex-wrap gap-1.5 mt-1.5">
-                     <span class="text-[12px] font-medium text-text-sub bg-cream px-2 py-0.5 rounded-full">
-                        {{ lang === 'cn' ? (item.temperature === 'Hot' ? t.hot : t.iced) : item.temperature }}
-                     </span>
-                     <span v-if="item.sugar" class="text-[12px] font-medium text-text-sub bg-cream px-2 py-0.5 rounded-full">{{ item.sugar }}</span>
-                  </div>
+            <div class="flex-1 min-w-0 flex flex-col">
+               <div class="flex items-start justify-between gap-3">
+                  <h3 class="text-[16px] font-medium text-text-main line-clamp-1">{{ lang === 'cn' ? item.nameCN : item.name }}</h3>
+                  <span class="text-[16px] font-medium text-text-main tabular-nums shrink-0">¥{{ formatCents(toCents(item.price) * item.quantity) }}</span>
+               </div>
+               <p class="mt-1 text-[13px] text-text-sub">
+                  {{ lang === 'cn' ? (item.temperature === 'Hot' ? t.hot : t.iced) : item.temperature }}<template v-if="item.sugar"> · {{ item.sugar }}</template>
+               </p>
 
-                  <!-- Quantity stepper -->
-                  <div class="flex items-center justify-between mt-auto pt-2.5">
-                     <span class="text-[12px] text-text-sub tabular-nums">¥{{ formatCents(toCents(item.price)) }} / {{ lang === 'cn' ? '杯' : 'ea' }}</span>
-                     <div class="flex items-center bg-cream rounded-full p-1 gap-1.5">
-                        <button
-                           type="button"
-                           @click="emit('update-quantity', item.cartId, -1)"
-                           :aria-label="lang === 'cn' ? '减少' : 'Decrease'"
-                           class="size-11 rounded-full bg-white text-text-main flex items-center justify-center shadow-sm outline-none"
-                        >
-                           <AppIcon name="minus" weight="bold" class="text-base" />
-                        </button>
-                        <span class="w-6 text-center text-base font-bold text-text-main tabular-nums">{{ item.quantity }}</span>
-                        <button
-                           type="button"
-                           @click="emit('update-quantity', item.cartId, 1)"
-                           :aria-label="lang === 'cn' ? '增加' : 'Increase'"
-                           class="size-11 rounded-full bg-primary text-white flex items-center justify-center outline-none active:bg-primary-dark"
-                        >
-                           <AppIcon name="plus" weight="bold" class="text-base" />
-                        </button>
-                     </div>
+               <div class="flex items-center justify-between mt-auto pt-3">
+                  <span class="text-[13px] text-text-sub tabular-nums">¥{{ formatCents(toCents(item.price)) }} / {{ lang === 'cn' ? '杯' : 'ea' }}</span>
+                  <div class="flex items-center gap-1">
+                     <button
+                        type="button"
+                        @click="emit('update-quantity', item.cartId, -1)"
+                        :aria-label="lang === 'cn' ? '减少' : 'Decrease'"
+                        class="size-11 rounded-full border border-line text-text-main flex items-center justify-center outline-none"
+                     >
+                        <AppIcon name="minus" class="text-base" />
+                     </button>
+                     <span class="w-8 text-center text-[16px] font-medium text-text-main tabular-nums">{{ item.quantity }}</span>
+                     <button
+                        type="button"
+                        @click="emit('update-quantity', item.cartId, 1)"
+                        :aria-label="lang === 'cn' ? '增加' : 'Increase'"
+                        class="size-11 rounded-full border border-line text-text-main flex items-center justify-center outline-none active:bg-primary active:border-primary active:text-white"
+                     >
+                        <AppIcon name="plus" class="text-base" />
+                     </button>
                   </div>
                </div>
             </div>
@@ -141,25 +129,25 @@ const { handlers: dragHandlers } = useSheetDrag({
       </section>
 
       <!-- Summary -->
-      <aside class="md:w-80 lg:w-96 shrink-0">
-         <div class="bg-white rounded-card shadow-card p-5 md:p-6 flex flex-col gap-4 md:sticky md:top-0">
-            <h3 class="text-[13px] font-semibold text-text-sub">{{ t.pay }}</h3>
+      <aside class="md:w-80 lg:w-[360px] shrink-0">
+         <div class="md:sticky md:top-0 bg-surface-light rounded-card border border-line p-6 flex flex-col gap-4">
+            <p class="text-[12px] font-medium tracking-[0.14em] uppercase text-text-sub">{{ t.pay }}</p>
             <div class="flex justify-between text-[15px] text-text-sub">
                <span>{{ t.subtotal }}</span>
                <span class="tabular-nums">¥{{ formatCents(subtotalCents) }}</span>
             </div>
             <div class="h-px bg-line"></div>
             <div class="flex items-baseline justify-between text-text-main">
-               <span class="text-[15px] font-semibold">{{ t.total }}</span>
-               <span class="text-3xl font-bold tabular-nums"><span class="text-lg font-semibold mr-0.5">¥</span>{{ formatCents(totalCents) }}</span>
+               <span class="text-[15px]">{{ t.total }}</span>
+               <span class="font-serif text-[32px] font-medium tabular-nums">¥{{ formatCents(totalCents) }}</span>
             </div>
 
-            <!-- Pay Button (iPad) -->
+            <!-- Pay (iPad) -->
             <button
                type="button"
                @click="emit('place-order')"
                :disabled="cart.length === 0 || placing"
-               class="hidden md:flex items-center justify-center gap-2 w-full h-14 rounded-full bg-primary text-white font-semibold text-[17px] disabled:opacity-60 active:bg-primary-dark outline-none"
+               class="hidden md:flex items-center justify-center gap-2 w-full h-14 rounded-full bg-primary text-white text-[16px] font-medium disabled:opacity-60 active:bg-primary-dark outline-none"
             >
                <template v-if="placing">
                   <span class="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
@@ -178,13 +166,13 @@ const { handlers: dragHandlers } = useSheetDrag({
       </aside>
     </main>
 
-    <!-- Pay Button (phone): pinned to the bottom -->
-    <div class="md:hidden absolute bottom-0 inset-x-0 bg-white border-t border-line px-4 pt-3 pb-[max(env(safe-area-inset-bottom),16px)] z-30">
+    <!-- Pay (phone): pinned to the bottom -->
+    <div class="md:hidden absolute bottom-0 inset-x-0 bg-surface-light border-t border-line px-5 pt-3 pb-[max(env(safe-area-inset-bottom),16px)] z-30">
        <button
            type="button"
            @click="emit('place-order')"
            :disabled="cart.length === 0 || placing"
-           class="w-full h-14 rounded-full bg-primary text-white font-semibold text-[17px] flex items-center justify-center gap-2 disabled:opacity-60 active:bg-primary-dark outline-none"
+           class="w-full h-14 rounded-full bg-primary text-white text-[16px] font-medium flex items-center justify-center gap-2 disabled:opacity-60 active:bg-primary-dark outline-none"
         >
            <template v-if="placing">
               <span class="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>

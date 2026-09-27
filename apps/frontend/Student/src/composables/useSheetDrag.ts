@@ -12,6 +12,7 @@
  * swipe works as well as a long slow one.
  */
 import { ref, onBeforeUnmount, type Ref } from 'vue';
+import { motionMs } from '@shared/motion';
 
 interface SheetDragOptions {
   sheet: Ref<HTMLElement | null>;
@@ -23,16 +24,16 @@ const DISMISS_DISTANCE = 120; // px (or a quarter of a short sheet)
 // px per ms, averaged over the drag. Sheet-sized: a slow, hesitant nudge
 // settles back instead of closing.
 const DISMISS_VELOCITY = 0.4;
-const DRAWER_EASE = 'cubic-bezier(0.32, 0.72, 0, 1)';
-const SETTLE_MS = 300;
-const EXIT_MS = 220;
+// Motion tokens from packages/shared/styles/motion.css: a released sheet
+// springs back without overshoot, a dismissed one leaves on the drawer curve.
+const SETTLE = 'transform var(--dur-spring-soft) var(--ease-spring-soft)';
+const SETTLE_FADE = 'opacity var(--dur-spring-soft) var(--ease-out)';
+const EXIT = 'transform var(--dur-sheet-out) var(--ease-drawer)';
+const EXIT_FADE = 'opacity var(--dur-sheet-out) var(--ease-out)';
 
 // iOS-style rubber band: the further past the edge, the less it moves.
 const rubberBand = (distance: number, dimension = 200) =>
   (1 - 1 / ((distance * 0.55) / dimension + 1)) * dimension;
-
-const prefersReducedMotion = () =>
-  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 export function useSheetDrag({ sheet, backdrop, onDismiss }: SheetDragOptions) {
   const dragging = ref(false);
@@ -97,19 +98,18 @@ export function useSheetDrag({ sheet, backdrop, onDismiss }: SheetDragOptions) {
 
     if (dismiss) {
       // Carry on in the direction of the swipe, from where the finger let go.
-      const exit = prefersReducedMotion() ? 0 : EXIT_MS;
-      setTransition(`transform ${exit}ms ${DRAWER_EASE}`, `opacity ${exit}ms ease-out`);
+      setTransition(EXIT, EXIT_FADE);
       el.style.transform = `translate3d(0, ${window.innerHeight}px, 0)`;
       if (backdrop?.value) backdrop.value.style.opacity = '0';
-      exitTimer = window.setTimeout(onDismiss, exit);
+      exitTimer = window.setTimeout(onDismiss, motionMs('--dur-sheet-out', 380));
       return;
     }
 
-    setTransition(`transform ${SETTLE_MS}ms ${DRAWER_EASE}`, `opacity ${SETTLE_MS}ms ease-out`);
+    setTransition(SETTLE, SETTLE_FADE);
     el.style.transform = '';
     if (backdrop?.value) backdrop.value.style.opacity = '';
     // Hand the transitions back to the component's own classes.
-    settleTimer = window.setTimeout(() => setTransition('', ''), SETTLE_MS);
+    settleTimer = window.setTimeout(() => setTransition('', ''), motionMs('--dur-spring-soft', 740));
   };
 
   onBeforeUnmount(() => {

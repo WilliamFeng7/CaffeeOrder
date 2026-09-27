@@ -294,8 +294,9 @@ const cartCount = computed(() => cart.value.reduce((sum, item) => sum + item.qua
 const cartBump = ref(false);
 watch(cartCount, (newCount, oldCount) => {
   if (newCount > oldCount) {
+    // Swell briefly, then spring back (see the bar's ease-spring transition).
     cartBump.value = true;
-    setTimeout(() => cartBump.value = false, 200);
+    setTimeout(() => cartBump.value = false, 180);
   }
 });
 </script>
@@ -318,35 +319,37 @@ watch(cartCount, (newCount, oldCount) => {
     </div>
 
     <!-- Cart bar: floats above the tab bar on the menu -->
-    <div v-if="cartCount > 0 && !isCheckoutOpen && !selectedProduct && currentTab === 'order'" class="absolute inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] md:bottom-[calc(86px+env(safe-area-inset-bottom))] z-40 flex justify-center px-4 pointer-events-none animate-slide-up-content">
-       <button
-         type="button"
-         @click="isCheckoutOpen = true"
-         data-testid="checkout-bar"
-         class="pointer-events-auto w-full max-w-lg h-14 md:h-16 rounded-full bg-primary text-white shadow-float flex items-center gap-3 pl-2 pr-2 transition-transform duration-200 ease-out active:scale-[0.98]"
-         :class="{ 'scale-[1.02]': cartBump }"
-       >
-          <span class="relative size-10 md:size-12 rounded-full bg-white/15 flex items-center justify-center shrink-0">
-             <AppIcon name="bag" class="text-[22px]" />
-             <span :key="cartCount" class="absolute -top-1 -right-1 min-w-5 h-5 px-1 rounded-full bg-white text-primary text-[11px] font-bold flex items-center justify-center tabular-nums animate-cart-bump">{{ cartCount }}</span>
-          </span>
-          <span class="text-lg md:text-xl font-bold tabular-nums">¥{{ formatCents(cartTotalCents) }}</span>
-          <span class="ml-auto h-10 md:h-12 px-5 md:px-6 rounded-full bg-white text-primary font-semibold text-[15px] md:text-base flex items-center gap-1.5">
-            {{ t.checkout }}
-            <AppIcon name="arrow-right" weight="bold" class="text-base" />
-          </span>
-       </button>
-    </div>
+    <Transition name="cartbar">
+      <div v-if="cartCount > 0 && !isCheckoutOpen && !selectedProduct && currentTab === 'order'" class="absolute inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] md:bottom-[calc(88px+env(safe-area-inset-bottom))] z-40 flex justify-center px-4 pointer-events-none">
+         <button
+           type="button"
+           @click="isCheckoutOpen = true"
+           data-testid="checkout-bar"
+           class="pointer-events-auto w-full max-w-md h-14 rounded-full bg-primary text-white shadow-float flex items-center gap-3 pl-5 pr-6 transition-transform duration-spring ease-spring active:duration-press active:scale-[0.98]"
+           :class="{ 'scale-[1.03]': cartBump }"
+         >
+            <span class="relative flex items-center">
+               <AppIcon name="bag" class="text-[22px]" />
+               <span :key="cartCount" class="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-primary text-[11px] font-semibold flex items-center justify-center tabular-nums animate-cart-bump">{{ cartCount }}</span>
+            </span>
+            <span class="ml-2 text-[17px] font-semibold tabular-nums">¥{{ formatCents(cartTotalCents) }}</span>
+            <span class="ml-auto flex items-center gap-1.5 text-[15px] font-medium">
+              {{ t.checkout }}
+              <AppIcon name="arrow-right" class="text-base" />
+            </span>
+         </button>
+      </div>
+    </Transition>
 
-    <!-- Tab bar: equal slots, the highlight slides between them (transform only) -->
-    <nav class="absolute bottom-0 inset-x-0 z-30 bg-white border-t border-line pb-[env(safe-area-inset-bottom)]" :aria-label="language === 'cn' ? '主导航' : 'Main'">
-      <div class="relative mx-auto max-w-xl grid grid-cols-4 h-16 md:h-[72px]">
+    <!-- Tab bar: a thin line marks the current tab and springs between slots -->
+    <nav class="absolute bottom-0 inset-x-0 z-30 bg-surface-light border-t border-line pb-[env(safe-area-inset-bottom)]" :aria-label="language === 'cn' ? '主导航' : 'Main'">
+      <div class="relative mx-auto max-w-lg grid grid-cols-4 h-16 md:h-[72px]">
         <div
-          class="absolute left-0 top-0 h-full w-1/4 transition-transform duration-300 ease-out pointer-events-none"
+          class="absolute left-0 top-0 w-1/4 transition-transform duration-spring ease-spring pointer-events-none"
           :style="{ transform: `translateX(${tabIndex * 100}%)` }"
           aria-hidden="true"
         >
-          <span class="absolute left-1/2 top-2 md:top-3 -translate-x-1/2 h-8 w-14 rounded-full bg-primary-soft"></span>
+          <span class="block mx-auto h-[2px] w-6 rounded-full bg-primary"></span>
         </div>
         <button
           v-for="tab in TABS"
@@ -354,14 +357,19 @@ watch(cartCount, (newCount, oldCount) => {
           type="button"
           @click="currentTab = tab.id"
           :aria-current="currentTab === tab.id ? 'page' : undefined"
-          class="relative z-10 flex flex-col items-center justify-center gap-1 transition-colors duration-200"
-          :class="currentTab === tab.id ? 'text-primary' : 'text-text-sub'"
+          class="relative flex flex-col items-center justify-center gap-1"
+          :class="currentTab === tab.id ? 'text-text-main' : 'text-text-sub'"
         >
           <span class="relative">
-            <AppIcon :name="tab.icon" :weight="currentTab === tab.id ? 'fill' : 'regular'" class="text-[22px] md:text-2xl" />
-            <span v-if="tab.id === 'pickup' && activeOrderCount > 0" class="absolute -top-1.5 -right-2.5 min-w-4 h-4 px-1 rounded-full bg-primary text-white text-[10px] font-bold leading-4 text-center tabular-nums ring-2 ring-white">{{ activeOrderCount }}</span>
+            <AppIcon
+              :name="tab.icon"
+              :weight="currentTab === tab.id ? 'fill' : 'regular'"
+              class="text-[22px] transition-colors duration-color"
+              :class="currentTab === tab.id ? 'text-primary' : ''"
+            />
+            <span v-if="tab.id === 'pickup' && activeOrderCount > 0" class="absolute -top-1 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-white text-[10px] font-semibold leading-4 text-center tabular-nums ring-2 ring-white">{{ activeOrderCount }}</span>
           </span>
-          <span class="text-[11px] md:text-xs" :class="currentTab === tab.id ? 'font-semibold' : 'font-medium'">{{ tabLabel(tab.id) }}</span>
+          <span class="text-[11px] tracking-wide transition-colors duration-color" :class="currentTab === tab.id ? 'font-semibold' : 'font-medium'">{{ tabLabel(tab.id) }}</span>
         </button>
       </div>
     </nav>

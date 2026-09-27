@@ -22,6 +22,7 @@ import { ref, computed } from 'vue';
 import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Product, Language } from '../types';
 import { useSheetDrag } from '../composables/useSheetDrag';
+import { motionMs } from '@shared/motion';
 
 // --- Props & Events ---
 const props = defineProps<{
@@ -68,15 +69,13 @@ const { handlers: dragHandlers } = useSheetDrag({
 /**
  * 处理关闭弹窗
  */
-// Exit runs faster than the entrance (240ms vs 360ms); the unmount waits for it.
-const EXIT_MS = 240;
-
+// The exit (--dur-sheet-out, ~65% of the entrance) finishes before unmounting.
 const handleClose = () => {
   if (isClosing.value) return;
   isClosing.value = true;
   setTimeout(() => {
     emit('close');
-  }, EXIT_MS);
+  }, motionMs('--dur-sheet-out', 380));
 };
 
 const calculateTotal = computed(() => {
@@ -93,14 +92,14 @@ const handleAddToCartClick = () => {
     sugar: sugar.value
   });
   
-  // 动画序列: 按钮弹一下并变成「已添加」，停留片刻让用户看清，再收起面板
+  // 动画序列: 按钮内容弹一下变成「已加入」，停留片刻让用户看清，再收起面板
   isJelly.value = true;
   isSuccess.value = true;
   
   setTimeout(() => {
     isJelly.value = false;
-  }, 300);
-  setTimeout(handleClose, 450);
+  }, motionMs('--dur-spring', 680));
+  setTimeout(handleClose, 720);
 };
 
 /**
@@ -118,7 +117,7 @@ const handleContentClick = (e: MouseEvent) => {
      <!-- Backdrop (tap to close); no blur, which repaints the whole screen every frame the sheet moves -->
      <div
         ref="backdropEl"
-        class="absolute inset-0 bg-black/40 transition-opacity duration-200 ease-out"
+        class="absolute inset-0 bg-black/35 transition-opacity duration-sheet-out ease-out"
         :class="isClosing ? 'opacity-0' : 'opacity-100 animate-fade-in'"
         @click="handleClose"
      ></div>
@@ -130,61 +129,55 @@ const handleContentClick = (e: MouseEvent) => {
        role="dialog"
        aria-modal="true"
        aria-labelledby="modal-title"
-       class="bg-background-light w-full max-h-[88%] md:max-h-full md:max-w-xl rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10 transition-[transform,opacity] duration-200 ease-out"
-       :class="isClosing ? 'translate-y-full md:translate-y-6 md:scale-95 opacity-0' : 'animate-slide-up-modal md:animate-scale-in'"
+       class="bg-surface-light w-full max-h-[90%] md:max-h-full md:max-w-lg rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10 transition-[transform,opacity] duration-sheet-out ease-drawer"
+       :class="isClosing ? 'translate-y-full md:translate-y-4 md:scale-[0.97] opacity-0' : 'animate-slide-up-modal md:animate-scale-in'"
      >
-        <!-- Close Button -->
+        <!-- Close -->
         <button
           type="button"
           @click="handleClose"
           :aria-label="lang === 'cn' ? '关闭' : 'Close'"
-          class="absolute top-3.5 right-3.5 z-30 size-10 rounded-full bg-white/90 text-text-main shadow-sm flex items-center justify-center active:bg-white"
+          class="absolute top-4 right-4 z-30 size-10 rounded-full bg-white/90 text-text-main flex items-center justify-center"
         >
-           <AppIcon name="x" weight="bold" class="text-lg" />
+           <AppIcon name="x" class="text-lg" />
         </button>
 
-        <!-- Scrollable Content Area -->
         <div class="flex-1 min-h-0 overflow-y-auto no-scrollbar scroll-smooth-touch">
            <!-- Photo (also the drag handle: swipe down to close) -->
-           <div class="relative h-[220px] md:h-[300px] w-full shrink-0 overflow-hidden bg-cream touch-none" v-on="dragHandlers">
+           <div class="relative h-[260px] md:h-[320px] w-full shrink-0 overflow-hidden bg-cream touch-none" v-on="dragHandlers">
               <img
                 :src="product.image"
                 :alt="lang === 'cn' ? product.nameCN : product.name"
                 class="w-full h-full object-cover animate-fade-in"
                 decoding="async"
               />
-              <!-- Grab handle -->
-              <div class="absolute top-2 left-1/2 -translate-x-1/2 h-1.5 w-10 bg-white/85 rounded-full shadow-sm" aria-hidden="true"></div>
+              <div class="absolute top-2.5 left-1/2 -translate-x-1/2 h-1 w-9 bg-white/85 rounded-full" aria-hidden="true"></div>
            </div>
 
-           <!-- Name & Description -->
-           <div class="px-6 md:px-8 pt-5">
+           <div class="px-6 md:px-8 pt-6 pb-7 md:pb-8">
               <h1
                 id="modal-title"
-                class="font-display text-[28px] md:text-4xl font-bold tracking-tight leading-tight text-text-main animate-slide-up-content"
-                style="animation-delay: 60ms"
+                class="font-serif text-[28px] md:text-[34px] font-medium leading-tight tracking-[-0.01em] text-text-main animate-slide-up-content"
+                style="animation-delay: 80ms"
               >
                 {{ lang === 'cn' ? product.nameCN : product.name }}
               </h1>
-              <p class="mt-2 text-[15px] text-text-sub leading-relaxed line-clamp-3 animate-slide-up-content" style="animation-delay: 90ms">
+              <p class="mt-2 text-[15px] text-text-sub leading-relaxed line-clamp-3 animate-slide-up-content" style="animation-delay: 130ms">
                 {{ lang === 'cn' ? product.descriptionCN : product.description }}
               </p>
-           </div>
 
-           <!-- Options -->
-           <div class="px-6 md:px-8 pt-6 pb-6 md:pb-8 space-y-6">
-              <!-- Sugar Level: segmented control -->
-              <div class="space-y-2.5 animate-slide-up-content" style="animation-delay: 120ms">
-                <label class="text-[13px] font-semibold text-text-sub">{{ t.sweetness }}</label>
-                <div class="flex bg-cream p-1 rounded-full gap-1">
+              <!-- Sweetness -->
+              <div class="mt-8 animate-slide-up-content" style="animation-delay: 180ms">
+                <p class="text-[12px] font-medium tracking-[0.14em] uppercase text-text-sub">{{ t.sweetness }}</p>
+                <div class="mt-3 grid grid-cols-4 gap-2">
                    <button
                      v-for="s in (['0%', '50%', 'Regular', '120%'] as const)"
                      :key="s"
                      @click="sugar = s"
                      type="button"
                      :aria-pressed="sugar === s"
-                     class="flex-1 h-11 px-2 rounded-full text-[14px] transition-[background-color,color,box-shadow] duration-150 ease-out"
-                     :class="sugar === s ? 'bg-white text-primary font-semibold shadow-sm' : 'text-text-sub font-medium active:bg-white/60'"
+                     class="h-11 rounded-full border text-[14px] transition-colors duration-color"
+                     :class="sugar === s ? 'bg-primary border-primary text-white font-medium' : 'border-line text-text-main'"
                    >
                       {{ OPTION_TRANSLATIONS.sugar[s][lang] || s }}
                    </button>
@@ -193,34 +186,32 @@ const handleContentClick = (e: MouseEvent) => {
            </div>
         </div>
 
-        <!-- Footer: Total & Add Button -->
-        <div class="flex-none px-5 md:px-8 pt-3 pb-[max(env(safe-area-inset-bottom),16px)] md:pb-6 bg-white border-t border-line z-20">
-           <div class="flex items-center gap-5">
-              <div class="flex flex-col">
-                 <span class="text-[12px] font-medium text-text-sub">{{ t.total }}</span>
-                 <span class="text-2xl font-bold text-text-main tabular-nums leading-tight"><span class="text-base font-semibold mr-0.5">¥</span>{{ calculateTotal.toFixed(2) }}</span>
-              </div>
-
-              <button
-                 data-testid="add-to-cart-btn"
-                 type="button"
-                 @click="handleAddToCartClick"
-                 :disabled="isSuccess"
-                 class="flex-1 h-14 rounded-full font-semibold text-[17px] flex items-center justify-center gap-2 text-white transition-colors duration-200 outline-none"
-                 :class="isSuccess ? 'bg-primary-dark' : 'bg-primary active:bg-primary-dark'"
-              >
-                 <div class="relative flex items-center gap-2" :class="{ 'animate-jelly': isJelly }">
-                   <template v-if="isSuccess">
-                      <AppIcon name="check-circle" weight="fill" class="text-xl animate-scale-up" />
-                      {{ lang === 'cn' ? '已加入' : 'Added' }}
-                   </template>
-                   <template v-else>
-                      <AppIcon name="bag" class="text-xl" />
-                      {{ t.addToCart }}
-                   </template>
-                 </div>
-              </button>
+        <!-- Price & Add -->
+        <div class="flex-none px-6 md:px-8 pt-4 pb-[max(env(safe-area-inset-bottom),18px)] md:pb-6 border-t border-line flex items-center gap-5">
+           <div class="flex flex-col">
+              <span class="text-[12px] text-text-sub">{{ t.total }}</span>
+              <span class="text-[22px] font-medium text-text-main tabular-nums leading-tight">¥{{ calculateTotal.toFixed(2) }}</span>
            </div>
+
+           <button
+              data-testid="add-to-cart-btn"
+              type="button"
+              @click="handleAddToCartClick"
+              :disabled="isSuccess"
+              class="flex-1 h-14 rounded-full text-[16px] font-medium flex items-center justify-center text-white transition-colors duration-color outline-none"
+              :class="isSuccess ? 'bg-primary-dark' : 'bg-primary active:bg-primary-dark'"
+           >
+              <span class="flex items-center gap-2" :class="{ 'animate-jelly': isJelly }">
+                <template v-if="isSuccess">
+                   <AppIcon name="check" class="text-lg" />
+                   {{ lang === 'cn' ? '已加入' : 'Added' }}
+                </template>
+                <template v-else>
+                   <AppIcon name="bag" class="text-lg" />
+                   {{ t.addToCart }}
+                </template>
+              </span>
+           </button>
         </div>
      </div>
   </div>

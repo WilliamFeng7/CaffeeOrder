@@ -78,7 +78,7 @@ const stageChip = (order: Order): { label: string; icon: IconName | null; cls: s
   if (order.stage === 'processing') {
     return { label: t.value.preparing, icon: null, cls: 'bg-primary-soft text-primary' };
   }
-  return { label: t.value.queued, icon: 'clock', cls: 'bg-cream text-text-sub' };
+  return { label: t.value.queued, icon: 'clock', cls: 'bg-cream text-text-main' };
 };
 
 /**
@@ -118,13 +118,13 @@ const specLine = (item: Order['items'][number]) => {
 <template>
   <div class="flex flex-col h-full bg-background-light">
      <!-- Title + segmented control -->
-     <header class="px-4 md:px-8 pt-6 md:pt-8 pb-3 shrink-0 max-w-3xl w-full mx-auto">
-       <h1 class="font-display text-[26px] md:text-3xl font-bold tracking-tight text-text-main mb-4">{{ t.navPickup }}</h1>
+     <header class="px-5 md:px-10 pt-6 md:pt-10 pb-4 shrink-0 max-w-3xl w-full mx-auto">
+       <h1 class="font-serif text-[30px] md:text-[40px] font-medium leading-tight tracking-[-0.01em] text-text-main">{{ t.navPickup }}</h1>
 
-       <div class="relative flex bg-cream p-1 rounded-full w-full md:max-w-sm">
-          <!-- Sliding highlight (transform only) -->
+       <div class="relative mt-5 flex bg-cream p-1 rounded-full w-full md:max-w-sm">
+          <!-- Sliding thumb (springs; transform only) -->
           <div
-            class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-white shadow-sm transition-transform duration-300 ease-out"
+            class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-surface-light shadow-card transition-transform duration-spring ease-spring"
             :class="activeTab === 'current' ? 'translate-x-0' : 'translate-x-full'"
             aria-hidden="true"
           ></div>
@@ -132,8 +132,8 @@ const specLine = (item: Order['items'][number]) => {
              type="button"
              @click="activeTab = 'current'"
              :aria-pressed="activeTab === 'current'"
-             class="relative z-10 flex-1 min-h-10 rounded-full text-[14px] transition-colors duration-200"
-             :class="activeTab === 'current' ? 'text-text-main font-semibold' : 'text-text-sub font-medium'"
+             class="relative z-10 flex-1 min-h-10 rounded-full text-[14px] transition-colors duration-color"
+             :class="activeTab === 'current' ? 'text-text-main font-medium' : 'text-text-sub'"
           >
              {{ t.currentOrders }}
           </button>
@@ -141,8 +141,8 @@ const specLine = (item: Order['items'][number]) => {
              type="button"
              @click="activeTab = 'history'"
              :aria-pressed="activeTab === 'history'"
-             class="relative z-10 flex-1 min-h-10 rounded-full text-[14px] transition-colors duration-200"
-             :class="activeTab === 'history' ? 'text-text-main font-semibold' : 'text-text-sub font-medium'"
+             class="relative z-10 flex-1 min-h-10 rounded-full text-[14px] transition-colors duration-color"
+             :class="activeTab === 'history' ? 'text-text-main font-medium' : 'text-text-sub'"
           >
              {{ t.pastOrders }}
           </button>
@@ -151,99 +151,93 @@ const specLine = (item: Order['items'][number]) => {
 
      <!-- Lists (swipe left/right to switch) -->
      <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto no-scrollbar scroll-smooth-touch pb-40 touch-pan-y" @pointerdown="onSwipeStart" @pointerup="onSwipeEnd" @pointercancel="onSwipeEnd">
-        <div class="px-4 md:px-8 pt-2 max-w-3xl mx-auto">
+        <div class="px-5 md:px-10 pt-2 max-w-3xl mx-auto">
 
         <!-- Current Orders -->
-        <div v-if="activeTab === 'current'" class="space-y-3">
+        <div v-if="activeTab === 'current'" class="space-y-4">
            <div v-if="currentOrders.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
-              <span class="size-16 rounded-full bg-white shadow-card flex items-center justify-center mb-4">
-                <AppIcon name="coffee" class="text-3xl text-primary" />
-              </span>
-              <p class="text-[15px] font-medium">{{ t.noOrders }}</p>
+              <AppIcon name="coffee" class="text-3xl mb-3" />
+              <p class="text-[15px]">{{ t.noOrders }}</p>
            </div>
 
            <article
               v-else
               v-for="(order, idx) in currentOrders"
               :key="order.id"
-              class="bg-white rounded-card shadow-card p-5 animate-slide-up-content transition-shadow duration-300"
-              :class="order.stage === 'ready' ? 'ring-2 ring-secondary/50' : ''"
-              :style="{ animationDelay: `${Math.min(idx, 6) * 40}ms` }"
+              class="bg-surface-light rounded-card border p-5 md:p-6 animate-slide-up-content transition-colors duration-fade"
+              :class="order.stage === 'ready' ? 'border-secondary' : 'border-line'"
+              :style="{ animationDelay: `${Math.min(idx, 6) * 45}ms` }"
            >
-              <!-- Pickup number + stage -->
               <div class="flex items-start justify-between gap-3">
                  <div>
-                    <p class="text-[13px] font-medium text-text-sub">{{ t.pickupNum }}</p>
-                    <p class="font-display text-5xl md:text-6xl font-bold text-primary tracking-tight leading-none mt-1 tabular-nums">{{ order.dailyNumber }}</p>
+                    <p class="text-[12px] font-medium tracking-[0.14em] uppercase text-text-sub">{{ t.pickupNum }}</p>
+                    <p class="mt-1 font-serif text-[48px] md:text-[56px] font-medium text-primary leading-none tabular-nums">{{ order.dailyNumber }}</p>
                  </div>
                  <!-- Keyed by stage so the chip pops once when the order moves on -->
-                 <span :key="order.stage" class="h-8 px-3 rounded-full text-[13px] font-semibold flex items-center gap-1.5 shrink-0 animate-scale-in" :class="stageChip(order).cls">
+                 <span :key="order.stage" class="h-8 px-3 rounded-full text-[13px] font-medium flex items-center gap-1.5 shrink-0 animate-scale-in" :class="stageChip(order).cls">
                     <AppIcon v-if="stageChip(order).icon" :name="stageChip(order).icon!" weight="fill" class="text-base" />
                     <span v-else class="size-2 bg-primary rounded-full animate-pulse" aria-hidden="true"></span>
                     {{ stageChip(order).label }}
                  </span>
               </div>
 
-              <p class="mt-3 text-[12px] text-text-sub tabular-nums">
+              <p class="mt-4 text-[12px] text-text-sub tabular-nums">
                  {{ formatTime(order.date) }}
-                 <span class="mx-1 text-line" aria-hidden="true">·</span>
+                 <span class="mx-1" aria-hidden="true">·</span>
                  <span class="font-mono">{{ order.order_no }}</span>
               </p>
 
-              <!-- Items -->
-              <div class="mt-3 bg-background-light rounded-tile px-3.5 py-3 space-y-2">
-                 <div v-for="(item, i) in order.items" :key="i" class="flex items-baseline gap-2.5 text-[14px]">
-                    <span class="font-bold text-primary tabular-nums">{{ item.quantity }}×</span>
-                    <span class="font-medium text-text-main min-w-0 truncate">{{ lang === 'cn' ? item.nameCN : item.name }}</span>
-                    <span v-if="specLine(item)" class="ml-auto text-[12px] text-text-sub whitespace-nowrap">{{ specLine(item) }}</span>
+              <div class="mt-4 border-t border-line pt-4 space-y-2">
+                 <div v-for="(item, i) in order.items" :key="i" class="flex items-baseline gap-2.5 text-[15px]">
+                    <span class="text-text-sub tabular-nums">{{ item.quantity }}×</span>
+                    <span class="text-text-main min-w-0 truncate">{{ lang === 'cn' ? item.nameCN : item.name }}</span>
+                    <span v-if="specLine(item)" class="ml-auto text-[13px] text-text-sub whitespace-nowrap">{{ specLine(item) }}</span>
                  </div>
               </div>
 
-              <div class="flex items-center justify-between mt-3 text-[13px] text-text-sub">
+              <div class="flex items-center justify-between mt-4 text-[13px] text-text-sub">
                  <span>{{ itemCount(order) }}</span>
-                 <span class="text-[15px] font-bold text-text-main tabular-nums">¥{{ order.total.toFixed(2) }}</span>
+                 <span class="text-[16px] font-medium text-text-main tabular-nums">¥{{ order.total.toFixed(2) }}</span>
               </div>
            </article>
         </div>
 
-        <!-- Past Orders -->
-        <div v-if="activeTab === 'history'" class="space-y-3">
+        <!-- Past Orders: a hairline list -->
+        <div v-if="activeTab === 'history'">
            <div v-if="pastOrders.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
-              <AppIcon name="receipt" class="text-4xl mb-3 opacity-60" />
-              <p class="text-[15px] font-medium">{{ t.noOrders }}</p>
+              <AppIcon name="receipt" class="text-3xl mb-3" />
+              <p class="text-[15px]">{{ t.noOrders }}</p>
            </div>
 
-           <article
-              v-else
-              v-for="(order, idx) in pastOrders"
-              :key="order.id"
-              class="bg-white rounded-card shadow-card p-4 flex flex-col gap-3 animate-slide-up-content"
-              :style="{ animationDelay: `${Math.min(idx, 8) * 30}ms` }"
-           >
-              <div class="flex items-center justify-between gap-3">
-                  <div class="flex items-center gap-3.5 min-w-0">
-                     <div class="size-12 rounded-tile bg-background-light flex items-center justify-center font-bold text-lg text-text-main tabular-nums shrink-0">
-                        {{ order.dailyNumber }}
+           <ul v-else class="divide-y divide-line border-y border-line">
+              <li
+                 v-for="(order, idx) in pastOrders"
+                 :key="order.id"
+                 class="py-4 flex flex-col gap-2 animate-slide-up-content"
+                 :style="{ animationDelay: `${Math.min(idx, 8) * 40}ms` }"
+              >
+                 <div class="flex items-center justify-between gap-3">
+                     <div class="flex items-center gap-4 min-w-0">
+                        <span class="w-12 font-serif text-[26px] font-medium text-text-main tabular-nums leading-none">{{ order.dailyNumber }}</span>
+                        <div class="min-w-0">
+                           <p class="text-[15px] text-text-main tabular-nums">{{ formatTime(order.date) }}</p>
+                           <p class="text-[13px] text-text-sub tabular-nums">{{ itemCount(order) }} · ¥{{ order.total.toFixed(2) }}</p>
+                        </div>
                      </div>
-                     <div class="min-w-0">
-                        <p class="text-[15px] font-semibold text-text-main tabular-nums">{{ formatTime(order.date) }}</p>
-                        <p class="text-[13px] text-text-sub tabular-nums">{{ itemCount(order) }} · ¥{{ order.total.toFixed(2) }}</p>
-                     </div>
-                  </div>
-                  <span v-if="order.stage === 'refunded'" class="h-7 px-2.5 rounded-full bg-cream text-text-sub text-[12px] font-semibold flex items-center gap-1 shrink-0">
-                     <AppIcon name="undo" class="text-sm" />
-                     {{ lang === 'cn' ? '已退款' : 'Refunded' }}
-                  </span>
-                  <span v-else class="h-7 px-2.5 rounded-full bg-primary-soft text-primary text-[12px] font-semibold flex items-center gap-1 shrink-0">
-                     <AppIcon name="check-circle" weight="fill" class="text-sm" />
-                     {{ t.completed }}
-                  </span>
-              </div>
-
-              <p class="text-[13px] text-text-sub border-t border-line pt-3 line-clamp-2 leading-relaxed">
-                 {{ order.items.map(i => `${i.quantity}× ${lang === 'cn' ? i.nameCN : i.name}`).join('，') }}
-              </p>
-           </article>
+                     <span v-if="order.stage === 'refunded'" class="h-7 px-2.5 rounded-full bg-cream text-text-sub text-[12px] font-medium flex items-center gap-1 shrink-0">
+                        <AppIcon name="undo" class="text-sm" />
+                        {{ lang === 'cn' ? '已退款' : 'Refunded' }}
+                     </span>
+                     <span v-else class="h-7 px-2.5 rounded-full bg-primary-soft text-primary text-[12px] font-medium flex items-center gap-1 shrink-0">
+                        <AppIcon name="check" class="text-sm" />
+                        {{ t.completed }}
+                     </span>
+                 </div>
+                 <p class="pl-16 text-[13px] text-text-sub line-clamp-1">
+                    {{ order.items.map(i => `${i.quantity}× ${lang === 'cn' ? i.nameCN : i.name}`).join('，') }}
+                 </p>
+              </li>
+           </ul>
         </div>
         </div>
      </main>

@@ -1,49 +1,53 @@
 /**
  * Shared motion preset for every 前端 app (Student / Admin / Barista).
  *
- * Why a preset
- * ------------
- * The Student and Barista `tailwind.config.js` files carried ~130 lines of
- * byte-identical keyframes/animation/easing definitions, while Admin had none at
- * all (so the console could not use the same motion language). Any tweak had to
- * be repeated by hand, which is how the three apps end up feeling like different
- * products.
+ * One motion vocabulary for the whole system. The curves and durations are CSS
+ * custom properties defined once in styles/motion.css (so plain CSS, Vue
+ * <Transition> classes and inline drag styles all use the same values); this
+ * preset only exposes them as Tailwind utilities.
  *
- * The rule this encodes: one motion vocabulary for the whole system.
  *  - entrances      -> animate-slide-up-content / scale-in / fade-in
+ *  - sheets         -> animate-slide-up-modal, ease-drawer, duration-sheet(-out)
+ *  - things that move on screen (indicators, sliders) -> ease-spring duration-spring
  *  - press feedback -> the global button transition in styles/motion.css
- *  - emphasis       -> animate-jelly / cart-bump (use sparingly)
+ *  - emphasis       -> animate-cart-bump (a spring "pop"; use sparingly)
+ *
+ * The feel: long, gliding finishes rather than snaps. Entrances take ~560ms on
+ * a strong ease-out (the element is nearly in place early and settles gently),
+ * exits run at ~65% of their entrance, and anything that travels across the
+ * screen uses a spring.
  */
 
-/** Named easings. `luxury`/`silk` are intentionally the same curve. */
+/** Named easings (values live in styles/motion.css). */
 export const easings = {
-  default: 'cubic-bezier(0.23, 1, 0.32, 1)', // 标准：流畅自然
-  touch: 'cubic-bezier(0.22, 1, 0.36, 1)',     // 触摸：响应快，回弹柔和
-  luxury: 'cubic-bezier(0.16, 1, 0.3, 1)',     // 高级感：起步慢，收尾非常平滑
-  silk: 'cubic-bezier(0.16, 1, 0.3, 1)',       // 丝滑感（同 luxury）
-  spring: 'cubic-bezier(0.34, 1.25, 0.64, 1)', // 弹簧：有过冲回弹
+  DEFAULT: 'var(--ease-out)',
+  out: 'var(--ease-out)',
+  'in-out': 'var(--ease-in-out)',
+  drawer: 'var(--ease-drawer)',
+  spring: 'var(--ease-spring)',
+  'spring-soft': 'var(--ease-spring-soft)',
   linear: 'linear',
+  // Older names still used in some templates; same curves as above.
+  default: 'var(--ease-out)',
+  touch: 'var(--ease-out)',
+  luxury: 'var(--ease-out)',
+  silk: 'var(--ease-out)',
 };
 
-/**
- * UI motion stays at or under ~300ms: the old scale stretched duration-700 to
- * 800ms and duration-1000 to 1.2s, which made every tap feel sluggish.
- */
+/** Tailwind's numeric scale means what it says; the named steps are the tokens. */
 export const durations = {
-  150: '150ms',
-  200: '200ms',
-  300: '250ms',
-  400: '280ms',
-  500: '300ms',
-  600: '300ms',
-  700: '300ms',
-  800: '350ms',
-  900: '400ms',
-  1000: '450ms',
+  DEFAULT: 'var(--dur-color)',
+  press: 'var(--dur-press)',
+  release: 'var(--dur-release)',
+  color: 'var(--dur-color)',
+  popover: 'var(--dur-popover)',
+  fade: 'var(--dur-fade)',
+  enter: 'var(--dur-enter)',
+  sheet: 'var(--dur-sheet-in)',
+  'sheet-out': 'var(--dur-sheet-out)',
+  spring: 'var(--dur-spring)',
+  'spring-soft': 'var(--dur-spring-soft)',
 };
-
-const LUXURY = easings.luxury;
-const SPRING = easings.spring;
 
 export const keyframes = {
   slideUpModal: {
@@ -51,7 +55,7 @@ export const keyframes = {
     '100%': { transform: 'translate3d(0, 0, 0)' },
   },
   slideUpContent: {
-    '0%': { transform: 'translate3d(0, 12px, 0)', opacity: '0' },
+    '0%': { transform: 'translate3d(0, 16px, 0)', opacity: '0' },
     '100%': { transform: 'translate3d(0, 0, 0)', opacity: '1' },
   },
   slideDownContent: {
@@ -59,11 +63,7 @@ export const keyframes = {
     '100%': { transform: 'translate3d(0, 0, 0)', opacity: '1' },
   },
   scaleIn: {
-    '0%': { transform: 'scale(0.95)', opacity: '0' },
-    '100%': { transform: 'scale(1)', opacity: '1' },
-  },
-  scaleUp: {
-    '0%': { transform: 'scale(0.95)', opacity: '0' },
+    '0%': { transform: 'scale(0.96)', opacity: '0' },
     '100%': { transform: 'scale(1)', opacity: '1' },
   },
   fadeIn: {
@@ -76,7 +76,7 @@ export const keyframes = {
     '100%': { opacity: '1', transform: 'scale(1)' },
   },
   textReveal: {
-    '0%': { clipPath: 'inset(0 0 100% 0)', transform: 'translate3d(0, 20px, 0)' },
+    '0%': { clipPath: 'inset(0 0 100% 0)', transform: 'translate3d(0, 16px, 0)' },
     '100%': { clipPath: 'inset(0 0 0 0)', transform: 'translate3d(0, 0, 0)' },
   },
   shimmer: {
@@ -85,41 +85,30 @@ export const keyframes = {
     '0%': { transform: 'translateX(-200%) skewX(12deg)' },
     '100%': { transform: 'translateX(200%) skewX(12deg)' },
   },
-  cartBump: {
-    '0%, 100%': { transform: 'scale(1)' },
-    '40%': { transform: 'scale(1.2)' },
-  },
-  jelly: {
-    '0%': { transform: 'scale(1, 1)' },
-    '30%': { transform: 'scale(1.15, 0.85)' },
-    '40%': { transform: 'scale(0.85, 1.15)' },
-    '50%': { transform: 'scale(1.05, 0.95)' },
-    '65%': { transform: 'scale(0.98, 1.02)' },
-    '75%': { transform: 'scale(1.02, 0.98)' },
-    '100%': { transform: 'scale(1, 1)' },
-  },
-  float: {
-    '0%, 100%': { transform: 'translateY(0)' },
-    '50%': { transform: 'translateY(-4px)' },
+  // A spring "pop": starts a little large and settles, with the spring's own
+  // small overshoot doing the wobble.
+  pop: {
+    '0%': { transform: 'scale(1.18)' },
+    '100%': { transform: 'scale(1)' },
   },
 };
 
 export const animations = {
-  'slide-up-modal': `slideUpModal 0.36s cubic-bezier(0.32, 0.72, 0, 1) backwards`,
-  'slide-up-content': `slideUpContent 0.3s ${LUXURY} backwards`,
-  'slide-down-content': `slideDownContent 0.3s ${LUXURY} backwards`,
-  'scale-in': `scaleIn 0.25s ${LUXURY} backwards`,
-  'scale-up': `scaleUp 0.25s ${LUXURY} backwards`,
-  'fade-in': 'fadeIn 0.2s ease-out backwards',
-  'blur-in': `blurIn 0.35s ${LUXURY} backwards`,
-  'text-reveal': `textReveal 0.4s ${LUXURY} backwards`,
+  'slide-up-modal': 'slideUpModal var(--dur-sheet-in) var(--ease-drawer) backwards',
+  'slide-up-content': 'slideUpContent var(--dur-enter) var(--ease-out) backwards',
+  'slide-down-content': 'slideDownContent var(--dur-enter) var(--ease-out) backwards',
+  'scale-in': 'scaleIn var(--dur-scale-in) var(--ease-out) backwards',
+  'scale-up': 'scaleIn var(--dur-scale-in) var(--ease-out) backwards',
+  'fade-in': 'fadeIn var(--dur-fade) var(--ease-out) backwards',
+  'blur-in': 'blurIn var(--dur-enter) var(--ease-out) backwards',
+  'text-reveal': 'textReveal var(--dur-enter) var(--ease-out) backwards',
   // Loops are for loading states only: the shimmer runs on skeletons.
-  shimmer: 'shimmer 1.5s linear infinite',
-  'cart-bump': `cartBump 0.3s ${SPRING}`,
-  jelly: 'cartBump 0.3s cubic-bezier(0.34, 1.25, 0.64, 1) both',
+  shimmer: 'shimmer 1.6s linear infinite',
+  'cart-bump': 'pop var(--dur-spring) var(--ease-spring)',
+  jelly: 'pop var(--dur-spring) var(--ease-spring) both',
   // Decorative floating was an endless loop; it now settles once.
-  float: 'fadeIn 0.3s ease-out backwards',
-  'toast-in': `slideUpContent 0.3s ${LUXURY} backwards`,
+  float: 'fadeIn var(--dur-fade) var(--ease-out) backwards',
+  'toast-in': 'slideDownContent var(--dur-enter) var(--ease-out) backwards',
 };
 
 export default {

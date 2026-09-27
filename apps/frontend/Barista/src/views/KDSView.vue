@@ -254,19 +254,18 @@ const manualRefresh = () => refresh();
 </template>
 
 <style scoped>
+/* Cards glide into their new column and settle; leaving is quicker. */
 .list-move,
-.list-enter-active,
-.list-leave-active {
-  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+.list-enter-active {
+  transition: transform var(--dur-enter) var(--ease-out), opacity var(--dur-fade) var(--ease-out);
 }
 .list-enter-from,
 .list-leave-to {
   opacity: 0;
-  transform: scale(0.97) translateY(8px);
+  transform: scale(0.97) translateY(12px);
 }
-/* A card that moves on leaves a little faster than new ones arrive. */
 .list-leave-active {
-  transition-duration: 0.2s;
+  transition: transform var(--dur-sheet-out) var(--ease-out), opacity var(--dur-sheet-out) var(--ease-out);
   position: absolute;
   width: calc(100% - 0.25rem);
 }

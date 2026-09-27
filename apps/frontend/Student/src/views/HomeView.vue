@@ -86,112 +86,107 @@ const { scroller, onScroll } = useKeepScroll();
 
 <template>
   <div ref="scroller" @scroll.passive="onScroll" class="flex-1 h-full bg-background-light overflow-y-auto scroll-smooth-touch no-scrollbar pb-32">
-    <div class="px-5 md:px-10 pt-6 md:pt-10 space-y-6 md:space-y-8 max-w-5xl mx-auto">
+    <div class="px-5 md:px-10 pt-6 md:pt-10 max-w-5xl mx-auto">
 
-      <!-- Brand & Greeting -->
-      <header class="space-y-4 md:space-y-5">
-         <div class="flex items-center gap-2.5 animate-fade-in">
-            <span class="size-9 rounded-full bg-primary text-white flex items-center justify-center shrink-0">
-               <AppIcon name="coffee" weight="fill" class="text-lg" />
-            </span>
-            <span class="font-serif text-lg font-semibold text-text-main">{{ t.downtownCafe }}</span>
-            <span
-               class="ml-auto h-8 px-3 rounded-full text-[12px] font-semibold flex items-center gap-1.5"
-               :class="isOpen ? 'bg-primary-soft text-primary' : 'bg-cream text-text-sub'"
-            >
-               <span class="size-1.5 rounded-full" :class="isOpen ? 'bg-primary' : 'bg-text-sub'" aria-hidden="true"></span>
-               {{ isOpen ? t.open : t.closed }}
-            </span>
-         </div>
+      <!-- Wordmark & status -->
+      <div class="flex items-center justify-between animate-fade-in">
+         <span class="font-serif text-[19px] font-semibold tracking-tight text-text-main">{{ t.downtownCafe }}</span>
+         <span class="flex items-center gap-1.5 text-[13px] font-medium" :class="isOpen ? 'text-primary' : 'text-text-sub'">
+            <span class="size-1.5 rounded-full" :class="isOpen ? 'bg-primary' : 'bg-text-sub'" aria-hidden="true"></span>
+            {{ isOpen ? t.open : t.closed }}
+         </span>
+      </div>
 
-         <div class="animate-slide-up-content" style="animation-delay: 40ms">
-            <h1 class="font-display text-[30px] md:text-5xl font-bold tracking-tight leading-tight text-text-main">
-               {{ greeting }} <span class="font-serif italic font-semibold text-primary">{{ displayName }}</span>
-            </h1>
-            <p class="mt-1.5 text-[15px] md:text-lg text-text-sub">{{ t.homeSubtitle }}</p>
-         </div>
+      <!-- Greeting -->
+      <header class="mt-10 md:mt-14 animate-slide-up-content" style="animation-delay: 60ms">
+         <p class="text-[12px] font-medium tracking-[0.14em] uppercase text-text-sub">{{ greeting }} {{ displayName }}</p>
+         <h1 class="mt-2 font-serif text-[34px] md:text-[52px] font-medium leading-[1.08] tracking-[-0.015em] text-text-main">{{ t.homeSubtitle }}</h1>
       </header>
 
-      <!-- Featured + Trending: stacked on phones, side by side on iPad landscape -->
-      <div class="grid gap-6 lg:grid-cols-5 lg:items-start">
+      <!-- Featured + Trending: stacked on phones and iPad portrait, side by side in landscape -->
+      <div class="mt-8 md:mt-12 grid gap-10 lg:grid-cols-5 lg:gap-12 lg:items-start">
 
-         <!-- Featured Product Card -->
-         <div
-            class="lg:col-span-3 relative h-[220px] md:h-[300px] lg:h-[380px] rounded-card overflow-hidden bg-text-main shadow-card cursor-pointer transition-transform duration-200 ease-out active:scale-[0.99] animate-slide-up-content"
-            style="animation-delay: 80ms"
+         <!-- Featured: the photo, then its caption -->
+         <article
+            class="lg:col-span-3 group cursor-pointer animate-slide-up-content"
+            style="animation-delay: 120ms"
             @click="featuredProduct.inventoryCount !== 0 && emit('quick-add', featuredProduct)"
          >
-            <img
-               v-if="featuredProduct.image"
-               :src="featuredProduct.image"
-               class="absolute inset-0 w-full h-full object-cover"
-               :class="{'grayscale': featuredProduct.inventoryCount === 0}"
-               :alt="featuredProduct.name"
-               decoding="async"
-            />
-            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"></div>
+            <div class="relative aspect-[4/3] md:aspect-[16/10] rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.99]">
+               <img
+                  v-if="featuredProduct.image"
+                  :src="featuredProduct.image"
+                  class="w-full h-full object-cover"
+                  :class="{'grayscale': featuredProduct.inventoryCount === 0}"
+                  :alt="featuredProduct.name"
+                  decoding="async"
+               />
+               <span v-if="featuredProduct.inventoryCount === 0" class="absolute top-4 left-4 h-7 px-3 rounded-full bg-text-main/85 text-white text-[12px] font-medium flex items-center">
+                  {{ lang === 'cn' ? '已售罄' : 'Sold out' }}
+               </span>
+            </div>
 
-            <div class="absolute inset-x-5 bottom-5 md:inset-x-8 md:bottom-7 flex items-end justify-between gap-4">
+            <div class="mt-4 flex items-end justify-between gap-5">
                <div class="min-w-0">
-                  <span v-if="featuredProduct.inventoryCount === 0" class="inline-flex h-7 px-2.5 mb-2.5 rounded-full bg-white text-text-main text-[12px] font-semibold items-center">
-                     {{ lang === 'cn' ? '已售罄' : 'Sold out' }}
-                  </span>
-                  <span v-else class="inline-flex h-7 px-2.5 mb-2.5 rounded-full bg-white/95 text-secondary-content text-[12px] font-semibold items-center gap-1">
-                     <AppIcon name="star" weight="fill" class="text-secondary text-sm" />
+                  <p class="flex items-center gap-1 text-[12px] font-medium tracking-[0.14em] uppercase text-secondary-content">
+                     <AppIcon name="star" weight="fill" class="text-secondary text-xs" />
                      {{ t.bestSeller }}
-                  </span>
-                  <h2 class="font-display text-[28px] md:text-[40px] font-bold text-white leading-tight tracking-tight line-clamp-2">{{ lang === 'cn' ? featuredProduct.nameCN : featuredProduct.name }}</h2>
-                  <p class="mt-1 text-white/85 text-sm md:text-base line-clamp-1 md:line-clamp-2 max-w-md">{{ lang === 'cn' ? featuredProduct.descriptionCN : featuredProduct.description }}</p>
+                  </p>
+                  <h2 class="mt-1.5 font-serif text-[26px] md:text-[32px] font-medium leading-tight text-text-main">{{ lang === 'cn' ? featuredProduct.nameCN : featuredProduct.name }}</h2>
+                  <p class="mt-1 text-[15px] text-text-sub leading-relaxed line-clamp-2 max-w-md">{{ lang === 'cn' ? featuredProduct.descriptionCN : featuredProduct.description }}</p>
                </div>
-
-               <!-- Quick Add Button -->
-               <button
-                  v-if="featuredProduct.inventoryCount !== 0"
-                  type="button"
-                  :aria-label="t.addToCart"
-                  class="size-12 md:size-14 rounded-full bg-white text-primary flex items-center justify-center shadow-float shrink-0"
-               >
-                  <AppIcon name="plus" weight="bold" class="text-xl md:text-2xl" />
-               </button>
+               <div v-if="featuredProduct.inventoryCount !== 0" class="flex flex-col items-end gap-2.5 shrink-0">
+                  <span class="text-[17px] font-medium text-text-main tabular-nums">¥{{ Number(featuredProduct.price).toFixed(2) }}</span>
+                  <button
+                     type="button"
+                     :aria-label="t.addToCart"
+                     class="size-11 rounded-full bg-primary text-white flex items-center justify-center active:bg-primary-dark"
+                  >
+                     <AppIcon name="plus" class="text-lg" />
+                  </button>
+               </div>
             </div>
-         </div>
+         </article>
 
-         <!-- Trending Section -->
-         <section class="lg:col-span-2 animate-fade-in" style="animation-delay: 120ms">
-            <div class="flex items-center justify-between mb-3">
-               <h2 class="font-display text-xl md:text-2xl font-bold tracking-tight text-text-main">{{ t.trendingNow }}</h2>
-               <button type="button" @click="emit('navigate', 'order')" class="min-h-11 px-3 -mr-3 rounded-full text-primary text-[15px] font-semibold flex items-center gap-1 active:bg-primary-soft">
+         <!-- Trending: a hairline list -->
+         <section class="lg:col-span-2 animate-fade-in" style="animation-delay: 180ms">
+            <div class="flex items-baseline justify-between border-b border-line pb-3">
+               <h2 class="font-serif text-[22px] md:text-[24px] font-medium text-text-main">{{ t.trendingNow }}</h2>
+               <button type="button" @click="emit('navigate', 'order')" class="min-h-11 -my-3 px-2 -mr-2 text-[14px] font-medium text-primary flex items-center gap-1">
                   {{ t.seeAll }}
-                  <AppIcon name="caret-right" weight="bold" class="text-sm" />
+                  <AppIcon name="caret-right" class="text-sm" />
                </button>
             </div>
 
-            <!-- Compact rows on phones and beside the featured card, tiles on iPad portrait -->
-            <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-1 gap-3">
-               <div
+            <ul class="divide-y divide-line">
+               <li
                   v-for="(p, i) in trending"
                   :key="p.id"
                   @click="p.inventoryCount !== 0 && emit('quick-add', p)"
                   data-testid="product-card"
-                  class="bg-white p-3 rounded-card shadow-card flex items-center gap-3.5 md:flex-col md:items-stretch md:gap-3 lg:flex-row lg:items-center lg:gap-3.5 cursor-pointer transition-transform duration-150 ease-out active:scale-[0.98] animate-slide-up-content"
-                  :class="{'opacity-60 pointer-events-none': p.inventoryCount === 0}"
-                  :style="{ animationDelay: `${140 + i * 40}ms` }"
+                  class="group py-4 flex items-center gap-4 cursor-pointer animate-slide-up-content"
+                  :class="{'opacity-50 pointer-events-none': p.inventoryCount === 0}"
+                  :style="{ animationDelay: `${220 + i * 45}ms` }"
                >
-                  <div class="w-16 h-16 md:w-full md:h-auto md:aspect-[4/3] lg:w-[72px] lg:h-[72px] lg:aspect-auto rounded-tile overflow-hidden bg-cream shrink-0">
+                  <div class="size-16 md:size-[72px] rounded-tile overflow-hidden bg-cream shrink-0 transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.96]">
                      <img :src="p.image" class="w-full h-full object-cover" :class="{'grayscale': p.inventoryCount === 0}" :alt="p.name" loading="lazy" decoding="async" />
                   </div>
-
-                  <div class="min-w-0 flex-1 md:px-1 lg:px-0">
-                     <h3 class="text-[15px] md:text-base font-semibold text-text-main leading-snug line-clamp-1">{{ lang === 'cn' ? p.nameCN : p.name }}</h3>
-                     <p v-if="p.inventoryCount === 0" class="mt-1 text-[12px] font-semibold text-text-sub">{{ lang === 'cn' ? '已售罄' : 'Sold out' }}</p>
-                     <p v-else class="mt-1 text-[15px] font-bold text-text-main tabular-nums"><span class="text-[12px] font-semibold mr-0.5">¥</span>{{ Number(p.price).toFixed(2) }}</p>
+                  <div class="min-w-0 flex-1">
+                     <h3 class="text-[15px] md:text-base font-medium text-text-main truncate">{{ lang === 'cn' ? p.nameCN : p.name }}</h3>
+                     <p class="mt-1 text-[14px] text-text-sub tabular-nums">
+                        <template v-if="p.inventoryCount === 0">{{ lang === 'cn' ? '已售罄' : 'Sold out' }}</template>
+                        <template v-else>¥{{ Number(p.price).toFixed(2) }}</template>
+                     </p>
                   </div>
-
-                  <span v-if="p.inventoryCount !== 0" class="size-9 rounded-full bg-primary-soft text-primary flex md:hidden lg:flex items-center justify-center shrink-0" aria-hidden="true">
-                     <AppIcon name="plus" weight="bold" class="text-base" />
+                  <span
+                     v-if="p.inventoryCount !== 0"
+                     class="size-9 rounded-full border border-line text-text-main flex items-center justify-center shrink-0 transition-colors duration-color group-active:bg-primary group-active:border-primary group-active:text-white"
+                     aria-hidden="true"
+                  >
+                     <AppIcon name="plus" class="text-base" />
                   </span>
-               </div>
-            </div>
+               </li>
+            </ul>
          </section>
       </div>
     </div>

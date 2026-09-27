@@ -198,25 +198,19 @@ const handleLogin = async () => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[200] bg-background-light flex items-center justify-center p-5 overflow-y-auto">
-    <!-- Soft brand glow behind the card -->
-    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_0%,rgba(27,94,71,0.10),transparent_70%)]" aria-hidden="true"></div>
-
-    <div class="relative w-full max-w-[420px] bg-white rounded-[28px] shadow-card p-7 md:p-10 animate-slide-up-content">
+  <div class="fixed inset-0 z-[200] bg-background-light flex items-center justify-center p-6 overflow-y-auto">
+    <div class="w-full max-w-[380px] animate-slide-up-content">
 
       <!-- Brand -->
-      <div class="flex flex-col items-center text-center mb-8">
-        <span class="size-16 rounded-[20px] bg-primary text-white flex items-center justify-center mb-5 shadow-float">
-           <AppIcon name="coffee" weight="fill" class="text-[32px]" />
-        </span>
-        <h1 class="font-serif text-[32px] font-semibold text-text-main leading-tight">OTIA Café</h1>
-        <p class="mt-1.5 text-[15px] text-text-sub">{{ lang === 'cn' ? '登录后开始点单' : 'Sign in to start your order' }}</p>
+      <div class="text-center mb-12">
+        <AppIcon name="coffee" class="text-[32px] text-primary" />
+        <h1 class="mt-4 font-serif text-[40px] font-medium leading-none tracking-[-0.015em] text-text-main">OTIA Café</h1>
+        <p class="mt-3 text-[15px] text-text-sub">{{ lang === 'cn' ? '登录后开始点单' : 'Sign in to start your order' }}</p>
       </div>
 
-      <!-- Login Form -->
-      <form @submit.prevent="handleLogin" class="space-y-4">
-        <div class="space-y-1.5">
-          <label for="username" class="block text-[13px] font-semibold text-text-sub">{{ lang === 'cn' ? '账号' : 'Account' }}</label>
+      <form @submit.prevent="handleLogin" class="space-y-5">
+        <div>
+          <label for="username" class="block text-[12px] font-medium tracking-[0.14em] uppercase text-text-sub mb-2">{{ lang === 'cn' ? '账号' : 'Account' }}</label>
           <input
             id="username"
             name="username"
@@ -226,14 +220,14 @@ const handleLogin = async () => {
             autocapitalize="off"
             spellcheck="false"
             enterkeyhint="next"
-            class="w-full h-13 min-h-[52px] px-4 rounded-tile bg-background-light border border-line text-[16px] font-medium text-text-main outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary/40 focus:ring-4 focus:ring-primary/10 placeholder:text-text-sub/60"
+            class="w-full min-h-[52px] px-4 rounded-tile bg-cream border border-transparent text-[16px] text-text-main outline-none transition-[background-color,border-color] duration-color focus:bg-surface-light focus:border-line placeholder:text-text-sub"
             :placeholder="lang === 'cn' ? '用户名 / 手机号 / 邮箱' : 'Username, phone or email'"
           />
-          <p v-if="inputError" class="text-[13px] text-[#B42318] font-medium animate-fade-in">{{ inputError }}</p>
+          <p v-if="inputError" class="mt-2 text-[13px] text-[#B42318] animate-fade-in">{{ inputError }}</p>
         </div>
 
-        <div class="space-y-1.5">
-          <label for="password" class="block text-[13px] font-semibold text-text-sub">{{ lang === 'cn' ? '密码' : 'Password' }}</label>
+        <div>
+          <label for="password" class="block text-[12px] font-medium tracking-[0.14em] uppercase text-text-sub mb-2">{{ lang === 'cn' ? '密码' : 'Password' }}</label>
           <div class="relative">
             <input
               id="password"
@@ -242,13 +236,13 @@ const handleLogin = async () => {
               :type="showPassword ? 'text' : 'password'"
               autocomplete="current-password"
               enterkeyhint="go"
-              class="w-full min-h-[52px] pl-4 pr-14 rounded-tile bg-background-light border border-line text-[16px] font-medium text-text-main outline-none transition-[border-color,box-shadow] duration-150 focus:border-primary/40 focus:ring-4 focus:ring-primary/10 placeholder:text-text-sub/60"
+              class="w-full min-h-[52px] pl-4 pr-14 rounded-tile bg-cream border border-transparent text-[16px] text-text-main outline-none transition-[background-color,border-color] duration-color focus:bg-surface-light focus:border-line placeholder:text-text-sub"
               :placeholder="lang === 'cn' ? '输入密码' : 'Enter your password'"
             />
             <button
               type="button"
               @click="showPassword = !showPassword"
-              class="absolute right-1.5 top-1/2 -translate-y-1/2 size-11 rounded-full text-text-sub flex items-center justify-center active:bg-cream/70"
+              class="absolute right-1 top-1/2 -translate-y-1/2 size-11 rounded-full text-text-sub flex items-center justify-center active:text-text-main"
               :aria-label="showPassword ? (lang === 'cn' ? '隐藏密码' : 'Hide password') : (lang === 'cn' ? '显示密码' : 'Show password')"
             >
               <AppIcon :name="showPassword ? 'eye-slash' : 'eye'" class="text-xl" />
@@ -259,7 +253,7 @@ const handleLogin = async () => {
         <button
           type="submit"
           :disabled="isLoading"
-          class="w-full h-14 mt-2 rounded-full bg-primary text-white font-semibold text-[17px] flex items-center justify-center gap-2 active:bg-primary-dark disabled:opacity-70"
+          class="w-full h-14 !mt-8 rounded-full bg-primary text-white text-[16px] font-medium flex items-center justify-center gap-2 active:bg-primary-dark disabled:opacity-70"
         >
           <span v-if="isLoading" class="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
           <span v-else>{{ lang === 'cn' ? '登录' : 'Sign In' }}</span>

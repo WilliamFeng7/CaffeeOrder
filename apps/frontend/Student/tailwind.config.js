@@ -31,36 +31,38 @@ export default {
     darkMode: 'class', // 支持暗黑模式 (通过 class 切换)
     theme: {
         extend: {
-            // 自定义颜色系统 (Custom Color System): 咖啡馆的绿 + 奶油色底
-            // All text pairs meet 4.5:1 (text-sub on the cream background too).
+            // 自定义颜色系统 (Custom Color System): 简约 — 暖白底、墨色字、绿色是唯一的强调色
+            // Minimal: warm white, near-black ink, one green accent. All text
+            // pairs meet 4.5:1 (text-sub also on the `cream` fill).
             colors: {
-                primary: "#1B5E47",             // 主色调 (森林绿): 按钮、选中态
-                "primary-dark": "#144835",      // 按下
-                "primary-soft": "#E7F0EA",      // 选中态浅底
+                primary: "#1B5E47",             // 主色 (森林绿): 主按钮、选中态
+                "primary-dark": "#154A38",      // 按下
+                "primary-soft": "#EAF1ED",      // 选中态浅底
                 "primary-content": "#ffffff",   // 主色上的文本色
-                secondary: "#C8963E",           // 焦糖色: 星标、推荐等点缀 (只用于图标/大字)
-                "secondary-soft": "#FAF1E1",    // 点缀浅底
+                secondary: "#C8963E",           // 焦糖色: 只用于星标这类小图标
+                "secondary-soft": "#F7EFE0",    // 点缀浅底
                 "secondary-content": "#7A5213", // 点缀浅底上的文字
-                "background-light": "#F6F4EE",  // 奶油色背景 (Main App BG)
+                "background-light": "#FAFAF7",  // 暖白背景 (Main App BG)
                 "background-dark": "#0C1F1A",   // 深色背景
-                "surface-light": "#ffffff",     // 卡片/模块背景
-                cream: "#EFEAE0",               // 图片占位、分段控件底
-                line: "#E7E1D6",                // 分割线、描边
-                "text-main": "#1B2A23",         // 主要文本色
-                "text-sub": "#5F6E66",          // 次要文本色
+                "surface-light": "#ffffff",     // 白色面板
+                cream: "#F2F1EC",               // 图片占位、输入框、分段控件底
+                line: "#E9E7E2",                // 细分割线
+                "text-main": "#171C19",         // 墨色正文
+                "text-sub": "#676C69",          // 次要文本
                 "wechat": "#07C160",            // 微信支付色
                 "alipay": "#1677FF",            // 支付宝色
             },
             borderRadius: {
-                tile: "14px",   // 图片、输入框、小块
-                card: "20px",   // 卡片
-                sheet: "28px",  // 底部面板
+                tile: "12px",   // 图片、输入框、小块
+                card: "16px",   // 卡片、商品图
+                sheet: "24px",  // 底部面板
             },
-            // Small blur radii: cheap to paint while scrolling on an iPad.
+            // Mostly flat: hairlines and whitespace do the separating; shadows
+            // only lift things that float over content.
             boxShadow: {
-                card: "0 1px 2px rgba(27, 42, 35, 0.04), 0 6px 16px -8px rgba(27, 42, 35, 0.12)",
-                float: "0 12px 28px -12px rgba(27, 42, 35, 0.35)",
-                sheet: "0 -8px 32px rgba(27, 42, 35, 0.12)",
+                card: "0 1px 2px rgba(23, 28, 25, 0.04)",
+                float: "0 16px 40px -16px rgba(23, 28, 25, 0.35)",
+                sheet: "0 -12px 40px rgba(23, 28, 25, 0.10)",
             },
         }
     },

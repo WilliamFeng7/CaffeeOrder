@@ -65,26 +65,28 @@ const getClasses = (type: string) => {
 </template>
 
 <style scoped>
-.toast-enter-active,
-.toast-leave-active {
-  transition: opacity 0.3s cubic-bezier(0.23, 1, 0.32, 1),
-              transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+/* Toasts arrive with the same gliding ease-out as other entrances and leave in
+   ~65% of the time; transitions (not keyframes) so a toast raised twice in a
+   row retargets instead of restarting. */
+.toast-enter-active {
+  transition: opacity var(--dur-fade) var(--ease-out),
+              transform var(--dur-enter) var(--ease-out);
 }
 
 .toast-move {
-  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+  transition: transform var(--dur-enter) var(--ease-out);
 }
 
 .toast-enter-from,
 .toast-leave-to {
   opacity: 0;
-  transform: translateY(-12px) scale(0.96);
+  transform: translateY(-16px) scale(0.98);
 }
 
-/* Take the departing toast out of flow so the others slide up smoothly;
-   leaving is quicker than arriving. */
+/* Take the departing toast out of flow so the others slide up smoothly. */
 .toast-leave-active {
-  transition-duration: 0.2s;
+  transition: opacity var(--dur-sheet-out) var(--ease-out),
+              transform var(--dur-sheet-out) var(--ease-out);
   position: absolute;
   width: 100%;
 }
