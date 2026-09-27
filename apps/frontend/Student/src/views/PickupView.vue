@@ -118,6 +118,7 @@ const specLine = (item: Order['items'][number]) => {
          v-model="activeTab"
          :options="tabOptions"
          variant="segment"
+         size="lg"
          stretch
          :label="t.navPickup"
          class="mt-5 w-full md:max-w-sm"
@@ -153,6 +154,8 @@ const specLine = (item: Order['items'][number]) => {
                     <span class="flex items-center gap-2 text-[13px] font-medium pt-1" :class="order.stage === 'ready' ? 'text-primary' : 'text-text-main'">
                        <span class="relative flex size-2">
                           <span :key="order.stage" class="absolute inset-0 rounded-full ping" :class="order.stage === 'ready' ? 'bg-primary' : 'bg-text-sub'" aria-hidden="true"></span>
+                          <!-- while it waits at the counter, a slow halo keeps it noticeable -->
+                          <span v-if="order.stage === 'ready'" class="absolute inset-0 rounded-full bg-primary breathe" style="animation-delay: 1.1s" aria-hidden="true"></span>
                           <span
                              class="relative size-2 rounded-full"
                              :class="order.stage === 'ready' ? 'bg-primary' : order.stage === 'processing' ? 'bg-text-main animate-pulse' : 'bg-text-sub'"

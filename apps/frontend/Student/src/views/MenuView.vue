@@ -22,6 +22,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { CATEGORIES, PRODUCTS, TRANSLATIONS } from '../data';
 import type { CartItem, Product, Language } from '../types';
 import { useKeepScroll } from '../composables/useKeepScroll';
+import { useToastStore } from '../stores/toast';
 
 // 定义 Props (Props Definition)
 const props = defineProps<{
@@ -50,6 +51,12 @@ const showSuggestions = ref(false);
 
 // 搜索容器 DOM引用，用于处理点击外部关闭逻辑
 const searchContainerRef = ref<HTMLElement | null>(null);
+const searchInputRef = ref<HTMLInputElement | null>(null);
+
+const toast = useToastStore();
+
+// 被点的售罄商品 (晃一下，而不是毫无反应)
+const shakingId = ref<string | null>(null);
 
 // 计算属性: 获取当前语言包
 const t = computed(() => TRANSLATIONS[props.lang]);
@@ -170,21 +177,23 @@ const cartCounts = computed(() => {
 /**
  * 处理点击外部事件 (Click Outside)
  * 用于当用户点击搜索框以外区域时，自动关闭搜索建议下拉框。
+ * pointerdown, not mousedown: iPad Safari only sends mouse events to elements
+ * that look clickable, so a tap on empty space never closed the list.
  */
-const handleClickOutside = (event: MouseEvent) => {
+const handleClickOutside = (event: PointerEvent) => {
   if (searchContainerRef.value && !searchContainerRef.value.contains(event.target as Node)) {
     showSuggestions.value = false;
   }
 };
 
 onMounted(() => {
-  document.addEventListener('mousedown', handleClickOutside);
+  document.addEventListener('pointerdown', handleClickOutside);
   // Cards cascade in on the first visit; later category switches use a quicker cascade.
   window.setTimeout(() => { firstPaint.value = false; }, 700);
 });
 
 onUnmounted(() => {
-  document.removeEventListener('mousedown', handleClickOutside);
+  document.removeEventListener('pointerdown', handleClickOutside);
 });
 
 // --- 交互处理 (Interaction Handlers) ---
@@ -210,9 +219,21 @@ const categoryModel = computed({
 
 /** 打开商品: 把卡片图片一起交出去，详情面板从它长出来 */
 const pick = (product: Product, event: MouseEvent) => {
-  if (isSoldOut(product)) return;
+  if (isSoldOut(product)) {
+    // A tap that does nothing feels like a miss: say why, and shake the card.
+    shakingId.value = null;
+    requestAnimationFrame(() => { shakingId.value = product.id; });
+    toast.info(props.lang === 'cn' ? `${product.nameCN}已售罄` : `${product.name} is sold out`);
+    return;
+  }
   const origin = (event.currentTarget as HTMLElement).querySelector('img');
   emit('select-product', product, origin);
+};
+
+/** 清空搜索 (a 44px target inside the field; typing it away on a tablet is slow) */
+const clearSearch = () => {
+  searchTerm.value = '';
+  searchInputRef.value?.focus();
 };
 
 /**
@@ -258,7 +279,7 @@ const handleSuggestionClick = (p: Product) => {
 
        <!-- Language Switcher -->
        <div class="px-5 pb-6 pt-3">
-          <button type="button" @click="emit('toggle-lang')" class="btn btn-outline btn-sm w-full">
+          <button type="button" @click="emit('toggle-lang')" class="btn btn-outline w-full">
              {{ lang === 'en' ? '中文' : 'English' }}
           </button>
        </div>
@@ -290,6 +311,7 @@ const handleSuggestionClick = (p: Product) => {
           <div ref="searchContainerRef" class="relative w-40 md:w-72 shrink-0">
              <AppIcon name="search" weight="light" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-text-sub pointer-events-none z-10" />
              <input
+                ref="searchInputRef"
                 type="text"
                 v-model="searchTerm"
                 enterkeyhint="search"
@@ -301,8 +323,19 @@ const handleSuggestionClick = (p: Product) => {
                 @input="showSuggestions = true"
                 @keydown.enter="($event.target as HTMLInputElement).blur()"
                 :placeholder="t.search"
-                class="w-full h-11 pl-10 pr-4 rounded-full bg-cream border border-transparent text-[15px] text-text-main placeholder:text-text-sub outline-none transition-[background-color,border-color] duration-color focus:bg-surface-light focus:border-line-strong"
+                class="w-full h-12 pl-10 pr-12 rounded-full bg-cream border border-transparent text-[16px] text-text-main placeholder:text-text-sub outline-none transition-[background-color,border-color] duration-color focus:bg-surface-light focus:border-line-strong"
              />
+             <button
+                v-if="searchTerm"
+                type="button"
+                @click="clearSearch"
+                :aria-label="lang === 'cn' ? '清除搜索' : 'Clear search'"
+                class="absolute right-0 top-0 size-12 flex items-center justify-center text-text-sub"
+             >
+                <span class="size-6 rounded-full bg-text-sub/15 flex items-center justify-center pop-in">
+                   <AppIcon name="x" class="text-[13px]" />
+                </span>
+             </button>
 
              <!-- Suggestions -->
              <div
@@ -337,8 +370,9 @@ const handleSuggestionClick = (p: Product) => {
                    @click="pick(product, $event)"
                    data-testid="product-card"
                    class="group relative flex flex-col cursor-pointer"
-                   :class="{ 'pointer-events-none': isSoldOut(product) }"
+                   :aria-disabled="isSoldOut(product) || undefined"
                 >
+                   <div class="flex flex-col" :class="{ shake: shakingId === product.id }" @animationend.self="shakingId = null">
                    <div class="relative aspect-square rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.98]">
                       <img
                          :src="product.image"
@@ -356,7 +390,7 @@ const handleSuggestionClick = (p: Product) => {
                       <!-- Quantity in cart; the digits roll on every add -->
                       <span
                          v-if="cartCounts.get(product.id)"
-                         class="absolute top-3 right-3 min-w-6 h-6 px-1.5 rounded-full bg-text-main text-white text-xs font-semibold flex items-center justify-center leading-none animate-scale-in"
+                         class="absolute top-3 right-3 min-w-6 h-6 px-1.5 rounded-full bg-text-main text-white text-xs font-semibold flex items-center justify-center leading-none pop-in"
                       ><RollingNumber :value="cartCounts.get(product.id) ?? 0" /></span>
                    </div>
 
@@ -366,6 +400,7 @@ const handleSuggestionClick = (p: Product) => {
                          {{ lang === 'cn' ? product.nameCN : product.name }}
                       </h3>
                       <p class="mt-1 text-[14px] text-text-sub tabular-nums">¥{{ Number(product.price).toFixed(2) }}</p>
+                   </div>
                    </div>
                 </article>
              </div>

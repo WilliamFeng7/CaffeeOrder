@@ -60,8 +60,11 @@ const isLoading = ref(false);
 // 输入框本身的格式错误提示 (如: 手机号位数不对)
 const inputError = ref('');
 
-// 登录失败时表单左右晃一下 (shake once on a rejected sign-in)
+// 登录失败时表单左右晃一下，输入线变红一会儿 (shake once; the lines turn red
+// until the student starts typing again)
 const rejected = ref(false);
+const invalid = ref(false);
+watch([username, password], () => { invalid.value = false; });
 
 /**
  * 实时监听用户名输入 (Real-time Validation)
@@ -141,7 +144,9 @@ const handleLogin = async () => {
     // 存储 Token 到本地
     auth.setSession(data.access_token, data.role);
 
-    router.push('/');
+    // replace, not push: with /login left in the history, an iPad edge-swipe
+    // "back" landed on the sign-in page, which signs the student out.
+    router.replace('/');
     emit('login-success'); // 兼容旧逻辑，但在路由模式下可能不需要
     
   } catch (e: any) {
@@ -196,6 +201,7 @@ const handleLogin = async () => {
     // The form shakes once, like a head saying no.
     rejected.value = false;
     requestAnimationFrame(() => { rejected.value = true; });
+    invalid.value = true;
   } finally {
     isLoading.value = false;
   }
@@ -217,7 +223,7 @@ const handleLogin = async () => {
       <form @submit.prevent="handleLogin" class="space-y-7" :class="{ shake: rejected }" @animationend="rejected = false">
         <div class="animate-slide-up-content" style="animation-delay: 180ms">
           <label for="username" class="eyebrow">{{ lang === 'cn' ? '账号' : 'Account' }}</label>
-          <div class="line-field mt-1">
+          <div class="line-field mt-1" :class="{ 'is-invalid': invalid || inputError }">
             <input
               id="username"
               name="username"
@@ -237,7 +243,7 @@ const handleLogin = async () => {
 
         <div class="animate-slide-up-content" style="animation-delay: 230ms">
           <label for="password" class="eyebrow">{{ lang === 'cn' ? '密码' : 'Password' }}</label>
-          <div class="line-field mt-1">
+          <div class="line-field mt-1" :class="{ 'is-invalid': invalid }">
             <input
               id="password"
               name="password"

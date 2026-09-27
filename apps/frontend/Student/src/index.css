@@ -13,7 +13,6 @@ body {
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    touch-action: manipulation;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -35,15 +34,24 @@ body {
    rule after @tailwind utilities would clobber Tailwind translate/scale/rotate
    classes on the same element. Tailwind's own transform-gpu composes via CSS vars. */
 
+/* --- iPad touch ------------------------------------------------------------- */
+/* Pan only: no pinch-zoom and no double-tap zoom (iPadOS ignores
+   user-scalable=no, and a student who zoomed in by accident had no way back).
+   No selection loupe and no long-press callout (link previews, "Copy") on
+   anything but text fields. Handles that must track the finger opt out with
+   .touch-none, swipe areas with .touch-pan-y. */
 * {
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
     user-select: none;
+    touch-action: pan-x pan-y;
 }
 
 input,
 textarea {
     user-select: text;
     -webkit-user-select: text;
+    -webkit-touch-callout: default;
 }
 
 /* --- Tabs ------------------------------------------------------------------ */
@@ -57,7 +65,7 @@ textarea {
 
 .tab-fwd-leave-active,
 .tab-back-leave-active {
-    transition: opacity var(--dur-page-out) var(--ease-out), transform var(--dur-page-out) var(--ease-out);
+    transition: opacity var(--dur-page-out) var(--ease-in), transform var(--dur-page-out) var(--ease-in);
     position: absolute;
     inset: 0;
     pointer-events: none;
@@ -79,7 +87,7 @@ textarea {
 
 .grid-next-leave-active,
 .grid-prev-leave-active {
-    transition: opacity var(--dur-page-out) var(--ease-out), transform var(--dur-page-out) var(--ease-out);
+    transition: opacity var(--dur-page-out) var(--ease-in), transform var(--dur-page-out) var(--ease-in);
 }
 
 .grid-next-enter-from { opacity: 0; transform: translate3d(24px, 0, 0); }
@@ -109,14 +117,14 @@ textarea {
 }
 
 /* --- Sheets ------------------------------------------------------------------ */
-/* Full-screen sheets (checkout) slide in from the bottom and leave the same
-   way, a little faster than they came in. */
+/* Full-screen sheets (checkout) slide in from the bottom on the drawer curve
+   and fall away the same way, accelerating, a little faster. */
 .sheet-enter-active {
     transition: transform var(--dur-sheet-in) var(--ease-drawer);
 }
 
 .sheet-leave-active {
-    transition: transform var(--dur-sheet-out) var(--ease-drawer);
+    transition: transform var(--dur-sheet-out) var(--ease-in);
     pointer-events: none;
 }
 
@@ -132,7 +140,7 @@ textarea {
 }
 
 .cartbar-leave-active {
-    transition: transform var(--dur-sheet-out) var(--ease-drawer), opacity var(--dur-page-out) var(--ease-out);
+    transition: transform var(--dur-page-out) var(--ease-in), opacity var(--dur-page-out) var(--ease-in);
 }
 
 .cartbar-enter-from,
@@ -192,6 +200,13 @@ html[data-morph="cart"]::view-transition-old(product-hero) {
         morph-round var(--dur-sheet-in) var(--ease-in-out) both;
 }
 
+/* The group travels in a straight line from the sheet to the bag; lifting
+   the photo a little at the start (a small anticipation, then the drop)
+   bends that line into a toss. */
+html[data-morph="cart"]::view-transition-image-pair(product-hero) {
+    animation: morph-toss var(--dur-sheet-in) var(--ease-out) both;
+}
+
 html[data-morph="cart"]::view-transition-new(product-hero) {
     height: auto;
     object-fit: contain;
@@ -205,6 +220,12 @@ html[data-morph="cart"]::view-transition-new(product-hero) {
 @keyframes morph-hold-out {
     0%, 55% { opacity: 1; }
     100% { opacity: 0; }
+}
+
+@keyframes morph-toss {
+    0% { transform: translate3d(0, 0, 0) scale(1); }
+    22% { transform: translate3d(0, -36px, 0) scale(1.04); }
+    100% { transform: translate3d(0, 0, 0) scale(1); }
 }
 
 @keyframes morph-round {

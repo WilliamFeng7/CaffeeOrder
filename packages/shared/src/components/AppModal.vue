@@ -81,7 +81,7 @@ const dismiss = () => {
           class="modal-panel relative w-full max-h-[88vh] overflow-y-auto bg-surface-light rounded-sheet shadow-float outline-none"
           :class="width"
         >
-          <header v-if="title" class="flex items-start justify-between gap-4 px-7 pt-7">
+          <header v-if="title" class="modal-rise flex items-start justify-between gap-4 px-7 pt-7" style="animation-delay: 70ms">
             <div class="min-w-0">
               <h3 class="font-serif text-[24px] font-medium leading-tight text-text-main">{{ title }}</h3>
               <p v-if="subtitle" class="mt-1 text-[13px] text-text-sub">{{ subtitle }}</p>
@@ -90,10 +90,10 @@ const dismiss = () => {
               <AppIcon name="x" weight="light" class="text-xl" />
             </button>
           </header>
-          <div class="px-7 pb-7" :class="title ? 'pt-6' : 'pt-7'">
+          <div class="modal-rise px-7 pb-7" :class="title ? 'pt-6' : 'pt-7'" style="animation-delay: 110ms">
             <slot />
           </div>
-          <footer v-if="$slots.footer" class="flex gap-3 px-7 pb-7">
+          <footer v-if="$slots.footer" class="modal-rise flex gap-3 px-7 pb-7" style="animation-delay: 150ms">
             <slot name="footer" />
           </footer>
         </div>
@@ -104,7 +104,8 @@ const dismiss = () => {
 
 <style scoped>
 /* Backdrop fades; the panel rises 12px and grows from 97% while fading in,
-   then leaves by shrinking slightly (no travel), a little faster. */
+   and its content follows a beat later (title, body, buttons ~40ms apart).
+   Leaving, it shrinks slightly on an accelerating curve, a little faster. */
 .modal-enter-active .modal-backdrop {
   transition: opacity var(--dur-fade) var(--ease-out);
 }
@@ -122,8 +123,8 @@ const dismiss = () => {
 .modal-leave-active .modal-backdrop,
 .modal-leave-active .modal-panel {
   transition:
-    opacity var(--dur-sheet-out) var(--ease-out),
-    transform var(--dur-sheet-out) var(--ease-out);
+    opacity var(--dur-sheet-out) var(--ease-in),
+    transform var(--dur-sheet-out) var(--ease-in);
 }
 
 .modal-enter-from .modal-backdrop,
@@ -138,6 +139,25 @@ const dismiss = () => {
 
 .modal-leave-to .modal-panel {
   opacity: 0;
-  transform: scale(0.98);
+  transform: scale(0.96);
+}
+
+/* Follow-through: runs once when the dialog is created (it is v-if'd), so
+   it is independent of the enter classes Vue removes. */
+.modal-rise {
+  animation: modalRise var(--dur-scale-in) var(--ease-out) backwards;
+}
+
+@keyframes modalRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-rise {
+    animation: none;
+  }
 }
 </style>

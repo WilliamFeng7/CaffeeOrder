@@ -151,7 +151,7 @@ const handleLogout = () => {
                 <button
                    type="button"
                    @click="isEditing = true"
-                   class="btn btn-sm border border-white/30 text-white hover:bg-white/10 active:bg-white/10 shrink-0"
+                   class="btn h-11 px-5 border border-white/30 text-white hover:bg-white/10 active:bg-white/10 shrink-0"
                 >
                    {{ lang === 'cn' ? '编辑' : 'Edit' }}
                 </button>
@@ -168,7 +168,7 @@ const handleLogout = () => {
 
          <!-- Settings -->
          <div class="mt-10 border-y border-line divide-y divide-line">
-             <button v-reveal="120" type="button" @click.stop="showHistory = true" class="group w-full min-h-[68px] py-4 flex items-center gap-4 text-left">
+             <button v-reveal="120" type="button" @click.stop="showHistory = true" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4 text-left">
                 <span class="flex-1 min-w-0">
                    <span class="block text-[16px] text-text-main">{{ t.orderHistory }}</span>
                    <span class="block mt-0.5 text-[13px] text-text-sub">{{ t.viewDetailedHistory }}</span>
@@ -176,12 +176,12 @@ const handleLogout = () => {
                 <AppIcon name="caret-right" weight="light" class="text-lg text-text-sub nudge" />
              </button>
 
-             <div v-reveal="170" class="w-full min-h-[68px] py-3 flex items-center gap-4">
+             <div v-reveal="170" class="w-full min-h-[72px] py-3 flex items-center gap-4">
                 <span class="flex-1 min-w-0 text-[16px] text-text-main">{{ t.language }}</span>
-                <SlidingTabs :model-value="lang" @update:model-value="setLang" :options="langOptions" variant="segment" size="sm" :label="t.language" />
+                <SlidingTabs :model-value="lang" @update:model-value="setLang" :options="langOptions" variant="segment" size="lg" :label="t.language" />
              </div>
 
-             <button v-reveal="220" type="button" @click="showPasswordModal = true" class="group w-full min-h-[68px] py-4 flex items-center gap-4 text-left">
+             <button v-reveal="220" type="button" @click="showPasswordModal = true" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4 text-left">
                 <span class="flex-1 min-w-0">
                    <span class="block text-[16px] text-text-main">{{ lang === 'cn' ? '修改密码' : 'Change Password' }}</span>
                    <span class="block mt-0.5 text-[13px] text-text-sub">{{ lang === 'cn' ? '更新您的账户密码' : 'Update your account password' }}</span>
@@ -189,7 +189,7 @@ const handleLogout = () => {
                 <AppIcon name="caret-right" weight="light" class="text-lg text-text-sub nudge" />
              </button>
 
-             <a v-reveal="270" :href="adminUrl" target="_blank" class="group w-full min-h-[68px] py-4 flex items-center gap-4">
+             <a v-reveal="270" :href="adminUrl" target="_blank" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4">
                 <span class="flex-1 min-w-0">
                    <span class="block text-[16px] text-text-main">{{ lang === 'cn' ? '管理后台' : 'Admin System' }}</span>
                    <span class="block mt-0.5 text-[13px] text-text-sub">{{ lang === 'cn' ? '进入系统管理界面' : 'Access system administration' }}</span>

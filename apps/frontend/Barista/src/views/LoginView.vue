@@ -38,7 +38,8 @@ const handleLogin = async () => {
         }
         auth.setSession(data.access_token, data.role);
         toast.success('Login successful');
-        router.push('/');
+        // replace: keep the sign-in page out of the back history (iPad edge swipe)
+        router.replace('/');
     } catch (e) {
         reject('Login failed. Please check credentials.');
     } finally {

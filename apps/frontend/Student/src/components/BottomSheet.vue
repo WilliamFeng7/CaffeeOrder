@@ -3,17 +3,22 @@
  * BottomSheet.vue
  *
  * 短表单面板 (edit profile, change password). A bottom sheet on phones and a
- * centred card on iPad. It rises in on the drawer curve and leaves the same
- * way (the old v-if panels vanished on close); drag the header down to close.
+ * centred card on iPad. It rises in on the drawer curve and falls away on an
+ * accelerating one (the old v-if panels vanished on close); drag the header
+ * down to close. While the on-screen keyboard is up, the sheet moves above it
+ * so the field being typed into stays visible.
  */
-import { ref } from 'vue';
+import { ref, toRef } from 'vue';
 import { useSheetDrag } from '../composables/useSheetDrag';
+import { useKeyboardInset } from '../composables/useKeyboardInset';
 import { motionMs } from '@shared/motion';
 
-defineProps<{
+const props = defineProps<{
   open: boolean;
   title: string;
 }>();
+
+const keyboardInset = useKeyboardInset(toRef(props, 'open'));
 
 const emit = defineEmits<{ (e: 'close'): void }>();
 
@@ -25,13 +30,18 @@ const { handlers } = useSheetDrag({
   onDismiss: () => emit('close'),
 });
 
-const duration = { enter: motionMs('--dur-sheet-in', 560), leave: motionMs('--dur-sheet-out', 380) };
+const duration = { enter: motionMs('--dur-sheet-in', 560), leave: motionMs('--dur-sheet-out', 360) };
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="bsheet" :duration="duration">
-      <div v-if="open" class="fixed inset-0 z-[150] flex items-end md:items-center justify-center" @keydown.esc="emit('close')">
+      <div
+        v-if="open"
+        class="bsheet-root fixed inset-0 z-[150] flex items-end md:items-center justify-center"
+        :style="{ paddingBottom: `${keyboardInset}px` }"
+        @keydown.esc="emit('close')"
+      >
         <div ref="backdropEl" class="bsheet-backdrop absolute inset-0 bg-[rgba(23,28,25,0.28)]" @click="emit('close')"></div>
         <div
           ref="sheetEl"
@@ -45,7 +55,9 @@ const duration = { enter: motionMs('--dur-sheet-in', 560), leave: motionMs('--du
             <div class="w-9 h-1 rounded-full bg-line mx-auto mb-5" aria-hidden="true"></div>
             <h3 class="font-serif text-[24px] font-medium leading-tight text-text-main">{{ title }}</h3>
           </div>
-          <slot />
+          <div class="bsheet-rise">
+            <slot />
+          </div>
         </div>
       </div>
     </Transition>
@@ -70,8 +82,31 @@ const duration = { enter: motionMs('--dur-sheet-in', 560), leave: motionMs('--du
 .bsheet-leave-active .bsheet-backdrop,
 .bsheet-leave-active .bsheet-panel {
   transition:
-    transform var(--dur-sheet-out) var(--ease-drawer),
-    opacity var(--dur-sheet-out) var(--ease-out);
+    transform var(--dur-sheet-out) var(--ease-in),
+    opacity var(--dur-sheet-out) var(--ease-in);
+}
+
+/* Moves above the keyboard as it opens and back down as it closes. */
+.bsheet-root {
+  transition: padding-bottom var(--dur-popover) var(--ease-out);
+}
+
+/* The form follows the panel a beat later (runs once, on creation). */
+.bsheet-rise {
+  animation: bsheetRise var(--dur-enter) var(--ease-out) 90ms backwards;
+}
+
+@keyframes bsheetRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bsheet-rise {
+    animation: none;
+  }
 }
 
 .bsheet-enter-from .bsheet-backdrop,

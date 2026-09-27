@@ -19,6 +19,7 @@ import { computed, ref, onActivated } from 'vue';
 import { TRANSLATIONS, PRODUCTS } from '../data';
 import type { Product, Language, TabState } from '../types';
 import { useKeepScroll } from '../composables/useKeepScroll';
+import { useToastStore } from '../stores/toast';
 
 // 定义组件 Props (Props Definition)
 const props = defineProps<{
@@ -78,9 +79,19 @@ const isOpen = computed(() => props.shopOpen !== false);
 
 const { scroller, onScroll } = useKeepScroll();
 
+const toast = useToastStore();
+// 被点的售罄商品晃一下 (a sold-out tap explains itself instead of doing nothing)
+const shakingId = ref<string | null>(null);
+
 /** 打开商品，并把被点的图片交给共享元素过渡 */
 const open = (p: Product, event: MouseEvent) => {
-  if (p.inventoryCount === 0 || p.id === 'placeholder') return;
+  if (p.id === 'placeholder') return;
+  if (p.inventoryCount === 0) {
+    shakingId.value = null;
+    requestAnimationFrame(() => { shakingId.value = p.id; });
+    toast.info(props.lang === 'cn' ? `${p.nameCN}已售罄` : `${p.name} is sold out`);
+    return;
+  }
   emit('quick-add', p, (event.currentTarget as HTMLElement).querySelector('img'));
 };
 
@@ -95,7 +106,7 @@ const open = (p: Product, event: MouseEvent) => {
          <span class="font-serif text-[19px] font-semibold tracking-tight text-text-main">{{ t.downtownCafe }}</span>
          <span class="relative flex items-center gap-2 text-[13px] font-medium" :class="isOpen ? 'text-primary' : 'text-text-sub'">
             <span class="relative flex size-1.5">
-               <span v-if="isOpen" class="absolute inset-0 rounded-full bg-primary ping" aria-hidden="true"></span>
+               <span v-if="isOpen" class="absolute inset-0 rounded-full bg-primary breathe" aria-hidden="true"></span>
                <span class="relative size-1.5 rounded-full" :class="isOpen ? 'bg-primary' : 'bg-text-sub'" aria-hidden="true"></span>
             </span>
             {{ isOpen ? t.open : t.closed }}
@@ -118,7 +129,7 @@ const open = (p: Product, event: MouseEvent) => {
             data-testid="featured-card"
             @click="open(featuredProduct, $event)"
          >
-            <div class="relative aspect-[4/3] md:aspect-[16/10] rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.99]">
+            <div class="relative aspect-[4/3] md:aspect-[16/10] rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.99]" :class="{ shake: shakingId === featuredProduct.id }" @animationend.self="shakingId = null">
                <img
                   v-if="featuredProduct.image"
                   :src="featuredProduct.image"
@@ -165,12 +176,12 @@ const open = (p: Product, event: MouseEvent) => {
                   v-reveal="160 + i * 70"
                   @click="open(p, $event)"
                   data-testid="product-card"
-                  class="group py-4 flex items-center gap-4 cursor-pointer"
-                  :class="{'opacity-50 pointer-events-none': p.inventoryCount === 0}"
+                  class="group press-row -mx-3 px-3 rounded-tile py-4 flex items-center gap-4 cursor-pointer"
+                  :class="{ 'text-text-sub': p.inventoryCount === 0 }"
                >
                   <span class="w-6 font-serif text-[15px] text-text-sub tabular-nums">{{ String(i + 1).padStart(2, '0') }}</span>
-                  <div class="size-16 md:size-[72px] rounded-tile overflow-hidden bg-cream shrink-0 transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.96]">
-                     <img :src="p.image" class="w-full h-full object-cover" :class="{'grayscale': p.inventoryCount === 0}" :alt="p.name" loading="lazy" decoding="async" />
+                  <div class="size-16 md:size-[72px] rounded-tile overflow-hidden bg-cream shrink-0 transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.96]" :class="{ shake: shakingId === p.id }" @animationend.self="shakingId = null">
+                     <img :src="p.image" class="w-full h-full object-cover" :class="{'grayscale opacity-60': p.inventoryCount === 0}" :alt="p.name" loading="lazy" decoding="async" />
                   </div>
                   <div class="min-w-0 flex-1">
                      <h3 class="text-[15px] md:text-base font-medium text-text-main truncate">{{ lang === 'cn' ? p.nameCN : p.name }}</h3>

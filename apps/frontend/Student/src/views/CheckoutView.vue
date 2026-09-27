@@ -122,18 +122,18 @@ const { handlers: dragHandlers } = useSheetDrag({
                            type="button"
                            @click="emit('update-quantity', item.cartId, -1)"
                            :aria-label="lang === 'cn' ? '减少' : 'Decrease'"
-                           class="size-11 rounded-full border border-line text-text-main flex items-center justify-center hover:border-text-main active:bg-cream"
+                           class="size-11 md:size-12 rounded-full border border-line text-text-main flex items-center justify-center hover:border-text-main active:bg-cream"
                         >
                            <AppIcon name="minus" weight="light" class="text-base" />
                         </button>
-                        <span class="w-9 flex justify-center text-[16px] font-medium text-text-main">
+                        <span class="w-9 md:w-10 flex justify-center text-[16px] md:text-[17px] font-medium text-text-main">
                            <RollingNumber :value="item.quantity" />
                         </span>
                         <button
                            type="button"
                            @click="emit('update-quantity', item.cartId, 1)"
                            :aria-label="lang === 'cn' ? '增加' : 'Increase'"
-                           class="size-11 rounded-full border border-line text-text-main flex items-center justify-center hover:border-text-main active:bg-text-main active:border-text-main active:text-white"
+                           class="size-11 md:size-12 rounded-full border border-line text-text-main flex items-center justify-center hover:border-text-main active:bg-text-main active:border-text-main active:text-white"
                         >
                            <AppIcon name="plus" weight="light" class="text-base" />
                         </button>

@@ -9,28 +9,32 @@
 
 /* --- Motion tokens --------------------------------------------------------- */
 /* One rhythm for everything (Tailwind exposes these through
-   tailwind-motion.mjs; drag gestures and JS tweens read them at runtime). Long,
-   gliding finishes instead of snaps: entrances take ~560ms on a strong
-   ease-out, exits ~65% of that, and things that travel across the screen use a
-   spring. */
+   tailwind-motion.mjs; drag gestures and JS tweens read them at runtime).
+   Personality: calm and premium. Entrances glide in (~560ms, decelerating),
+   exits leave quicker on an accelerating curve (~65% of the entrance), things
+   that travel across the screen use a spring, and small confirmations (a
+   badge, a check) pop with a little overshoot. */
 :root {
-  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);       /* entering / leaving */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);       /* entering: fast start, soft landing */
+  --ease-in: cubic-bezier(0.3, 0, 0.8, 0.15);       /* leaving for good: gentle start, quick exit */
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);   /* moving on screen */
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);    /* sheets and drawers (iOS) */
+  --ease-back: cubic-bezier(0.175, 0.885, 0.32, 1.275); /* small pops: ~8% overshoot */
   /* Fallbacks for browsers without linear(); replaced below. */
   --ease-spring: var(--ease-in-out);
   --ease-spring-soft: var(--ease-drawer);
 
-  --dur-press: 140ms;        /* finger down: must feel immediate */
-  --dur-release: 380ms;      /* finger up: the part you actually see */
+  --dur-press: 100ms;        /* finger down: must land within a touch's 100ms */
+  --dur-release: 280ms;      /* finger up: settles back */
   --dur-color: 260ms;        /* colour and opacity changes */
   --dur-popover: 260ms;      /* small menus, suggestion lists, rolling digits */
-  --dur-page-out: 220ms;     /* the old page/tab leaving (the new one is the show) */
+  --dur-page-out: 200ms;     /* the old page/tab leaving (the new one is the show) */
+  --dur-pop: 320ms;          /* badges, checks and icons popping in */
   --dur-fade: 360ms;         /* crossfades, content swaps */
   --dur-scale-in: 460ms;     /* centered dialogs, chips popping in */
   --dur-enter: 560ms;        /* content sliding into place */
   --dur-sheet-in: 560ms;     /* bottom sheets, full-screen panels */
-  --dur-sheet-out: 380ms;    /* ...and leaving again (~65% of in) */
+  --dur-sheet-out: 360ms;    /* ...and leaving again (~65% of in) */
   --dur-spring: 680ms;       /* settle time of --ease-spring */
   --dur-spring-soft: 740ms;  /* settle time of --ease-spring-soft */
   --dur-count: 900ms;        /* numbers counting to a new value */
@@ -139,7 +143,9 @@ img {
 /* Set by the v-reveal directive (src/reveal.ts): the element rises into place
    the first time it enters the viewport, then the classes are removed so its
    own transitions (press, hover) are untouched afterwards. */
-.reveal {
+/* `html` in front so the reveal wins over an element's own component
+   transition (e.g. .press-row) while it runs. */
+html .reveal {
   opacity: 0;
   transform: translate3d(0, 20px, 0);
   transition:
@@ -148,7 +154,7 @@ img {
   transition-delay: var(--reveal-delay, 0ms);
 }
 
-.reveal.is-revealed {
+html .reveal.is-revealed {
   opacity: 1;
   transform: none;
 }
@@ -163,7 +169,7 @@ img {
 }
 
 .page-leave-active {
-  transition: opacity var(--dur-page-out) var(--ease-out);
+  transition: opacity var(--dur-page-out) var(--ease-in);
 }
 
 .page-enter-from {
@@ -184,8 +190,8 @@ img {
 
 .push-leave-active {
   transition:
-    opacity var(--dur-page-out) var(--ease-out),
-    transform var(--dur-sheet-out) var(--ease-drawer);
+    opacity var(--dur-page-out) var(--ease-in),
+    transform var(--dur-page-out) var(--ease-in);
 }
 
 .push-enter-from {
@@ -199,13 +205,17 @@ img {
 }
 
 /* --- Lists (<TransitionGroup name="list">) -------------------------------- */
-/* New rows rise in, removed rows shrink away and the rest glide up into the
-   gap (FLIP via transform, so no height is animated). The parent must be
+/* New rows rise in and land with a touch of spring; removed rows shrink away
+   quickly; the rest glide (ease-in-out, they are moving on screen) into the
+   gap. FLIP via transform, so no height is animated. The parent must be
    `position: relative`. */
-.list-move,
+.list-move {
+  transition: transform var(--dur-scale-in) var(--ease-in-out);
+}
+
 .list-enter-active {
   transition:
-    transform var(--dur-enter) var(--ease-out),
+    transform var(--dur-spring) var(--ease-spring),
     opacity var(--dur-fade) var(--ease-out);
 }
 
@@ -216,8 +226,8 @@ img {
 
 .list-leave-active {
   transition:
-    transform var(--dur-sheet-out) var(--ease-out),
-    opacity var(--dur-page-out) var(--ease-out);
+    transform var(--dur-page-out) var(--ease-in),
+    opacity var(--dur-page-out) var(--ease-in);
   position: absolute;
   left: 0;
   right: 0;
@@ -286,15 +296,45 @@ img {
 
 /* A form that was rejected shakes once, like a head: no. */
 .shake {
-  animation: shake 420ms var(--ease-out);
+  animation: shake 360ms var(--ease-in-out);
 }
 
 @keyframes shake {
   0%, 100% { transform: translate3d(0, 0, 0); }
-  20% { transform: translate3d(-8px, 0, 0); }
-  40% { transform: translate3d(7px, 0, 0); }
-  60% { transform: translate3d(-4px, 0, 0); }
-  80% { transform: translate3d(2px, 0, 0); }
+  18% { transform: translate3d(-10px, 0, 0); }
+  42% { transform: translate3d(8px, 0, 0); }
+  66% { transform: translate3d(-5px, 0, 0); }
+  86% { transform: translate3d(2px, 0, 0); }
+}
+
+/* Small confirmations (a badge appearing, a check) pop in with a little
+   overshoot; never from nothing, from half size. */
+.pop-in {
+  animation: popIn var(--dur-pop) var(--ease-back) backwards;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+/* Ambient layer: a soft halo that breathes behind a status dot (shop open,
+   order ready). Slow and small so it stays in the periphery. */
+.breathe {
+  animation: breathe 2.8s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.35;
+    transform: scale(2.4);
+  }
 }
 
 /* A new item flashes a soft highlight that fades out (new KDS order). */
@@ -333,14 +373,19 @@ img {
     animation: fadeOnly 200ms linear backwards !important;
   }
 
-  .reveal {
+  html .reveal {
     transform: none;
   }
 
-  /* Emphasis loops and shakes are movement for its own sake. */
+  /* Emphasis loops, shakes and ambient halos are movement for its own sake. */
   .ping,
-  .shake {
+  .shake,
+  .breathe {
     animation: none !important;
+  }
+
+  .pop-in {
+    animation: fadeOnly 200ms linear backwards !important;
   }
 
   button:active:not(:disabled),

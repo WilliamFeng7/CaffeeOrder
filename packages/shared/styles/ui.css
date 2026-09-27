@@ -14,7 +14,7 @@
   .btn {
     @apply relative inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full
       text-[15px] font-medium leading-none whitespace-nowrap select-none
-      disabled:opacity-40 disabled:pointer-events-none;
+      disabled:opacity-50 disabled:pointer-events-none;
   }
 
   .btn-sm {
@@ -69,9 +69,10 @@
   }
 
   /* --- Fields ------------------------------------------------------------ */
+  /* 16px text: iOS zooms the page into any smaller input on focus. */
   .field {
     @apply w-full h-12 px-4 rounded-tile bg-surface-light border border-line
-      text-[15px] text-text-main placeholder:text-text-sub/60 outline-none
+      text-[16px] text-text-main placeholder:text-text-sub/60 outline-none
       hover:border-line-strong focus:border-text-main;
     transition:
       border-color var(--dur-color) var(--ease-out),
@@ -120,6 +121,12 @@
     transform: scaleX(1);
   }
 
+  /* A rejected value: the line turns red (and stays drawn) for a moment. */
+  .line-field.is-invalid::after {
+    background: #B42318;
+    transform: scaleX(1);
+  }
+
   .label {
     @apply block text-[12px] font-medium text-text-sub mb-2;
   }
@@ -137,6 +144,20 @@
 
   .hairline-list > * + * {
     @apply border-t border-line;
+  }
+
+  /* Full-width tappable rows (settings, lists): a pressed row darkens like an
+     iOS table cell instead of shrinking - a whole row scaling to 97% reads as
+     the layout jumping. */
+  .press-row {
+    transition: background-color var(--dur-release) var(--ease-out);
+  }
+
+  .press-row:active,
+  .press-row:active:not(:disabled) {
+    transform: none;
+    transition-duration: var(--dur-press);
+    background-color: rgba(23, 28, 25, 0.045);
   }
 
   /* --- Chips and dots ----------------------------------------------------- */
@@ -190,6 +211,13 @@
   }
 
   @media (hover: hover) and (pointer: fine) {
+    /* Hover lands fast and leaves slowly (the leaving state's duration applies
+       when the pointer moves off). Touch screens never get here. */
+    .btn:hover,
+    .icon-btn:hover {
+      transition-duration: 90ms;
+    }
+
     .link:hover::after {
       transform: scaleX(1);
       transform-origin: left;

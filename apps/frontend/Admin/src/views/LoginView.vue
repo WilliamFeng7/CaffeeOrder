@@ -68,7 +68,8 @@ const handleLogin = async () => {
             return;
         }
         auth.setSession(res.access_token, res.role);
-        router.push('/');
+        // replace: keep the sign-in page out of the back history (iPad edge swipe)
+        router.replace('/');
     } catch (e: any) {
         // 检查是否有详细的结构化错误信息
         const detail = e.response?.data?.detail;

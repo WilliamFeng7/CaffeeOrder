@@ -43,7 +43,8 @@ const glyph = (type: string) => GLYPH[type] ?? GLYPH.info;
         role="status"
         class="pointer-events-none flex items-center gap-2.5 min-h-11 max-w-full pl-3.5 pr-5 py-2.5 rounded-full bg-[#171C19] text-white shadow-float"
       >
-        <AppIcon :name="glyph(toast.type).icon" class="text-lg shrink-0" :class="glyph(toast.type).color" />
+        <!-- The glyph pops in a beat after the pill (secondary motion) -->
+        <AppIcon :name="glyph(toast.type).icon" class="text-lg shrink-0 pop-in" style="animation-delay: 90ms" :class="glyph(toast.type).color" />
         <span class="text-[14px] font-medium leading-snug">{{ toast.message }}</span>
       </div>
     </TransitionGroup>
@@ -52,8 +53,8 @@ const glyph = (type: string) => GLYPH[type] ?? GLYPH.info;
 
 <style scoped>
 /* In on a spring from just above (transitions, not keyframes, so a toast
-   raised twice in a row retargets instead of restarting); out upwards in
-   ~65% of the time, taken out of flow so the rest glide up. */
+   raised twice in a row retargets instead of restarting); out upwards,
+   accelerating away, taken out of flow so the rest glide up. */
 .toast-enter-active {
   transition:
     opacity var(--dur-fade) var(--ease-out),
@@ -71,8 +72,8 @@ const glyph = (type: string) => GLYPH[type] ?? GLYPH.info;
 
 .toast-leave-active {
   transition:
-    opacity var(--dur-page-out) var(--ease-out),
-    transform var(--dur-sheet-out) var(--ease-out);
+    opacity var(--dur-page-out) var(--ease-in),
+    transform var(--dur-page-out) var(--ease-in);
   position: absolute;
   top: 0;
 }

@@ -8,6 +8,9 @@
  *
  *   <SlidingTabs v-model="filter" :options="[{ value: 'all', label: '全部' }, …]" />
  *   <SlidingTabs v-model="tab" :options="…" variant="segment" stretch />
+ *
+ * Touch: size "lg" gives 44px+ segments for iPad; underline tabs sit edge to
+ * edge (padding, not gaps), so a tap between two labels still hits one.
  */
 import { ref, watch, computed, nextTick, onMounted, onActivated, onBeforeUnmount } from 'vue';
 
@@ -15,7 +18,7 @@ const props = withDefaults(defineProps<{
   modelValue: T;
   options: { value: T; label: string }[];
   variant?: 'underline' | 'segment';
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md' | 'lg';
   /** Equal-width options filling the container. */
   stretch?: boolean;
   /** Accessible name of the group. */
@@ -40,6 +43,13 @@ const activeIndex = computed(() => props.options.findIndex(o => o.value === prop
 const measure = () => {
   const el = buttons[activeIndex.value];
   if (!el || !el.offsetWidth) return;
+  if (props.variant === 'underline') {
+    // The line sits under the label; the padding around it is hit area only.
+    const label = el.firstElementChild as HTMLElement | null;
+    const x = el.offsetLeft + (label?.offsetLeft ?? 0);
+    pos.value = { x, w: label?.offsetWidth ?? el.offsetWidth };
+    return;
+  }
   pos.value = { x: el.offsetLeft, w: el.offsetWidth };
 };
 
@@ -81,9 +91,18 @@ onBeforeUnmount(() => observer?.disconnect());
 
 const sizeClass = computed(() => {
   if (props.variant === 'segment') {
-    return props.size === 'sm' ? 'h-8 px-3.5 text-[13px] rounded-full' : 'h-9 px-4 text-[14px] rounded-full';
+    return {
+      sm: 'h-8 px-3.5 text-[13px] rounded-full',
+      md: 'h-9 px-4 text-[14px] rounded-full',
+      lg: 'h-11 px-5 text-[15px] rounded-full',
+    }[props.size];
   }
-  return props.size === 'sm' ? 'h-9 text-[13px]' : 'h-11 text-[15px]';
+  // Neighbouring underline tabs touch (padding instead of a gap).
+  return {
+    sm: 'h-10 px-2.5 text-[13px]',
+    md: 'h-12 px-3 text-[15px]',
+    lg: 'h-14 px-4 text-[16px]',
+  }[props.size];
 });
 </script>
 
@@ -95,7 +114,7 @@ const sizeClass = computed(() => {
     class="relative"
     :class="[
       stretch ? 'grid' : 'inline-flex',
-      variant === 'segment' ? 'p-1 rounded-full bg-cream' : (stretch ? '' : 'gap-6'),
+      variant === 'segment' ? 'p-1 rounded-full bg-cream' : '',
     ]"
     :style="stretch ? { gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` } : undefined"
     @keydown="onKey"
@@ -122,7 +141,7 @@ const sizeClass = computed(() => {
       class="relative z-10 whitespace-nowrap"
       :class="[sizeClass, o.value === modelValue ? 'text-text-main font-medium' : 'text-text-sub hover:text-text-main']"
       @click="select(o.value, i)"
-    >{{ o.label }}</button>
+    ><span class="pointer-events-none">{{ o.label }}</span></button>
   </div>
 </template>
 

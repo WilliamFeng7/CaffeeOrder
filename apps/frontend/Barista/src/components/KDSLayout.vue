@@ -100,7 +100,7 @@ onUnmounted(() => {
           type="button"
           @click="handleSignOutTap"
           :aria-label="confirmingSignOut ? 'Tap again to sign out' : 'Sign out'"
-          class="btn btn-sm min-w-[96px]"
+          class="btn h-11 px-5 min-w-[120px]"
           :class="confirmingSignOut ? 'btn-danger' : 'btn-ghost text-text-sub hover:text-text-main'"
         >
           <span class="grid overflow-hidden">

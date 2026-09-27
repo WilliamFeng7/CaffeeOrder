@@ -99,19 +99,20 @@ const handleAdd = () => {
        role="dialog"
        aria-modal="true"
        aria-labelledby="modal-title"
-       class="bg-surface-light w-full max-h-[92%] md:max-h-full md:max-w-[520px] rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10 transition-[transform,opacity] duration-sheet-out ease-drawer"
+       class="bg-surface-light w-full max-h-[92%] md:max-h-full md:max-w-[520px] rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10 transition-[transform,opacity] duration-sheet-out ease-in"
        :class="isClosing
          ? 'translate-y-full md:translate-y-4 md:scale-[0.97] opacity-0'
          : (hero ? 'animate-fade-in' : 'animate-slide-up-modal md:animate-scale-in')"
        @keydown.esc="requestClose('dismiss')"
      >
+        <!-- 44px, and inset from the corner so a thumb near the edge still lands on it -->
         <button
           type="button"
           @click="requestClose('dismiss')"
           :aria-label="lang === 'cn' ? '关闭' : 'Close'"
-          class="absolute top-4 right-4 z-30 size-9 rounded-full bg-white/90 text-text-main flex items-center justify-center"
+          class="absolute top-3 right-3 z-30 size-11 rounded-full bg-white/90 text-text-main flex items-center justify-center active:bg-white"
         >
-           <AppIcon name="x" class="text-[18px]" />
+           <AppIcon name="x" class="text-[20px]" />
         </button>
 
         <div class="flex-1 min-h-0 overflow-y-auto no-scrollbar scroll-smooth-touch">
@@ -148,6 +149,7 @@ const handleAdd = () => {
                   v-model="sugar"
                   :options="sugarOptions"
                   variant="segment"
+                  size="lg"
                   stretch
                   :label="t.sweetness"
                   class="mt-3 w-full"
@@ -175,7 +177,8 @@ const handleAdd = () => {
               <span class="relative inline-grid overflow-hidden" aria-live="polite">
                  <Transition name="roll-up">
                     <span v-if="isSuccess" key="done" class="col-start-1 row-start-1 flex items-center gap-2">
-                       <AppIcon name="check" class="text-lg" />
+                       <!-- the check pops in just after the label rolls over -->
+                       <AppIcon name="check" class="text-lg pop-in" style="animation-delay: 120ms" />
                        {{ lang === 'cn' ? '已加入' : 'Added' }}
                     </span>
                     <span v-else key="add" class="col-start-1 row-start-1">{{ t.addToCart }}</span>

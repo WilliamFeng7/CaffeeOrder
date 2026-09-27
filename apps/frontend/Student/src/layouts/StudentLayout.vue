@@ -401,15 +401,15 @@ const bumpCart = () => {
           :class="currentTab === tab.id ? 'text-text-main' : 'text-text-sub'"
         >
           <span class="relative">
-            <!-- Re-keyed on selection so the icon gives one small spring pop -->
+            <!-- Re-keyed on selection so the icon dips and pops back (~8% overshoot) -->
             <AppIcon
               :key="currentTab === tab.id ? 'on' : 'off'"
               :name="tab.icon"
               :weight="currentTab === tab.id ? 'regular' : 'light'"
               class="text-[24px]"
-              :class="{ 'animate-cart-bump': currentTab === tab.id }"
+              :class="{ 'animate-icon-pop': currentTab === tab.id }"
             />
-            <span v-if="tab.id === 'pickup' && activeOrderCount > 0" class="absolute -top-1 -right-2.5 min-w-4 h-4 px-1 rounded-full bg-primary text-white text-[10px] font-semibold leading-none flex items-center justify-center ring-2 ring-white animate-scale-in">
+            <span v-if="tab.id === 'pickup' && activeOrderCount > 0" class="absolute -top-1 -right-2.5 min-w-4 h-4 px-1 rounded-full bg-primary text-white text-[10px] font-semibold leading-none flex items-center justify-center ring-2 ring-white pop-in">
               <RollingNumber :value="activeOrderCount" />
             </span>
           </span>

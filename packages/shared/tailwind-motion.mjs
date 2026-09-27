@@ -11,18 +11,21 @@
  *  - things that move on screen (indicators, sliders) -> ease-spring duration-spring
  *  - press feedback -> the global button transition in styles/motion.css
  *  - emphasis       -> animate-cart-bump (a spring "pop"; use sparingly)
+ *  - small confirmations (icons, badges) -> animate-icon-pop / .pop-in
  *
  * The feel: long, gliding finishes rather than snaps. Entrances take ~560ms on
  * a strong ease-out (the element is nearly in place early and settles gently),
- * exits run at ~65% of their entrance, and anything that travels across the
- * screen uses a spring.
+ * exits run at ~65% of their entrance on an accelerating curve (ease-in), and
+ * anything that travels across the screen uses a spring.
  */
 
 /** Named easings (values live in styles/motion.css). */
 export const easings = {
   DEFAULT: 'var(--ease-out)',
   out: 'var(--ease-out)',
+  in: 'var(--ease-in)',
   'in-out': 'var(--ease-in-out)',
+  back: 'var(--ease-back)',
   drawer: 'var(--ease-drawer)',
   spring: 'var(--ease-spring)',
   'spring-soft': 'var(--ease-spring-soft)',
@@ -41,6 +44,8 @@ export const durations = {
   release: 'var(--dur-release)',
   color: 'var(--dur-color)',
   popover: 'var(--dur-popover)',
+  pop: 'var(--dur-pop)',
+  'page-out': 'var(--dur-page-out)',
   fade: 'var(--dur-fade)',
   enter: 'var(--dur-enter)',
   sheet: 'var(--dur-sheet-in)',
@@ -91,6 +96,11 @@ export const keyframes = {
     '0%': { transform: 'scale(1.18)' },
     '100%': { transform: 'scale(1)' },
   },
+  // An icon becoming active: dips a little and springs back past 100%.
+  iconPop: {
+    '0%': { transform: 'scale(0.82)' },
+    '100%': { transform: 'scale(1)' },
+  },
 };
 
 export const animations = {
@@ -105,6 +115,7 @@ export const animations = {
   // Loops are for loading states only: the shimmer runs on skeletons.
   shimmer: 'shimmer 1.6s linear infinite',
   'cart-bump': 'pop var(--dur-spring) var(--ease-spring)',
+  'icon-pop': 'iconPop var(--dur-pop) var(--ease-back)',
   jelly: 'pop var(--dur-spring) var(--ease-spring) both',
   // Decorative floating was an endless loop; it now settles once.
   float: 'fadeIn var(--dur-fade) var(--ease-out) backwards',

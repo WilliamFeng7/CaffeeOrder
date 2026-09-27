@@ -133,7 +133,7 @@ const runAction = () => {
 
     <!-- Ready -->
     <p v-else class="mt-5 h-12 flex items-center justify-center gap-2 rounded-full bg-primary-soft text-primary text-[14px] font-medium">
-      <AppIcon name="check" class="text-base" />
+      <AppIcon name="check" class="text-base pop-in" style="animation-delay: 80ms" />
       Ready for pickup
     </p>
   </article>
