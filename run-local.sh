@@ -12,9 +12,11 @@ cd "$(dirname "$0")"
 ROOT="$PWD"
 
 BACKEND_PORT=8000
-STUDENT_PORT=5173
-ADMIN_PORT=8080
-BARISTA_PORT=8081
+# Frontend ports can be changed per run when another project already uses
+# one, e.g.  STUDENT_PORT=5174 ./run-local.sh
+STUDENT_PORT=${STUDENT_PORT:-5173}
+ADMIN_PORT=${ADMIN_PORT:-8080}
+BARISTA_PORT=${BARISTA_PORT:-8081}
 
 # --- 1. Backend (Go) --------------------------------------------------------
 if ! command -v go >/dev/null 2>&1; then
