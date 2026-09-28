@@ -47,7 +47,11 @@ export function useSheetDrag({ sheet, backdrop, onDismiss }: SheetDragOptions) {
   const place = (y: number) => {
     const el = sheet.value;
     if (!el) return;
-    el.style.transform = `translate3d(0, ${y}px, 0)`;
+    // Pulled down, the sheet also shrinks a little towards its top edge, like
+    // a card being put away; pushed up it only meets the rubber band.
+    const scale = y > 0 ? 1 - Math.min(0.06, (y / Math.max(1, el.offsetHeight)) * 0.12) : 1;
+    el.style.transformOrigin = '50% 0';
+    el.style.transform = `translate3d(0, ${y}px, 0) scale(${scale})`;
     const bd = backdrop?.value;
     if (bd) bd.style.opacity = String(y > 0 ? Math.max(0, 1 - y / el.offsetHeight) : 1);
   };
@@ -109,7 +113,10 @@ export function useSheetDrag({ sheet, backdrop, onDismiss }: SheetDragOptions) {
     el.style.transform = '';
     if (backdrop?.value) backdrop.value.style.opacity = '';
     // Hand the transitions back to the component's own classes.
-    settleTimer = window.setTimeout(() => setTransition('', ''), motionMs('--dur-spring-soft', 740));
+    settleTimer = window.setTimeout(() => {
+      setTransition('', '');
+      el.style.transformOrigin = '';
+    }, motionMs('--dur-spring-soft', 740));
   };
 
   onBeforeUnmount(() => {

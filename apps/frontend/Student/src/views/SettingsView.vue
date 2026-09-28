@@ -8,7 +8,7 @@
  * rows rise in one after another, and Order history slides in from the right.
  */
 
-import AppIcon from '@shared/components/AppIcon.vue';
+import AppIcon from '@/components/AppIcon.vue';
 import AnimatedNumber from '@shared/components/AnimatedNumber.vue';
 import SlidingTabs from '@shared/components/SlidingTabs.vue';
 import { vReveal } from '@shared/reveal';

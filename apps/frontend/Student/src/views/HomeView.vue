@@ -13,12 +13,13 @@
  * from a slight zoom, and the trending rows rise in as they scroll into view.
  */
 
-import AppIcon from '@shared/components/AppIcon.vue';
+import AppIcon from '@/components/AppIcon.vue';
 import { vReveal } from '@shared/reveal';
 import { computed, ref, onActivated } from 'vue';
 import { TRANSLATIONS, PRODUCTS } from '../data';
 import type { Product, Language, TabState } from '../types';
 import { useKeepScroll } from '../composables/useKeepScroll';
+import { vImgFade } from '../directives/imgFade';
 import { useToastStore } from '../stores/toast';
 
 // 定义组件 Props (Props Definition)
@@ -77,6 +78,15 @@ const greeting = computed(() => {
 
 const isOpen = computed(() => props.shopOpen !== false);
 
+// 标题逐词升起 (the headline rises word by word; Chinese has no spaces, so
+// it goes character by character). Whitespace stays plain text between them.
+const headline = computed(() => {
+  const text = t.value.homeSubtitle;
+  const parts = /\s/.test(text) ? text.split(/(\s+)/).filter(Boolean) : Array.from(text);
+  let n = 0;
+  return parts.map(part => (/^\s+$/.test(part) ? { text: part, space: true, n: -1 } : { text: part, space: false, n: n++ }));
+});
+
 const { scroller, onScroll } = useKeepScroll();
 
 const toast = useToastStore();
@@ -116,7 +126,12 @@ const open = (p: Product, event: MouseEvent) => {
       <!-- Greeting: the headline is revealed from below its own baseline -->
       <header class="mt-12 md:mt-16">
          <p class="eyebrow animate-slide-up-content" style="animation-delay: 60ms">{{ greeting }} {{ displayName }}</p>
-         <h1 class="mt-3 font-serif text-[36px] md:text-[56px] font-medium leading-[1.06] tracking-[-0.02em] text-text-main max-w-3xl text-balance animate-text-reveal" style="animation-delay: 120ms">{{ t.homeSubtitle }}</h1>
+         <h1 class="mt-3 font-serif text-[36px] md:text-[56px] font-medium leading-[1.06] tracking-[-0.02em] text-text-main max-w-3xl text-balance" :aria-label="t.homeSubtitle">
+            <template v-for="(part, i) in headline" :key="i">
+               <template v-if="part.space">{{ ' ' }}</template>
+               <span v-else class="word-mask" aria-hidden="true"><span class="word-rise" :style="{ animationDelay: `${140 + part.n * 45}ms` }">{{ part.text }}</span></span>
+            </template>
+         </h1>
       </header>
 
       <!-- Featured + Trending: stacked on phones and iPad portrait, side by side in landscape -->
@@ -132,8 +147,9 @@ const open = (p: Product, event: MouseEvent) => {
             <div class="relative aspect-[4/3] md:aspect-[16/10] rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.99]" :class="{ shake: shakingId === featuredProduct.id }" @animationend.self="shakingId = null">
                <img
                   v-if="featuredProduct.image"
+                  v-img-fade:hero
                   :src="featuredProduct.image"
-                  class="w-full h-full object-cover hero-settle transition-transform duration-spring-soft ease-out group-hover:scale-[1.03]"
+                  class="card-photo w-full h-full object-cover"
                   :class="{'grayscale': featuredProduct.inventoryCount === 0}"
                   :alt="featuredProduct.name"
                   decoding="async"
@@ -181,7 +197,7 @@ const open = (p: Product, event: MouseEvent) => {
                >
                   <span class="w-6 font-serif text-[15px] text-text-sub tabular-nums">{{ String(i + 1).padStart(2, '0') }}</span>
                   <div class="size-16 md:size-[72px] rounded-tile overflow-hidden bg-cream shrink-0 transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.96]" :class="{ shake: shakingId === p.id }" @animationend.self="shakingId = null">
-                     <img :src="p.image" class="w-full h-full object-cover" :class="{'grayscale opacity-60': p.inventoryCount === 0}" :alt="p.name" loading="lazy" decoding="async" />
+                     <img v-img-fade :src="p.image" class="card-photo w-full h-full object-cover" :class="{'grayscale opacity-60': p.inventoryCount === 0}" :alt="p.name" loading="lazy" decoding="async" />
                   </div>
                   <div class="min-w-0 flex-1">
                      <h3 class="text-[15px] md:text-base font-medium text-text-main truncate">{{ lang === 'cn' ? p.nameCN : p.name }}</h3>

@@ -12,10 +12,12 @@
  *
  * Motion: a new category slides in from the side of its tab and its cards
  * cascade in; the title rolls to the new name; the sidebar highlight and the
- * phone underline spring to the selected category.
+ * phone underline spring to the selected category. While searching, the
+ * cards that still match glide to their new places and the rest shrink away;
+ * photos fade in as they load.
  */
 
-import AppIcon from '@shared/components/AppIcon.vue';
+import AppIcon from '@/components/AppIcon.vue';
 import RollingNumber from '@shared/components/RollingNumber.vue';
 import SlidingTabs from '@shared/components/SlidingTabs.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
@@ -23,6 +25,8 @@ import { CATEGORIES, PRODUCTS, TRANSLATIONS } from '../data';
 import type { CartItem, Product, Language } from '../types';
 import { useKeepScroll } from '../composables/useKeepScroll';
 import { useToastStore } from '../stores/toast';
+import { vImgFade } from '../directives/imgFade';
+import { pinLeaving } from '@shared/list';
 
 // 定义 Props (Props Definition)
 const props = defineProps<{
@@ -343,13 +347,14 @@ const handleSuggestionClick = (p: Product) => {
                 :class="showSuggestions && suggestions.length > 0 ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-[0.97] -translate-y-1 pointer-events-none'"
              >
                 <button
-                  v-for="p in suggestions"
+                  v-for="(p, i) in suggestions"
                   :key="p.id"
                   type="button"
                   @click="handleSuggestionClick(p)"
-                  class="w-full min-h-[52px] flex items-center gap-3 p-2 rounded-tile text-left hover:bg-cream active:bg-cream"
+                  class="suggest-in w-full min-h-[52px] flex items-center gap-3 p-2 rounded-tile text-left hover:bg-cream active:bg-cream"
+                  :style="{ animationDelay: `${i * 25}ms` }"
                 >
-                   <img :src="p.image" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" alt="" decoding="async" />
+                   <img v-img-fade :src="p.image" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" alt="" decoding="async" />
                    <span class="min-w-0 flex-1">
                       <span class="block text-[14px] font-medium text-text-main truncate">{{ lang === 'cn' ? p.nameCN : p.name }}</span>
                       <span class="block text-[13px] text-text-sub tabular-nums">¥{{ Number(p.price).toFixed(2) }}</span>
@@ -362,7 +367,14 @@ const handleSuggestionClick = (p: Product) => {
        <!-- Product Grid -->
        <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-5 md:px-10 pt-1 pb-40">
           <Transition :name="`grid-${gridDir}`" mode="out-in">
-             <div :key="gridKey" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-4 md:gap-x-6 gap-y-8 md:gap-y-10" :class="firstPaint ? 'stagger-in' : 'stagger-quick'">
+             <TransitionGroup
+                :key="gridKey"
+                tag="div"
+                name="cards"
+                class="relative grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-4 md:gap-x-6 gap-y-8 md:gap-y-10"
+                :class="firstPaint ? 'stagger-in' : 'stagger-quick'"
+                @before-leave="pinLeaving"
+             >
                 <!-- Product: the photo is the card -->
                 <article
                    v-for="product in filteredProducts"
@@ -375,11 +387,12 @@ const handleSuggestionClick = (p: Product) => {
                    <div class="flex flex-col" :class="{ shake: shakingId === product.id }" @animationend.self="shakingId = null">
                    <div class="relative aspect-square rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.98]">
                       <img
+                         v-img-fade
                          :src="product.image"
                          :alt="lang === 'cn' ? product.nameCN : product.name"
                          loading="lazy"
                          decoding="async"
-                         class="w-full h-full object-cover transition-transform duration-spring-soft ease-out group-hover:scale-[1.04]"
+                         class="card-photo w-full h-full object-cover"
                          :class="{ 'grayscale opacity-60': isSoldOut(product) }"
                       />
 
@@ -403,12 +416,12 @@ const handleSuggestionClick = (p: Product) => {
                    </div>
                    </div>
                 </article>
-             </div>
+             </TransitionGroup>
           </Transition>
 
           <!-- Nothing found -->
           <div v-if="filteredProducts.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
-             <AppIcon name="search" weight="light" class="text-3xl mb-3" />
+             <AppIcon name="search" weight="light" draw class="text-[34px] mb-3" />
              <p class="text-[15px]">{{ lang === 'cn' ? '没有找到相关商品' : 'Nothing matches that' }}</p>
           </div>
        </main>

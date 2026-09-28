@@ -11,7 +11,7 @@
  * 4. 界面交互: 加载状态动画，平滑过渡效果。
  */
 
-import AppIcon from '@shared/components/AppIcon.vue';
+import AppIcon from '@/components/AppIcon.vue';
 import { ref, watch, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api';

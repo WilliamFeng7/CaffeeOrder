@@ -3,14 +3,15 @@
  * BottomSheet.vue
  *
  * 短表单面板 (edit profile, change password). A bottom sheet on phones and a
- * centred card on iPad. It rises in on the drawer curve and falls away on an
- * accelerating one (the old v-if panels vanished on close); drag the header
+ * centred card on iPad. It rises in on the drawer curve and leaves the same
+ * way, a little faster (the old v-if panels vanished on close); drag the header
  * down to close. While the on-screen keyboard is up, the sheet moves above it
  * so the field being typed into stays visible.
  */
-import { ref, toRef } from 'vue';
+import { ref, toRef, watch, onBeforeUnmount } from 'vue';
 import { useSheetDrag } from '../composables/useSheetDrag';
 import { useKeyboardInset } from '../composables/useKeyboardInset';
+import { openSheets } from '../composables/stage';
 import { motionMs } from '@shared/motion';
 
 const props = defineProps<{
@@ -19,6 +20,15 @@ const props = defineProps<{
 }>();
 
 const keyboardInset = useKeyboardInset(toRef(props, 'open'));
+
+// The app recedes behind the sheet while it is open (StudentLayout).
+watch(() => props.open, (open, was) => {
+  if (open && !was) openSheets.value++;
+  else if (!open && was) openSheets.value = Math.max(0, openSheets.value - 1);
+}, { immediate: true });
+onBeforeUnmount(() => {
+  if (props.open) openSheets.value = Math.max(0, openSheets.value - 1);
+});
 
 const emit = defineEmits<{ (e: 'close'): void }>();
 
@@ -82,8 +92,8 @@ const duration = { enter: motionMs('--dur-sheet-in', 560), leave: motionMs('--du
 .bsheet-leave-active .bsheet-backdrop,
 .bsheet-leave-active .bsheet-panel {
   transition:
-    transform var(--dur-sheet-out) var(--ease-in),
-    opacity var(--dur-sheet-out) var(--ease-in);
+    transform var(--dur-sheet-out) var(--ease-drawer),
+    opacity var(--dur-sheet-out) var(--ease-out);
 }
 
 /* Moves above the keyboard as it opens and back down as it closes. */

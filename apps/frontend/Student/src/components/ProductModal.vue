@@ -14,12 +14,13 @@
  * The parent decides how it closes (morph or `leave()`), because only it knows
  * where the photo should go; this component just says why it wants to close.
  */
-import AppIcon from '@shared/components/AppIcon.vue';
+import AppIcon from '@/components/AppIcon.vue';
 import SlidingTabs from '@shared/components/SlidingTabs.vue';
 import { ref, computed } from 'vue';
 import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Product, Language, SheetCloseReason } from '../types';
 import { useSheetDrag } from '../composables/useSheetDrag';
+import { vImgFade } from '../directives/imgFade';
 import { motionMs } from '@shared/motion';
 
 type Sugar = '0%' | '50%' | 'Regular' | '120%';
@@ -99,7 +100,7 @@ const handleAdd = () => {
        role="dialog"
        aria-modal="true"
        aria-labelledby="modal-title"
-       class="bg-surface-light w-full max-h-[92%] md:max-h-full md:max-w-[520px] rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10 transition-[transform,opacity] duration-sheet-out ease-in"
+       class="bg-surface-light w-full max-h-[92%] md:max-h-full md:max-w-[520px] rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10 transition-[transform,opacity] duration-sheet-out ease-drawer"
        :class="isClosing
          ? 'translate-y-full md:translate-y-4 md:scale-[0.97] opacity-0'
          : (hero ? 'animate-fade-in' : 'animate-slide-up-modal md:animate-scale-in')"
@@ -120,6 +121,7 @@ const handleAdd = () => {
            <div class="relative h-[280px] md:h-[340px] w-full shrink-0 overflow-hidden bg-cream touch-none" v-on="dragHandlers">
               <img
                 ref="photo"
+                v-img-fade
                 :src="product.image"
                 :alt="lang === 'cn' ? product.nameCN : product.name"
                 class="w-full h-full object-cover"
@@ -178,7 +180,7 @@ const handleAdd = () => {
                  <Transition name="roll-up">
                     <span v-if="isSuccess" key="done" class="col-start-1 row-start-1 flex items-center gap-2">
                        <!-- the check pops in just after the label rolls over -->
-                       <AppIcon name="check" class="text-lg pop-in" style="animation-delay: 120ms" />
+                       <AppIcon name="check" weight="fill" draw class="text-lg" />
                        {{ lang === 'cn' ? '已加入' : 'Added' }}
                     </span>
                     <span v-else key="add" class="col-start-1 row-start-1">{{ t.addToCart }}</span>

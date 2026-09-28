@@ -6,11 +6,12 @@
  * the right (SettingsView's push transition) and its rows rise in as they
  * scroll into view.
  */
-import AppIcon from '@shared/components/AppIcon.vue';
+import AppIcon from '@/components/AppIcon.vue';
 import { vReveal } from '@shared/reveal';
 import type { Order, Language } from '../types';
 import { computed } from 'vue';
 import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
+import { vImgFade } from '../directives/imgFade';
 
 const props = defineProps<{
   orders: Order[];
@@ -79,7 +80,7 @@ const specLine = (item: Order['items'][number]) => {
      <main class="flex-1 overflow-y-auto no-scrollbar px-5 md:px-10 pt-2 pb-32">
         <div class="max-w-2xl mx-auto">
         <div v-if="orders.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
-          <AppIcon name="history" weight="light" class="text-3xl mb-3" />
+          <AppIcon name="history" weight="light" draw class="text-[34px] mb-3" />
           <p class="text-[15px]">{{ t.noOrders }}</p>
         </div>
 
@@ -101,7 +102,7 @@ const specLine = (item: Order['items'][number]) => {
 
             <div class="mt-4 space-y-2">
                 <div v-for="(item, i) in order.items" :key="i" class="flex items-center gap-3">
-                    <img v-if="item.image" :src="item.image" alt="" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" loading="lazy" decoding="async" />
+                    <img v-if="item.image" v-img-fade :src="item.image" alt="" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" loading="lazy" decoding="async" />
                     <p class="flex-1 min-w-0 text-[14px] text-text-main truncate">
                         {{ lang === 'cn' ? (item.nameCN || item.name) : item.name }}
                         <span v-if="specLine(item)" class="text-text-sub"> · {{ specLine(item) }}</span>

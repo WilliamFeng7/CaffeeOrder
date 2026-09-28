@@ -3,10 +3,10 @@
  * StudentLayout.vue
  * Wrapper for the Student Application logic.
  */
-import AppIcon from '@shared/components/AppIcon.vue';
+import AppIcon from '@/components/AppIcon.vue';
 import AnimatedNumber from '@shared/components/AnimatedNumber.vue';
 import RollingNumber from '@shared/components/RollingNumber.vue';
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
 import MenuView from '../views/MenuView.vue';
@@ -20,8 +20,10 @@ import { formatCents, sumCents } from '../utils/money';
 import { useToastStore } from '../stores/toast';
 import { type CartItem, type Product, type Order, type Language, type TabState, type UserProfile, type SheetCloseReason } from '../types';
 import { auth } from '@shared/auth';
-import type { IconName } from '@shared/icons';
+import type { IconName } from '@/icons';
 import { canMorph, morph, onScreen } from '../composables/morph';
+import { motionMs } from '@shared/motion';
+import { openSheets } from '../composables/stage';
 
 const router = useRouter();
 
@@ -48,7 +50,7 @@ const t = computed(() => TRANSLATIONS[language.value]);
 const TABS: { id: TabState; icon: IconName }[] = [
   { id: 'home', icon: 'house' },
   { id: 'order', icon: 'coffee' },
-  { id: 'pickup', icon: 'receipt' },
+  { id: 'pickup', icon: 'bell' },
   { id: 'profile', icon: 'user' },
 ];
 const tabOrder = (id: TabState) => TABS.findIndex(tab => tab.id === id);
@@ -203,9 +205,32 @@ const handleCloseProduct = async (reason: SheetCloseReason) => {
   if (reason === 'added') bumpCart();
 };
 
+// 切换语言时整屏文字交叉淡入，而不是一帧之内全部换掉 (a crossfade with a
+// hint of blur, so the two languages never read as a double exposure).
 const handleToggleLang = () => {
-  language.value = language.value === 'en' ? 'cn' : 'en';
+  const swap = () => { language.value = language.value === 'en' ? 'cn' : 'en'; };
+  const start = (document as Document & { startViewTransition?: (cb: () => Promise<void>) => unknown }).startViewTransition;
+  if (typeof start !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    swap();
+    return;
+  }
+  const root = document.documentElement;
+  root.dataset.morph = 'lang';
+  const vt = start.call(document, async () => { swap(); await nextTick(); }) as { finished: Promise<void> };
+  void vt.finished.finally(() => { if (root.dataset.morph === 'lang') delete root.dataset.morph; });
 };
+
+// --- 背景后缩 (the app recedes behind the product sheet) -----------------------
+// Like an iOS sheet: the page behind scales back a little and rounds its
+// corners over a dark backstage, so the sheet reads as a layer on top.
+const stageReceded = computed(() => !!selectedProduct.value || openSheets.value > 0);
+const stageRounded = ref(false);
+let roundTimer: number | undefined;
+watch(stageReceded, (receded) => {
+  window.clearTimeout(roundTimer);
+  if (receded) stageRounded.value = true;
+  else roundTimer = window.setTimeout(() => { stageRounded.value = false; }, motionMs('--dur-sheet-in', 560));
+});
 
 const handleAddToCart = (options: { size: string; temp: string; sugar: string }) => {
   if (selectedProduct.value) {
@@ -290,6 +315,11 @@ watch(currentTab, (newTab) => {
   }
 });
 
+// 下单成功的一瞬 (the order went through): the pay button draws a check
+// and holds it for a beat before the sheet slides away to Pickup.
+const orderDone = ref(false);
+watch(isCheckoutOpen, (open) => { if (open) orderDone.value = false; });
+
 const handlePlaceOrder = async () => {
   // A second tap while the first request is in flight used to place (and
   // charge) the same cart twice.
@@ -297,8 +327,12 @@ const handlePlaceOrder = async () => {
   placing.value = true;
   try {
     await api.createOrder(cart.value);
+    orderDone.value = true;
+    const shownAt = performance.now();
     await fetchOrders();
     await loadProfile(); // Refresh balance
+    const hold = motionMs('--dur-enter', 560) + 180 - (performance.now() - shownAt);
+    if (hold > 0) await new Promise((resolve) => window.setTimeout(resolve, hold));
     cart.value = [];
     isCheckoutOpen.value = false;
     currentTab.value = 'pickup';
@@ -336,9 +370,14 @@ const bumpCart = () => {
 </script>
 
 <template>
-  <div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans text-text-main select-none flex flex-col z-0">
-    <!-- Toasts are rendered once, globally, by the shared <ToastContainer /> in App.vue. -->
+  <div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans text-text-main select-none z-0">
+    <!-- Toasts are rendered once, globally, by <ToastContainer /> in App.vue. -->
 
+    <!-- Dark backstage, only seen around the receded app while a sheet is up -->
+    <div v-if="stageRounded" class="absolute inset-0 bg-[#141816]" aria-hidden="true"></div>
+
+    <!-- The app itself: recedes behind the product sheet -->
+    <div class="app-stage absolute inset-0 flex flex-col bg-background-light" :class="{ 'is-receded': stageReceded, 'is-rounded': stageRounded }">
     <div class="flex-1 overflow-hidden relative w-full h-full z-0 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-[calc(72px+env(safe-area-inset-bottom))]">
       <!-- KeepAlive: switching tabs keeps each tab's scroll position, category
            and sub-view; the Transition slides the new tab in from its side.
@@ -349,7 +388,7 @@ const bumpCart = () => {
           <KeepAlive>
             <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleSelectProduct" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" />
             <MenuView v-else-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" @remove-product-instance="handleRemoveProductInstance" :lang="language" @toggle-lang="handleToggleLang" @go-checkout="isCheckoutOpen = true" />
-            <PickupView v-else-if="currentTab === 'pickup'" :orders="orders" :lang="language" />
+            <PickupView v-else-if="currentTab === 'pickup'" :orders="orders" :lang="language" :refresh="fetchOrders" />
             <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @toggle-lang="handleToggleLang" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" @sign-out="handleSignOut" />
           </KeepAlive>
         </Transition>
@@ -367,7 +406,7 @@ const bumpCart = () => {
            :class="{ 'scale-[1.03]': cartBump }"
          >
             <span ref="cartIconEl" class="relative flex items-center">
-               <AppIcon name="bag" weight="light" class="text-[24px]" />
+               <AppIcon name="bag" weight="light" draw class="text-[24px]" />
                <span class="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-primary text-[11px] font-semibold flex items-center justify-center leading-none">
                   <RollingNumber :value="cartCount" />
                </span>
@@ -401,11 +440,13 @@ const bumpCart = () => {
           :class="currentTab === tab.id ? 'text-text-main' : 'text-text-sub'"
         >
           <span class="relative">
-            <!-- Re-keyed on selection so the icon dips and pops back (~8% overshoot) -->
+            <!-- Re-keyed on selection: the line is drawn again while the icon
+                 dips and pops back (~8% overshoot) -->
             <AppIcon
               :key="currentTab === tab.id ? 'on' : 'off'"
               :name="tab.icon"
-              :weight="currentTab === tab.id ? 'regular' : 'light'"
+              :weight="currentTab === tab.id ? 'fill' : 'light'"
+              :draw="currentTab === tab.id"
               class="text-[24px]"
               :class="{ 'animate-icon-pop': currentTab === tab.id }"
             />
@@ -417,10 +458,11 @@ const bumpCart = () => {
         </button>
       </div>
     </nav>
+    </div>
 
     <Transition name="sheet">
       <div v-if="isCheckoutOpen" class="absolute inset-0 z-[100]">
-         <CheckoutView @navigate="isCheckoutOpen = false" :cart="cart" :placing="placing" @place-order="handlePlaceOrder" @update-quantity="updateCartItemQuantity" :lang="language" />
+         <CheckoutView @navigate="isCheckoutOpen = false" :cart="cart" :placing="placing" :done="orderDone" @place-order="handlePlaceOrder" @update-quantity="updateCartItemQuantity" :lang="language" />
       </div>
     </Transition>
 

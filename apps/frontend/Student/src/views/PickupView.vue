@@ -5,43 +5,142 @@
  * 取餐视图组件 (Pickup View Component).
  *
  * 主要功能 (Core Features):
- * 1. 订单分栏展示 (Tabbed Interface):
- *    - 当前订单 (Current): 展示 "active" 状态的订单 (排队 / 制作中 / 待取餐)。
- *    - 历史订单 (History): 展示 "completed" 状态的已完成订单。
+ * 1. 当前订单 / 历史订单两页 (two pages side by side).
  * 2. 状态可视化 (Visual Status): 大号取餐码，三段进度条随订单推进而生长。
- * 3. 实时更新 (Real-time Updates): 通过 props 接收最新的订单列表。
+ * 3. 实时更新 (Real-time Updates): 通过 props 接收最新的订单列表；下拉可立即刷新。
+ *
+ * Touch: the pages follow the finger sideways (rubber band past the ends),
+ * and on release a spring carries the finger's velocity to the page the
+ * flick was heading for; the segmented control's thumb tracks the pages the
+ * whole way. Pulling a list down at its top refreshes it.
  */
 
-import AppIcon from '@shared/components/AppIcon.vue';
-import SlidingTabs from '@shared/components/SlidingTabs.vue';
+import AppIcon from '@/components/AppIcon.vue';
 import { vReveal } from '@shared/reveal';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, onActivated } from 'vue';
 import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Order, Language } from '../types';
 import { useKeepScroll } from '../composables/useKeepScroll';
+import { usePullToRefresh } from '../composables/usePullToRefresh';
+import { spring, project, rubberband, VelocityTracker, type SpringHandle } from '../composables/spring';
 
 // --- Props & Events ---
 const props = defineProps<{
   orders: Order[]; // 全量订单列表数据源
   lang: Language;  // 当前语言
+  /** Fetch the orders now (pull to refresh). */
+  refresh?: () => Promise<unknown>;
 }>();
-
-// --- 状态定义 (State Definitions) ---
-
-// 当前激活的标签页 ('current' 或 'history')
-const activeTab = ref<'current' | 'history'>('current');
 
 // 计算属性: 获取翻译
 const t = computed(() => TRANSLATIONS[props.lang]);
 
-const { scroller, onScroll } = useKeepScroll();
+// --- 两页 (the two pages) ------------------------------------------------------
+// 0 = current orders, 1 = past orders. The track and the thumb are moved by
+// writing their transform directly, so a drag never re-renders the lists.
+const page = ref(0);
+const viewport = ref<HTMLElement | null>(null);
+const track = ref<HTMLElement | null>(null);
+const thumb = ref<HTMLElement | null>(null);
+let width = 0;
+let offset = 0;
+let anim: SpringHandle | null = null;
 
-const tabOptions = computed(() => [
-  { value: 'current' as const, label: t.value.currentOrders },
-  { value: 'history' as const, label: t.value.pastOrders },
-]);
+const paint = (x: number) => {
+  offset = x;
+  if (track.value) track.value.style.transform = `translate3d(${x}px, 0, 0)`;
+  const progress = width ? -x / width : page.value;
+  if (thumb.value) thumb.value.style.transform = `translate3d(${progress * 100}%, 0, 0)`;
+};
 
-// --- 计算属性 (Computed Properties) ---
+const goTo = (index: number, velocity = 0) => {
+  page.value = index;
+  anim?.stop();
+  // A flick lands with a touch of bounce; a tap settles without one.
+  anim = spring(offset, -index * width, {
+    response: 0.42,
+    dampingRatio: Math.abs(velocity) > 300 ? 0.86 : 1,
+    velocity,
+    onUpdate: paint,
+  });
+};
+
+const measure = () => {
+  if (!viewport.value) return;
+  width = viewport.value.clientWidth;
+  anim?.stop();
+  paint(-page.value * width);
+};
+
+let resizeObserver: ResizeObserver | null = null;
+onMounted(() => {
+  measure();
+  if (typeof ResizeObserver !== 'undefined' && viewport.value) {
+    resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(viewport.value);
+  }
+});
+onActivated(measure);
+onBeforeUnmount(() => {
+  anim?.stop();
+  resizeObserver?.disconnect();
+});
+
+// Sideways drag: decided after 10px, then 1:1 with the finger.
+const velocity = new VelocityTracker();
+let drag: { id: number; x: number; y: number; start: number; horizontal: boolean | null } | null = null;
+
+const onPointerDown = (e: PointerEvent) => {
+  if (e.pointerType === 'mouse' || drag) return;
+  drag = { id: e.pointerId, x: e.clientX, y: e.clientY, start: offset, horizontal: null };
+  velocity.reset();
+};
+
+const onPointerMove = (e: PointerEvent) => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const dx = e.clientX - drag.x;
+  const dy = e.clientY - drag.y;
+  if (drag.horizontal === null) {
+    if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+    drag.horizontal = Math.abs(dx) > Math.abs(dy) * 1.2;
+    if (!drag.horizontal) {
+      drag = null; // a vertical scroll: the browser has it
+      return;
+    }
+    anim?.stop();
+    drag.start = offset;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+  let x = drag.start + dx;
+  if (x > 0) x = rubberband(x, width);
+  else if (x < -width) x = -width - rubberband(-width - x, width);
+  velocity.push(x);
+  paint(x);
+};
+
+const onPointerEnd = (e: PointerEvent) => {
+  if (!drag || e.pointerId !== drag.id) return;
+  const horizontal = drag.horizontal;
+  drag = null;
+  if (!horizontal) return;
+  // Aim for where the flick is heading, not where the finger let go.
+  const v = velocity.velocity;
+  const landing = offset + project(v);
+  goTo(landing < -width / 2 ? 1 : 0, v);
+};
+
+// --- 列表 (lists) ------------------------------------------------------------
+const currentScroll = useKeepScroll();
+const historyScroll = useKeepScroll();
+const currentContent = ref<HTMLElement | null>(null);
+const historyContent = ref<HTMLElement | null>(null);
+const currentIndicator = ref<HTMLElement | null>(null);
+const historyIndicator = ref<HTMLElement | null>(null);
+const doRefresh = () => props.refresh?.() ?? Promise.resolve();
+const { refreshing: refreshingCurrent } = usePullToRefresh(currentScroll.scroller, currentContent, currentIndicator, doRefresh);
+const { refreshing: refreshingHistory } = usePullToRefresh(historyScroll.scroller, historyContent, historyIndicator, doRefresh);
+const setCurrentScroller = (el: unknown) => { currentScroll.scroller.value = el as HTMLElement | null; };
+const setHistoryScroller = (el: unknown) => { historyScroll.scroller.value = el as HTMLElement | null; };
 
 /** 当前活跃订单: 状态为 'active' (排队、制作中、待取餐等非终态) */
 const currentOrders = computed(() => props.orders.filter(o => o.status === 'active'));
@@ -75,25 +174,6 @@ const stageInfo = (order: Order): { label: string; step: number; progress: numbe
 
 const steps = computed(() => [t.value.queued, t.value.preparing, t.value.ready]);
 
-/**
- * 左右滑动切换「当前订单 / 历史订单」(Swipe between the two tabs)
- * The list is `touch-pan-y`: a vertical drag scrolls as usual (the browser
- * cancels the pointer), a clearly horizontal one switches the tab.
- */
-let swipe: { id: number; x: number; y: number } | null = null;
-const onSwipeStart = (e: PointerEvent) => {
-  if (e.pointerType === 'mouse' || swipe) return;
-  swipe = { id: e.pointerId, x: e.clientX, y: e.clientY };
-};
-const onSwipeEnd = (e: PointerEvent) => {
-  if (!swipe || e.pointerId !== swipe.id) return;
-  const dx = e.clientX - swipe.x;
-  const dy = e.clientY - swipe.y;
-  swipe = null;
-  if (e.type !== 'pointerup' || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-  activeTab.value = dx < 0 ? 'history' : 'current';
-};
-
 const itemCount = (order: Order) => {
   const n = order.items.reduce((sum, item) => sum + item.quantity, 0);
   if (props.lang === 'cn') return `${n} 件`;
@@ -111,29 +191,43 @@ const specLine = (item: Order['items'][number]) => {
 
 <template>
   <div class="flex flex-col h-full bg-background-light">
-     <!-- Title + segmented control -->
+     <!-- Title + segmented control (its thumb follows the pages) -->
      <header class="px-5 md:px-10 pt-6 md:pt-10 pb-5 shrink-0 max-w-3xl w-full mx-auto">
        <h1 class="font-serif text-[30px] md:text-[42px] font-medium leading-tight tracking-[-0.015em] text-text-main">{{ t.navPickup }}</h1>
-       <SlidingTabs
-         v-model="activeTab"
-         :options="tabOptions"
-         variant="segment"
-         size="lg"
-         stretch
-         :label="t.navPickup"
-         class="mt-5 w-full md:max-w-sm"
-       />
+       <div class="relative mt-5 grid grid-cols-2 p-1 rounded-full bg-cream w-full md:max-w-sm" role="tablist" :aria-label="t.navPickup">
+          <span ref="thumb" class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-surface-light shadow-card pointer-events-none" aria-hidden="true"></span>
+          <button
+             v-for="(label, i) in [t.currentOrders, t.pastOrders]"
+             :key="i"
+             type="button"
+             role="tab"
+             :aria-selected="page === i"
+             class="relative z-10 h-11 rounded-full text-[15px] transition-colors duration-color"
+             :class="page === i ? 'text-text-main font-medium' : 'text-text-sub'"
+             @click="goTo(i)"
+          >{{ label }}</button>
+       </div>
      </header>
 
-     <!-- Lists (swipe left/right to switch) -->
-     <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar scroll-smooth-touch pb-40 touch-pan-y" @pointerdown="onSwipeStart" @pointerup="onSwipeEnd" @pointercancel="onSwipeEnd">
-        <div class="px-5 md:px-10 pt-2 max-w-3xl mx-auto">
-        <Transition :name="activeTab === 'history' ? 'grid-next' : 'grid-prev'" mode="out-in">
+     <!-- Two pages side by side; swipe sideways between them -->
+     <main
+        ref="viewport"
+        class="relative flex-1 overflow-hidden touch-pan-y"
+        @pointerdown="onPointerDown"
+        @pointermove="onPointerMove"
+        @pointerup="onPointerEnd"
+        @pointercancel="onPointerEnd"
+     >
+        <div ref="track" class="flex h-full w-[200%] will-change-transform">
 
         <!-- Current Orders -->
-        <div v-if="activeTab === 'current'" key="current">
+        <section :ref="setCurrentScroller" @scroll.passive="currentScroll.onScroll" class="relative w-1/2 h-full overflow-y-auto overflow-x-hidden no-scrollbar overscroll-contain" :aria-hidden="page !== 0">
+           <div ref="currentIndicator" class="ptr absolute left-1/2 top-0 z-10 size-7 text-text-sub" :class="{ 'is-refreshing': refreshingCurrent }" style="opacity: 0" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="size-full" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="8.5" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" /></svg>
+           </div>
+           <div ref="currentContent" class="px-5 md:px-10 pt-2 pb-40 max-w-3xl mx-auto">
            <div v-if="currentOrders.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
-              <AppIcon name="coffee" weight="light" class="text-3xl mb-3" />
+              <AppIcon name="coffee" weight="light" draw class="text-[34px] mb-3" />
               <p class="text-[15px]">{{ t.noOrders }}</p>
            </div>
 
@@ -142,7 +236,7 @@ const specLine = (item: Order['items'][number]) => {
                  v-for="(order, idx) in currentOrders"
                  :key="order.id"
                  class="card p-6 md:p-7 animate-slide-up-content transition-colors duration-fade"
-                 :class="order.stage === 'ready' ? '!border-primary/40' : ''"
+                 :class="order.stage === 'ready' ? '!border-primary/40 ready-lift' : ''"
                  :style="{ animationDelay: `${Math.min(idx, 6) * 60}ms` }"
               >
                  <div class="flex items-start justify-between gap-3">
@@ -208,12 +302,17 @@ const specLine = (item: Order['items'][number]) => {
                  </div>
               </article>
            </TransitionGroup>
-        </div>
+           </div>
+        </section>
 
         <!-- Past Orders: a hairline list that reveals as it scrolls -->
-        <div v-else key="history">
+        <section :ref="setHistoryScroller" @scroll.passive="historyScroll.onScroll" class="relative w-1/2 h-full overflow-y-auto overflow-x-hidden no-scrollbar overscroll-contain" :aria-hidden="page !== 1">
+           <div ref="historyIndicator" class="ptr absolute left-1/2 top-0 z-10 size-7 text-text-sub" :class="{ 'is-refreshing': refreshingHistory }" style="opacity: 0" aria-hidden="true">
+              <svg viewBox="0 0 24 24" class="size-full" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="8.5" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" /></svg>
+           </div>
+           <div ref="historyContent" class="px-5 md:px-10 pt-2 pb-40 max-w-3xl mx-auto">
            <div v-if="pastOrders.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
-              <AppIcon name="receipt" weight="light" class="text-3xl mb-3" />
+              <AppIcon name="receipt" weight="light" draw class="text-[34px] mb-3" />
               <p class="text-[15px]">{{ t.noOrders }}</p>
            </div>
 
@@ -242,9 +341,26 @@ const specLine = (item: Order['items'][number]) => {
                  </p>
               </li>
            </ul>
-        </div>
-        </Transition>
+           </div>
+        </section>
         </div>
      </main>
   </div>
 </template>
+
+<style scoped>
+/* Pull-to-refresh ring: closes as you pull, then turns while it loads. */
+.ptr.is-refreshing svg {
+  animation: ptrSpin 0.9s linear infinite;
+}
+
+.ptr.is-refreshing circle {
+  stroke-dashoffset: 0.72 !important;
+}
+
+@keyframes ptrSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+</style>

@@ -14,7 +14,7 @@
  * down to zero shrinks away while the rows below glide up into its place.
  */
 
-import AppIcon from '@shared/components/AppIcon.vue';
+import AppIcon from '@/components/AppIcon.vue';
 import AnimatedNumber from '@shared/components/AnimatedNumber.vue';
 import RollingNumber from '@shared/components/RollingNumber.vue';
 import { computed, ref } from 'vue';
@@ -22,12 +22,14 @@ import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import { formatCents, toCents, sumCents } from '../utils/money';
 import type { CartItem, ViewState, Language } from '../types';
 import { useSheetDrag } from '../composables/useSheetDrag';
+import { vImgFade } from '../directives/imgFade';
 
 // --- Props & Events ---
 const props = defineProps<{
   cart: CartItem[]; // 购物车数据源
   lang: Language;   // 当前语言
   placing?: boolean; // 下单请求进行中 (按钮禁用，防止重复扣款)
+  done?: boolean;    // 已下单: 按钮画出对勾，稍停再收起
 }>();
 
 const emit = defineEmits<{
@@ -106,7 +108,7 @@ const { handlers: dragHandlers } = useSheetDrag({
                class="flex gap-4 py-5 border-b border-line bg-background-light animate-slide-up-content"
                :style="{ animationDelay: `${Math.min(idx, 6) * 45}ms` }"
             >
-               <img :src="item.image" :alt="item.name" class="size-[72px] md:size-20 rounded-tile object-cover bg-cream shrink-0" decoding="async" />
+               <img v-img-fade :src="item.image" :alt="item.name" class="size-[72px] md:size-20 rounded-tile object-cover bg-cream shrink-0" decoding="async" />
 
                <div class="flex-1 min-w-0 flex flex-col">
                   <div class="flex items-start justify-between gap-3">
@@ -144,7 +146,7 @@ const { handlers: dragHandlers } = useSheetDrag({
          </TransitionGroup>
 
          <div v-if="cart.length === 0" class="py-16 flex flex-col items-center text-text-sub animate-fade-in">
-            <AppIcon name="bag" weight="light" class="text-3xl mb-3" />
+            <AppIcon name="bag" weight="light" draw class="text-[34px] mb-3" />
             <p class="text-[15px]">{{ t.noOrders }}</p>
          </div>
       </section>
@@ -167,10 +169,14 @@ const { handlers: dragHandlers } = useSheetDrag({
             <button
                type="button"
                @click="emit('place-order')"
-               :disabled="cart.length === 0 || placing"
+               :disabled="cart.length === 0 || (placing && !done)"
                class="hidden md:flex btn btn-primary btn-lg w-full mt-1"
             >
-               <template v-if="placing">
+               <template v-if="done">
+                  <AppIcon name="check" weight="fill" draw class="text-lg" />
+                  {{ lang === 'cn' ? '已下单' : 'Order placed' }}
+               </template>
+               <template v-else-if="placing">
                   <span class="size-4 border-[1.5px] border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
                   {{ t.placing }}
                </template>
@@ -192,10 +198,14 @@ const { handlers: dragHandlers } = useSheetDrag({
        <button
            type="button"
            @click="emit('place-order')"
-           :disabled="cart.length === 0 || placing"
+           :disabled="cart.length === 0 || (placing && !done)"
            class="btn btn-primary btn-lg w-full"
         >
-           <template v-if="placing">
+           <template v-if="done">
+              <AppIcon name="check" weight="fill" draw class="text-lg" />
+              {{ lang === 'cn' ? '已下单' : 'Order placed' }}
+           </template>
+           <template v-else-if="placing">
               <span class="size-4 border-[1.5px] border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
               {{ t.placing }}
            </template>

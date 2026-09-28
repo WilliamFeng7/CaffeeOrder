@@ -54,6 +54,132 @@ textarea {
     -webkit-touch-callout: default;
 }
 
+/* --- Exits (Student) -------------------------------------------------------- */
+/* The shared list / drill-in / page swaps leave on the same strong ease-out
+   they arrive with here (overrides packages/shared/styles/motion.css for the
+   Student app only). */
+.list-leave-active {
+    transition: transform var(--dur-page-out) var(--ease-out), opacity var(--dur-page-out) var(--ease-out);
+}
+
+.push-leave-active {
+    transition: opacity var(--dur-page-out) var(--ease-out), transform var(--dur-sheet-out) var(--ease-drawer);
+}
+
+.page-leave-active {
+    transition: opacity var(--dur-page-out) var(--ease-out);
+}
+
+/* --- The app behind a sheet ------------------------------------------------ */
+/* Opening the product sheet pushes the app back (scale + rounded corners over
+   a dark backstage), like an iOS sheet; it comes forward again on close. */
+.app-stage {
+    transform-origin: 50% 45%;
+    transition: transform var(--dur-sheet-out) var(--ease-out);
+}
+
+.app-stage.is-rounded {
+    border-radius: 22px;
+    overflow: hidden;
+}
+
+.app-stage.is-receded {
+    transform: scale(0.955);
+    transition: transform var(--dur-sheet-in) var(--ease-drawer);
+}
+
+/* --- Images ----------------------------------------------------------------- */
+/* Photos fade in (and settle from a slight zoom) when they have decoded,
+   instead of popping in (v-img-fade). */
+.img-fade {
+    transition: opacity var(--dur-fade) var(--ease-out), transform var(--dur-enter) var(--ease-out);
+}
+
+.img-fade.img-loading {
+    opacity: 0;
+    transform: scale(1.03);
+}
+
+/* --- Product cards ------------------------------------------------------------ */
+/* Pressing a card pushes it in while its photo leans forward a touch - a
+   small counter-motion that reads as depth under the finger. */
+.card-photo {
+    transition: transform var(--dur-release) var(--ease-out), opacity var(--dur-fade) var(--ease-out);
+}
+
+.group:active .card-photo {
+    transform: scale(1.045);
+    transition-duration: var(--dur-press), var(--dur-fade);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .group:hover .card-photo {
+        transform: scale(1.03);
+    }
+}
+
+/* Search results: the cards that stay glide to their new places, the ones
+   filtered out shrink away (pinned in place by pinLeaving). */
+.cards-move {
+    transition: transform var(--dur-scale-in) var(--ease-in-out);
+}
+
+.cards-leave-active {
+    transition: opacity var(--dur-page-out) var(--ease-out), transform var(--dur-page-out) var(--ease-out);
+    position: absolute;
+    pointer-events: none;
+}
+
+.cards-leave-to {
+    opacity: 0;
+    transform: scale(0.94);
+}
+
+/* Suggestions cascade in under the search field. */
+.suggest-in {
+    animation: suggestIn var(--dur-popover) var(--ease-out) backwards;
+}
+
+@keyframes suggestIn {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 6px, 0);
+    }
+}
+
+/* --- Pickup ---------------------------------------------------------------- */
+/* An order that turns ready lifts once, gently, as if handed over the counter. */
+.ready-lift {
+    animation: readyLift 900ms var(--ease-out) both;
+}
+
+@keyframes readyLift {
+    0% { transform: none; }
+    32% { transform: translate3d(0, -4px, 0) scale(1.012); }
+    100% { transform: none; }
+}
+
+/* --- Headlines ------------------------------------------------------------- */
+/* Word by word: each word rises out of its own line box. */
+.word-mask {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: top;
+    padding-bottom: 0.08em;
+    margin-bottom: -0.08em;
+}
+
+.word-rise {
+    display: inline-block;
+    animation: wordRise var(--dur-enter) var(--ease-out) backwards;
+}
+
+@keyframes wordRise {
+    from {
+        transform: translate3d(0, 105%, 0);
+    }
+}
+
 /* --- Tabs ------------------------------------------------------------------ */
 /* Switching tabs slides the new tab in from the side it lives on (Home ->
    Order moves left, Order -> Home moves right) while the old one drifts a
@@ -65,7 +191,7 @@ textarea {
 
 .tab-fwd-leave-active,
 .tab-back-leave-active {
-    transition: opacity var(--dur-page-out) var(--ease-in), transform var(--dur-page-out) var(--ease-in);
+    transition: opacity var(--dur-page-out) var(--ease-out), transform var(--dur-page-out) var(--ease-out);
     position: absolute;
     inset: 0;
     pointer-events: none;
@@ -87,7 +213,7 @@ textarea {
 
 .grid-next-leave-active,
 .grid-prev-leave-active {
-    transition: opacity var(--dur-page-out) var(--ease-in), transform var(--dur-page-out) var(--ease-in);
+    transition: opacity var(--dur-page-out) var(--ease-out), transform var(--dur-page-out) var(--ease-out);
 }
 
 .grid-next-enter-from { opacity: 0; transform: translate3d(24px, 0, 0); }
@@ -118,13 +244,13 @@ textarea {
 
 /* --- Sheets ------------------------------------------------------------------ */
 /* Full-screen sheets (checkout) slide in from the bottom on the drawer curve
-   and fall away the same way, accelerating, a little faster. */
+   and leave the same way, a little faster. */
 .sheet-enter-active {
     transition: transform var(--dur-sheet-in) var(--ease-drawer);
 }
 
 .sheet-leave-active {
-    transition: transform var(--dur-sheet-out) var(--ease-in);
+    transition: transform var(--dur-sheet-out) var(--ease-drawer);
     pointer-events: none;
 }
 
@@ -140,7 +266,7 @@ textarea {
 }
 
 .cartbar-leave-active {
-    transition: transform var(--dur-page-out) var(--ease-in), opacity var(--dur-page-out) var(--ease-in);
+    transition: transform var(--dur-sheet-out) var(--ease-drawer), opacity var(--dur-page-out) var(--ease-out);
 }
 
 .cartbar-enter-from,
@@ -155,6 +281,25 @@ textarea {
 ::view-transition-new(root) {
     animation: none;
     mix-blend-mode: normal;
+}
+
+/* Language switch: the old words dissolve into the new ones. */
+html[data-morph="lang"]::view-transition-old(root) {
+    animation: lang-out var(--dur-fade) var(--ease-out) both;
+    mix-blend-mode: plus-lighter;
+}
+
+html[data-morph="lang"]::view-transition-new(root) {
+    animation: lang-in var(--dur-fade) var(--ease-out) both;
+    mix-blend-mode: plus-lighter;
+}
+
+@keyframes lang-out {
+    to { opacity: 0; filter: blur(2px); }
+}
+
+@keyframes lang-in {
+    from { opacity: 0; filter: blur(2px); }
 }
 
 /* Closing: the page without the sheet fades in over the page with it, so the
@@ -240,8 +385,17 @@ html[data-morph="cart"]::view-transition-new(product-hero) {
 
 @media (prefers-reduced-motion: reduce) {
     .stagger-quick > *,
-    .hero-settle {
+    .hero-settle,
+    .word-rise,
+    .suggest-in,
+    .ready-lift {
         animation: fadeOnly 200ms linear backwards !important;
+    }
+
+    .app-stage.is-receded,
+    .group:active .card-photo,
+    .img-fade.img-loading {
+        transform: none;
     }
 
     ::view-transition-group(*),

@@ -228,12 +228,12 @@ export const OPTION_TRANSLATIONS = {
  * 定义了菜单的类别结构。
  */
 export const CATEGORIES: Category[] = [
-  { id: 'top', name: 'Top Picks', nameCN: '店长推荐', icon: 'star' },
-  { id: 'seasonal', name: 'Seasonal', nameCN: '当季新品', icon: 'sparkle' },
-  { id: 'coffee', name: 'Coffee', nameCN: '现磨咖啡', icon: 'coffee' },
-  { id: 'fruit', name: 'Fruit Tea', nameCN: '鲜果茶', icon: 'orange' },
-  { id: 'bakery', name: 'Bakery', nameCN: '烘焙轻食', icon: 'cookie' },
-  { id: 'all', name: 'All', nameCN: '全部', icon: 'grid' },
+  { id: 'top', name: 'Top Picks', nameCN: '店长推荐' },
+  { id: 'seasonal', name: 'Seasonal', nameCN: '当季新品' },
+  { id: 'coffee', name: 'Coffee', nameCN: '现磨咖啡' },
+  { id: 'fruit', name: 'Fruit Tea', nameCN: '鲜果茶' },
+  { id: 'bakery', name: 'Bakery', nameCN: '烘焙轻食' },
+  { id: 'all', name: 'All', nameCN: '全部' },
 ];
 
 /**
