@@ -95,7 +95,9 @@ const { handlers: dragHandlers } = useSheetDrag({
       </span>
     </header>
 
-    <main class="flex-1 overflow-y-auto no-scrollbar px-5 md:px-10 pt-6 pb-40 md:pb-10 flex flex-col md:flex-row gap-8 md:gap-12">
+    <main class="flex-1 overflow-y-auto no-scrollbar px-5 md:px-10 pt-6 md:pt-8 pb-40 md:pb-10">
+      <!-- iPad portrait: one centred column (items, then the summary); side by side in landscape -->
+      <div class="mx-auto w-full max-w-2xl lg:max-w-5xl flex flex-col lg:flex-row gap-8 lg:gap-12">
 
       <!-- Items -->
       <section class="flex-1 min-w-0">
@@ -108,7 +110,7 @@ const { handlers: dragHandlers } = useSheetDrag({
                class="flex gap-4 py-5 border-b border-line bg-background-light animate-slide-up-content"
                :style="{ animationDelay: `${Math.min(idx, 6) * 45}ms` }"
             >
-               <img v-img-fade :src="item.image" :alt="item.name" class="size-[72px] md:size-20 rounded-tile object-cover bg-cream shrink-0" decoding="async" />
+               <img v-img-fade :src="item.image" :alt="item.name" class="size-[72px] md:size-24 rounded-tile object-cover bg-cream shrink-0" decoding="async" />
 
                <div class="flex-1 min-w-0 flex flex-col">
                   <div class="flex items-start justify-between gap-3">
@@ -152,8 +154,8 @@ const { handlers: dragHandlers } = useSheetDrag({
       </section>
 
       <!-- Summary -->
-      <aside class="md:w-80 lg:w-[360px] shrink-0 animate-slide-up-content" style="animation-delay: 120ms">
-         <div class="md:sticky md:top-0 card p-6 flex flex-col gap-4">
+      <aside class="lg:w-[360px] shrink-0 animate-slide-up-content" style="animation-delay: 120ms">
+         <div class="lg:sticky lg:top-0 card p-6 md:p-7 flex flex-col gap-4">
             <p class="eyebrow">{{ t.pay }}</p>
             <div class="flex justify-between text-[15px] text-text-sub">
                <span>{{ t.subtotal }}</span>
@@ -191,6 +193,7 @@ const { handlers: dragHandlers } = useSheetDrag({
             </p>
          </div>
       </aside>
+      </div>
     </main>
 
     <!-- Pay (phone): pinned to the bottom -->

@@ -58,10 +58,10 @@ const featuredProduct = computed(() => PRODUCTS[1] || PRODUCTS[0] || {
 
 /**
  * 获取热门趋势商品 (Trending Products)
- * 取商品列表的下标 2, 3, 4 (即第 3 到第 5 个商品) 作为热门推荐展示。
- * 如果商品不足，则回退取前 3 个。
+ * 取商品列表的下标 2-5 (第 3 到第 6 个商品) 作为热门推荐；第 4 个只在 iPad 横屏显示，
+ * 让右栏和左边的主推一样高。商品不足时回退取前几个。
  */
-const trending = computed(() => PRODUCTS.length > 2 ? PRODUCTS.slice(2, 5) : PRODUCTS.slice(0, 3));
+const trending = computed(() => PRODUCTS.length > 2 ? PRODUCTS.slice(2, 6) : PRODUCTS.slice(0, 4));
 
 // 计算显示的用户名，如果未登录或未传值，默认显示 'Otiaer'
 const displayName = computed(() => props.userName ? props.userName : 'Otiaer');
@@ -124,7 +124,7 @@ const open = (p: Product, event: MouseEvent) => {
       </div>
 
       <!-- Greeting: the headline is revealed from below its own baseline -->
-      <header class="mt-12 md:mt-16">
+      <header class="mt-12 md:mt-14 lg:mt-12">
          <p class="eyebrow animate-slide-up-content" style="animation-delay: 60ms">{{ greeting }} {{ displayName }}</p>
          <h1 class="mt-3 font-serif text-[36px] md:text-[56px] font-medium leading-[1.06] tracking-[-0.02em] text-text-main max-w-3xl text-balance" :aria-label="t.homeSubtitle">
             <template v-for="(part, i) in headline" :key="i">
@@ -135,7 +135,7 @@ const open = (p: Product, event: MouseEvent) => {
       </header>
 
       <!-- Featured + Trending: stacked on phones and iPad portrait, side by side in landscape -->
-      <div class="mt-10 md:mt-14 grid gap-12 lg:grid-cols-5 lg:gap-14 lg:items-start">
+      <div class="mt-10 md:mt-12 lg:mt-10 grid gap-12 lg:grid-cols-5 lg:gap-14 lg:items-start">
 
          <!-- Featured: the photo, then its caption -->
          <article
@@ -144,7 +144,7 @@ const open = (p: Product, event: MouseEvent) => {
             data-testid="featured-card"
             @click="open(featuredProduct, $event)"
          >
-            <div class="relative aspect-[4/3] md:aspect-[16/10] rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.99]" :class="{ shake: shakingId === featuredProduct.id }" @animationend.self="shakingId = null">
+            <div class="relative aspect-[4/3] md:aspect-[16/9] lg:aspect-[16/10] rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.99]" :class="{ shake: shakingId === featuredProduct.id }" @animationend.self="shakingId = null">
                <img
                   v-if="featuredProduct.image"
                   v-img-fade:hero
@@ -159,17 +159,18 @@ const open = (p: Product, event: MouseEvent) => {
                </span>
             </div>
 
-            <div class="mt-5 flex items-end justify-between gap-6">
+            <div class="mt-5 flex flex-col md:flex-row md:items-end md:justify-between gap-4 md:gap-6">
                <div class="min-w-0">
                   <p class="eyebrow !text-secondary-content">{{ t.bestSeller }}</p>
-                  <h2 class="mt-2 font-serif text-[26px] md:text-[32px] font-medium leading-tight text-text-main">{{ lang === 'cn' ? featuredProduct.nameCN : featuredProduct.name }}</h2>
+                  <h2 class="mt-2 font-serif text-[28px] md:text-[34px] font-medium leading-tight text-text-main">{{ lang === 'cn' ? featuredProduct.nameCN : featuredProduct.name }}</h2>
                   <p class="mt-1.5 text-[15px] text-text-sub leading-relaxed line-clamp-2 max-w-md">{{ lang === 'cn' ? featuredProduct.descriptionCN : featuredProduct.description }}</p>
                </div>
-               <div v-if="featuredProduct.inventoryCount !== 0" class="flex flex-col items-end gap-2 shrink-0">
-                  <span class="font-serif text-[22px] font-medium text-text-main tabular-nums">¥{{ Number(featuredProduct.price).toFixed(2) }}</span>
-                  <span class="link text-[14px] text-primary">
-                     {{ t.addToOrder }}
-                     <AppIcon name="arrow-right" class="text-sm nudge" />
+               <!-- The whole card opens the product; this is its visible handle -->
+               <div v-if="featuredProduct.inventoryCount !== 0" class="flex items-center justify-between md:justify-end gap-4 shrink-0">
+                  <span class="font-serif text-[24px] font-medium text-text-main tabular-nums">¥{{ Number(featuredProduct.price).toFixed(2) }}</span>
+                  <span class="btn btn-primary h-11 px-5 gap-1.5" aria-hidden="true">
+                     <AppIcon name="plus" class="text-[17px]" />
+                     {{ lang === 'cn' ? '加入' : 'Add' }}
                   </span>
                </div>
             </div>
@@ -192,15 +193,15 @@ const open = (p: Product, event: MouseEvent) => {
                   v-reveal="160 + i * 70"
                   @click="open(p, $event)"
                   data-testid="product-card"
-                  class="group press-row -mx-3 px-3 rounded-tile py-4 flex items-center gap-4 cursor-pointer"
-                  :class="{ 'text-text-sub': p.inventoryCount === 0 }"
+                  class="group press-row -mx-3 px-3 rounded-tile py-4 flex items-center gap-4 md:gap-5 cursor-pointer"
+                  :class="{ 'text-text-sub': p.inventoryCount === 0, 'max-lg:hidden': i === 3 }"
                >
                   <span class="w-6 font-serif text-[15px] text-text-sub tabular-nums">{{ String(i + 1).padStart(2, '0') }}</span>
-                  <div class="size-16 md:size-[72px] rounded-tile overflow-hidden bg-cream shrink-0 transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.96]" :class="{ shake: shakingId === p.id }" @animationend.self="shakingId = null">
+                  <div class="size-16 md:size-20 rounded-tile overflow-hidden bg-cream shrink-0 transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.96]" :class="{ shake: shakingId === p.id }" @animationend.self="shakingId = null">
                      <img v-img-fade :src="p.image" class="card-photo w-full h-full object-cover" :class="{'grayscale opacity-60': p.inventoryCount === 0}" :alt="p.name" loading="lazy" decoding="async" />
                   </div>
                   <div class="min-w-0 flex-1">
-                     <h3 class="text-[15px] md:text-base font-medium text-text-main truncate">{{ lang === 'cn' ? p.nameCN : p.name }}</h3>
+                     <h3 class="text-[15px] md:text-[17px] font-medium text-text-main truncate">{{ lang === 'cn' ? p.nameCN : p.name }}</h3>
                      <p class="mt-1 text-[14px] text-text-sub tabular-nums">
                         <template v-if="p.inventoryCount === 0">{{ lang === 'cn' ? '已售罄' : 'Sold out' }}</template>
                         <template v-else>¥{{ Number(p.price).toFixed(2) }}</template>

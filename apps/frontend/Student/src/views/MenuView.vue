@@ -371,7 +371,7 @@ const handleSuggestionClick = (p: Product) => {
                 :key="gridKey"
                 tag="div"
                 name="cards"
-                class="relative grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-x-4 md:gap-x-6 gap-y-8 md:gap-y-10"
+                class="relative grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 md:gap-x-6 gap-y-8 md:gap-y-10"
                 :class="firstPaint ? 'stagger-in' : 'stagger-quick'"
                 @before-leave="pinLeaving"
              >

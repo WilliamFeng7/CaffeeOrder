@@ -3,6 +3,14 @@ import type { Product, UserProfile, CartItem } from '../types';
 
 // API 基础路径已经在 shared api-client 中配置好了
 
+// The bundled menu photos under /static/menu/ were replaced in place (same
+// file names); the version tag makes browsers that cached the old ones fetch
+// the new ones. Bump it whenever those files change. Uploaded images have
+// their own unique names and are left alone.
+const MENU_PHOTOS_VERSION = '2';
+const photoUrl = (path?: string | null) =>
+  path && path.startsWith('/static/menu/') ? `${path}?v=${MENU_PHOTOS_VERSION}` : (path ?? '');
+
 export const api = {
     /**
      * 用户登录 (User Login)
@@ -35,7 +43,7 @@ export const api = {
                 descriptionCN: item.description || `新鲜制作的 ${item.name}`,
                 price: item.price / 100,
                 category: item.category.toLowerCase(),
-                image: item.image_path,
+                image: photoUrl(item.image_path),
                 tags: item.is_recommend ? ['Best Seller'] : [],
                 isPopular: item.is_recommend || false,
                 inventoryCount: item.inventory_count,
@@ -152,7 +160,7 @@ export const api = {
                             name: backendItem.item_name,
                             nameCN: backendItem.item_name,
                             price: backendItem.price_snap / 100,
-                            image: backendItem.image_url, // Added mapping for image
+                            image: photoUrl(backendItem.image_url),
                             quantity,
                             size: backendItem.spec.size,
                             temperature: backendItem.spec.temp,

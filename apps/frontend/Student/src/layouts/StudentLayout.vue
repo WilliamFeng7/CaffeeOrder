@@ -454,7 +454,7 @@ const bumpCart = () => {
               <RollingNumber :value="activeOrderCount" />
             </span>
           </span>
-          <span class="text-[11px] tracking-wide" :class="currentTab === tab.id ? 'font-semibold' : 'font-medium'">{{ tabLabel(tab.id) }}</span>
+          <span class="text-[11px] md:text-[12px] tracking-wide" :class="currentTab === tab.id ? 'font-semibold' : 'font-medium'">{{ tabLabel(tab.id) }}</span>
         </button>
       </div>
     </nav>
