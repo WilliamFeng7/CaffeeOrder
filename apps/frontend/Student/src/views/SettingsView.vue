@@ -23,6 +23,7 @@ import BottomSheet from '../components/BottomSheet.vue';
 import PasswordModal from '../components/PasswordModal.vue';
 import { useKeepScroll } from '../composables/useKeepScroll';
 import { auth } from '@shared/auth';
+import { demoMode } from '../demo';
 
 // --- Props & Emits 定义 ---
 
@@ -181,7 +182,7 @@ const handleLogout = () => {
                 <SlidingTabs :model-value="lang" @update:model-value="setLang" :options="langOptions" variant="segment" size="lg" :label="t.language" />
              </div>
 
-             <button v-reveal="220" type="button" @click="showPasswordModal = true" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4 text-left">
+             <button v-if="!demoMode" v-reveal="220" type="button" @click="showPasswordModal = true" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4 text-left">
                 <span class="flex-1 min-w-0">
                    <span class="block text-[16px] text-text-main">{{ lang === 'cn' ? '修改密码' : 'Change Password' }}</span>
                    <span class="block mt-0.5 text-[13px] text-text-sub">{{ lang === 'cn' ? '更新您的账户密码' : 'Update your account password' }}</span>
@@ -189,7 +190,7 @@ const handleLogout = () => {
                 <AppIcon name="caret-right" weight="light" class="text-lg text-text-sub nudge" />
              </button>
 
-             <a v-reveal="270" :href="adminUrl" target="_blank" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4">
+             <a v-if="!demoMode" v-reveal="270" :href="adminUrl" target="_blank" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4">
                 <span class="flex-1 min-w-0">
                    <span class="block text-[16px] text-text-main">{{ lang === 'cn' ? '管理后台' : 'Admin System' }}</span>
                    <span class="block mt-0.5 text-[13px] text-text-sub">{{ lang === 'cn' ? '进入系统管理界面' : 'Access system administration' }}</span>
@@ -198,7 +199,7 @@ const handleLogout = () => {
              </a>
          </div>
 
-         <button type="button" @click="handleLogout" class="mt-8 btn btn-danger-ghost w-full">
+         <button v-if="!demoMode" type="button" @click="handleLogout" class="mt-8 btn btn-danger-ghost w-full">
             {{ t.signOut }}
          </button>
 

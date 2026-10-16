@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { auth } from '@shared/auth';
+import { demoMode, prepareStudentSession } from '../demo';
 
 // Lazy-loaded route components for better initial load performance
 const StudentLayout = () => import('../layouts/StudentLayout.vue');
@@ -22,7 +23,12 @@ const router = createRouter({
     ]
 });
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
+    await prepareStudentSession();
+    if (demoMode.value && to.path === '/login') {
+        next('/');
+        return;
+    }
     // A token alone is not authorization for this app: the guard must also
     // confirm the session belongs to a student, otherwise an admin/barista
     // token stored by any of the three apps would pass here.

@@ -8,10 +8,9 @@
  * down to close. While the on-screen keyboard is up, the sheet moves above it
  * so the field being typed into stays visible.
  */
-import { ref, toRef, watch, onBeforeUnmount } from 'vue';
+import { ref, toRef } from 'vue';
 import { useSheetDrag } from '../composables/useSheetDrag';
 import { useKeyboardInset } from '../composables/useKeyboardInset';
-import { openSheets } from '../composables/stage';
 import { motionMs } from '@shared/motion';
 
 const props = defineProps<{
@@ -20,15 +19,6 @@ const props = defineProps<{
 }>();
 
 const keyboardInset = useKeyboardInset(toRef(props, 'open'));
-
-// The app recedes behind the sheet while it is open (StudentLayout).
-watch(() => props.open, (open, was) => {
-  if (open && !was) openSheets.value++;
-  else if (!open && was) openSheets.value = Math.max(0, openSheets.value - 1);
-}, { immediate: true });
-onBeforeUnmount(() => {
-  if (props.open) openSheets.value = Math.max(0, openSheets.value - 1);
-});
 
 const emit = defineEmits<{ (e: 'close'): void }>();
 

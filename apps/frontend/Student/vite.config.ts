@@ -12,11 +12,14 @@
 
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const studentRequire = createRequire(resolve(__dirname, 'package.json'));
+const piniaEntry = resolve(dirname(studentRequire.resolve('pinia/package.json')), 'dist/pinia.mjs');
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -69,9 +72,13 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
+        // Shared components otherwise resolve the hoisted Pinia 2 while this
+        // app installs Pinia 3, so their stores cannot see the app's provider.
+        'pinia': piniaEntry,
         '@': resolve(__dirname, './src'),
         '@shared': resolve(__dirname, '../../../packages/shared/src'),
       },
+      dedupe: ['vue'],
     },
     optimizeDeps: {
       include: ['vue', 'vue-router', 'pinia', 'axios'],

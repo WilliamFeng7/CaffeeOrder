@@ -70,24 +70,6 @@ textarea {
     transition: opacity var(--dur-page-out) var(--ease-out);
 }
 
-/* --- The app behind a sheet ------------------------------------------------ */
-/* Opening the product sheet pushes the app back (scale + rounded corners over
-   a dark backstage), like an iOS sheet; it comes forward again on close. */
-.app-stage {
-    transform-origin: 50% 45%;
-    transition: transform var(--dur-sheet-out) var(--ease-out);
-}
-
-.app-stage.is-rounded {
-    border-radius: 22px;
-    overflow: hidden;
-}
-
-.app-stage.is-receded {
-    transform: scale(0.955);
-    transition: transform var(--dur-sheet-in) var(--ease-drawer);
-}
-
 /* --- Images ----------------------------------------------------------------- */
 /* Photos fade in (and settle from a slight zoom) when they have decoded,
    instead of popping in (v-img-fade). */
@@ -392,7 +374,6 @@ html[data-morph="cart"]::view-transition-new(product-hero) {
         animation: fadeOnly 200ms linear backwards !important;
     }
 
-    .app-stage.is-receded,
     .group:active .card-photo,
     .img-fade.img-loading {
         transform: none;

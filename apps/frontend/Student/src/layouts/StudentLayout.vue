@@ -23,12 +23,11 @@ import { auth } from '@shared/auth';
 import type { IconName } from '@/icons';
 import { canMorph, morph, onScreen } from '../composables/morph';
 import { motionMs } from '@shared/motion';
-import { openSheets } from '../composables/stage';
 
 const router = useRouter();
 
 // --- State ---
-const currentTab = ref<TabState>('home');
+const currentTab = ref<TabState>('order');
 const isCheckoutOpen = ref(false);
 const cart = ref<CartItem[]>([]);
 const selectedProduct = ref<Product | null>(null);
@@ -150,7 +149,7 @@ const handleSignOut = () => {
   sessionStorage.removeItem('otia_cafe_history');
   sessionStorage.removeItem('otia_cafe_profile');
 
-  currentTab.value = 'home';
+  currentTab.value = 'order';
   addToast('Signed out successfully');
   router.push('/login');
 };
@@ -219,18 +218,6 @@ const handleToggleLang = () => {
   const vt = start.call(document, async () => { swap(); await nextTick(); }) as { finished: Promise<void> };
   void vt.finished.finally(() => { if (root.dataset.morph === 'lang') delete root.dataset.morph; });
 };
-
-// --- 背景后缩 (the app recedes behind the product sheet) -----------------------
-// Like an iOS sheet: the page behind scales back a little and rounds its
-// corners over a dark backstage, so the sheet reads as a layer on top.
-const stageReceded = computed(() => !!selectedProduct.value || openSheets.value > 0);
-const stageRounded = ref(false);
-let roundTimer: number | undefined;
-watch(stageReceded, (receded) => {
-  window.clearTimeout(roundTimer);
-  if (receded) stageRounded.value = true;
-  else roundTimer = window.setTimeout(() => { stageRounded.value = false; }, motionMs('--dur-sheet-in', 560));
-});
 
 const handleAddToCart = (options: { size: string; temp: string; sugar: string }) => {
   if (selectedProduct.value) {
@@ -373,11 +360,7 @@ const bumpCart = () => {
   <div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans text-text-main select-none z-0">
     <!-- Toasts are rendered once, globally, by <ToastContainer /> in App.vue. -->
 
-    <!-- Dark backstage, only seen around the receded app while a sheet is up -->
-    <div v-if="stageRounded" class="absolute inset-0 bg-[#141816]" aria-hidden="true"></div>
-
-    <!-- The app itself: recedes behind the product sheet -->
-    <div class="app-stage absolute inset-0 flex flex-col bg-background-light" :class="{ 'is-receded': stageReceded, 'is-rounded': stageRounded }">
+    <div class="absolute inset-0 flex flex-col bg-background-light">
     <div class="flex-1 overflow-hidden relative w-full h-full z-0 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-[calc(72px+env(safe-area-inset-bottom))]">
       <!-- KeepAlive: switching tabs keeps each tab's scroll position, category
            and sub-view; the Transition slides the new tab in from its side.

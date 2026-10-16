@@ -53,6 +53,8 @@ func (s *Server) Handler() http.Handler {
 	const v1 = "/api/v1"
 
 	route("POST "+v1+"/login/access-token", s.login)
+	route("GET "+v1+"/app/config", s.appConfig)
+	route("POST "+v1+"/demo/session", s.demoSession)
 
 	route("GET "+v1+"/users/me", s.getMe)
 	route("PUT "+v1+"/users/me", s.updateMe)
@@ -91,9 +93,13 @@ func (s *Server) Handler() http.Handler {
 	route("POST "+v1+"/upload", s.upload)
 
 	mux.Handle("GET /static/", http.StripPrefix("/static/", staticFiles(s.cfg.StaticDir)))
-	mux.Handle("GET /{$}", handle(func(w http.ResponseWriter, _ *http.Request) error {
-		return ok(w, map[string]string{"message": "Welcome to School Coffee System API"})
-	}))
+	if s.cfg.StudentWebDir != "" {
+		mux.Handle("GET /", studentFiles(s.cfg.StudentWebDir))
+	} else {
+		mux.Handle("GET /{$}", handle(func(w http.ResponseWriter, _ *http.Request) error {
+			return ok(w, map[string]string{"message": "Welcome to School Coffee System API"})
+		}))
+	}
 	mux.Handle("/", handle(func(http.ResponseWriter, *http.Request) error {
 		return fail(http.StatusNotFound, "Not Found")
 	}))
@@ -130,6 +136,9 @@ func (s *Server) currentUser(r *http.Request) (*User, error) {
 		return nil, err
 	}
 	if auth.PasswordVersion(u.Password) != pwv {
+		return nil, errCredentials
+	}
+	if strings.HasPrefix(u.Password, "!demo:") && !s.cfg.DemoMode {
 		return nil, errCredentials
 	}
 	return u, nil

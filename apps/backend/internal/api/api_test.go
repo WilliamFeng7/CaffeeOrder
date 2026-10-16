@@ -36,7 +36,7 @@ type env struct {
 	static string
 }
 
-func newEnv(t *testing.T) *env {
+func newEnv(t *testing.T, configure ...func(*config.Config)) *env {
 	t.Helper()
 	hashOnce.Do(func() { testHash, _ = auth.HashPassword(testPassword) })
 	dir := t.TempDir()
@@ -50,6 +50,9 @@ func newEnv(t *testing.T) *env {
 	}
 	static := filepath.Join(dir, "static")
 	cfg := config.Config{DatabasePath: filepath.Join(dir, "test.db"), StaticDir: static, SecretKey: "test-secret", TokenTTL: time.Hour}
+	for _, apply := range configure {
+		apply(&cfg)
+	}
 	srv := httptest.NewServer(New(db, cfg).Handler())
 	t.Cleanup(srv.Close)
 

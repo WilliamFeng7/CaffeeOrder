@@ -24,6 +24,8 @@ type Config struct {
 	Addr           string
 	DatabasePath   string
 	StaticDir      string
+	StudentWebDir  string
+	DemoMode       bool
 	SecretKey      string
 	TokenTTL       time.Duration
 	CORSOrigins    []string
@@ -46,11 +48,24 @@ func Load(baseDir, addr string) (Config, error) {
 	loadDotEnv(filepath.Join(baseDir, ".env"))
 
 	cfg := Config{
-		Addr:        addr,
-		StaticDir:   filepath.Join(baseDir, "static"),
-		SecretKey:   os.Getenv("SECRET_KEY"),
-		TokenTTL:    7 * 24 * time.Hour,
-		CORSOrigins: defaultOrigins,
+		Addr:          addr,
+		StaticDir:     filepath.Join(baseDir, "static"),
+		SecretKey:     os.Getenv("SECRET_KEY"),
+		TokenTTL:      7 * 24 * time.Hour,
+		CORSOrigins:   defaultOrigins,
+		StudentWebDir: os.Getenv("STUDENT_WEB_DIR"),
+	}
+	if v := os.Getenv("DEMO_MODE"); v != "" {
+		var err error
+		cfg.DemoMode, err = strconv.ParseBool(v)
+		if err != nil {
+			return cfg, fmt.Errorf("DEMO_MODE must be a boolean: %w", err)
+		}
+	}
+	if cfg.StudentWebDir != "" {
+		if _, err := os.Stat(filepath.Join(cfg.StudentWebDir, "index.html")); err != nil {
+			return cfg, fmt.Errorf("STUDENT_WEB_DIR: %w", err)
+		}
 	}
 
 	path, err := sqlitePath(os.Getenv("DATABASE_URL"))

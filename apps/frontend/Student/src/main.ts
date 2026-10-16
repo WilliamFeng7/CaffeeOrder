@@ -10,10 +10,15 @@ import './index.css'
 import App from './App.vue'
 import router from './router'
 import { setUnauthorizedHandler } from '@shared/api-client'
+import { demoMode } from './demo'
 
 // Expired/invalid token -> this app's login view, via the router (so it honours
 // whatever base path the app is mounted at) instead of a hardcoded root URL.
 setUnauthorizedHandler(() => {
+  if (demoMode.value) {
+    window.location.replace(import.meta.env.BASE_URL);
+    return;
+  }
   void router.replace('/login');
 });
 

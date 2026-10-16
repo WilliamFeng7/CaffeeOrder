@@ -97,6 +97,7 @@ docker-compose -f docker-compose.prod.yml up -d --build   # 生产编排
 
 ## 📚 文档
 
+- [免登录演示部署](deploy/demo/README.md) - 点菜端访客演示与 Ubuntu 5001 端口部署
 - [API 接口文档](docs/API.md) - 完整接口参考
 - [技术架构](docs/technical_architecture.md) - 系统设计与 ER 图
 - [产品手册](docs/product_manual.md) - 操作指南
