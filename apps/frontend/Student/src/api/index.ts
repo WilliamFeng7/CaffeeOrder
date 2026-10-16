@@ -1,15 +1,6 @@
 import apiClient from '@shared/api-client';
 import type { Product, UserProfile, CartItem } from '../types';
-
-// API 基础路径已经在 shared api-client 中配置好了
-
-// The bundled menu photos under /static/menu/ were replaced in place (same
-// file names); the version tag makes browsers that cached the old ones fetch
-// the new ones. Bump it whenever those files change. Uploaded images have
-// their own unique names and are left alone.
-const MENU_PHOTOS_VERSION = '2';
-const photoUrl = (path?: string | null) =>
-  path && path.startsWith('/static/menu/') ? `${path}?v=${MENU_PHOTOS_VERSION}` : (path ?? '');
+import { photoUrl, thumbUrl } from '../utils/photo';
 
 export const api = {
     /**
@@ -44,6 +35,7 @@ export const api = {
                 price: item.price / 100,
                 category: item.category.toLowerCase(),
                 image: photoUrl(item.image_path),
+                thumb: thumbUrl(item.image_path),
                 tags: item.is_recommend ? ['Best Seller'] : [],
                 isPopular: item.is_recommend || false,
                 inventoryCount: item.inventory_count,
@@ -139,55 +131,54 @@ export const api = {
      * 获取我的历史订单 (Get My Orders)
      */
     async getMyOrders() {
-        try {
-            const response = await apiClient.get('/orders/me');
-            const orders = response.data;
-            return orders.map((o: any) => {
-                const itemMap = new Map<string, any>();
+        // A failed request throws (the caller keeps the orders it has) instead of
+        // returning [], which used to blank the Pickup page on one bad poll.
+        const response = await apiClient.get('/orders/me');
+        const orders = response.data;
+        return orders.map((o: any) => {
+            const itemMap = new Map<string, any>();
 
-                o.items.forEach((backendItem: any) => {
-                    const specKey = JSON.stringify(backendItem.spec);
-                    const key = `${backendItem.item_name}-${specKey}`;
+            o.items.forEach((backendItem: any) => {
+                const specKey = JSON.stringify(backendItem.spec);
+                const key = `${backendItem.item_name}-${specKey}`;
 
-                    // Each line carries its own quantity; counting lines as 1 showed
-                    // "1x" for a line ordered three times.
-                    const quantity = Number(backendItem.quantity) || 1;
-                    if (itemMap.has(key)) {
-                        itemMap.get(key).quantity += quantity;
-                    } else {
-                        itemMap.set(key, {
-                            id: 'backend-item',
-                            name: backendItem.item_name,
-                            nameCN: backendItem.item_name,
-                            price: backendItem.price_snap / 100,
-                            image: photoUrl(backendItem.image_url),
-                            quantity,
-                            size: backendItem.spec.size,
-                            temperature: backendItem.spec.temp,
-                            sugar: backendItem.spec.sugar
-                        });
-                    }
-                });
-
-                return {
-                    id: o.id.toString(),
-                    uuid: o.order_no, // Backend uses order_no as unique public id
-                    order_no: o.order_no,
-                    date: o.created_at,
-                    items: Array.from(itemMap.values()),
-                    total: o.total_amount / 100,
-                    type: 'dine-in',
-                    pickupNumber: o.pickup_number,
-                    dailyNumber: o.pickup_number,
-                    status: ['completed', 'refunded'].includes(o.status) ? 'completed' : 'active',
-                    stage: o.status,
-                    isCompleted: o.is_completed,
-                    pointsEarned: 0
-                };
+                // Each line carries its own quantity; counting lines as 1 showed
+                // "1x" for a line ordered three times.
+                const quantity = Number(backendItem.quantity) || 1;
+                if (itemMap.has(key)) {
+                    itemMap.get(key).quantity += quantity;
+                } else {
+                    itemMap.set(key, {
+                        id: 'backend-item',
+                        name: backendItem.item_name,
+                        nameCN: backendItem.item_name,
+                        price: backendItem.price_snap / 100,
+                        image: photoUrl(backendItem.image_url),
+                        thumb: thumbUrl(backendItem.image_url),
+                        quantity,
+                        size: backendItem.spec.size,
+                        temperature: backendItem.spec.temp,
+                        sugar: backendItem.spec.sugar
+                    });
+                }
             });
-        } catch {
-            return [];
-        }
+
+            return {
+                id: o.id.toString(),
+                uuid: o.order_no, // Backend uses order_no as unique public id
+                order_no: o.order_no,
+                date: o.created_at,
+                items: Array.from(itemMap.values()),
+                total: o.total_amount / 100,
+                type: 'dine-in',
+                pickupNumber: o.pickup_number,
+                dailyNumber: o.pickup_number,
+                status: ['completed', 'refunded'].includes(o.status) ? 'completed' : 'active',
+                stage: o.status,
+                isCompleted: o.is_completed,
+                pointsEarned: 0
+            };
+        });
     },
 
     /**

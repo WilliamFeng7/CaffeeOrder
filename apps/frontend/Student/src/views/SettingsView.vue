@@ -36,7 +36,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update-profile', profile: UserProfile): void; // 更新资料事件
   (e: 'toggle-lang'): void;                          // 切换语言事件
-  (e: 'sign-out'): void;                             // 退出登录事件
 }>();
 
 // --- 状态变量 (State Variables) ---
@@ -61,15 +60,16 @@ const t = computed(() => TRANSLATIONS[props.lang]);
 
 const { scroller, onScroll } = useKeepScroll();
 
-// 余额按位数缩小字号，长金额不再溢出会员卡
+// 余额带千位分隔 (¥10,000.00)；按位数缩小字号，长金额不再溢出会员卡
 const balance = computed(() => props.userProfile.balance || 0);
+const formatBalance = (n: number) =>
+  `¥${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const balanceSize = computed(() => {
-  const len = `¥${balance.value.toFixed(2)}`.length;
-  if (len <= 9) return 'text-[44px] md:text-[52px]';
-  if (len <= 12) return 'text-[34px] md:text-[42px]';
+  const len = formatBalance(balance.value).length;
+  if (len <= 10) return 'text-[44px] md:text-[52px]';
+  if (len <= 13) return 'text-[34px] md:text-[42px]';
   return 'text-[26px] md:text-[32px]';
 });
-const formatBalance = (n: number) => `¥${n.toFixed(2)}`;
 
 const langOptions = [
   { value: 'en' as const, label: 'EN' },

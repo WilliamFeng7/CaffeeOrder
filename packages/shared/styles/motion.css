@@ -320,23 +320,6 @@ html .reveal.is-revealed {
   }
 }
 
-/* Ambient layer: a soft halo that breathes behind a status dot (shop open,
-   order ready). Slow and small so it stays in the periphery. */
-.breathe {
-  animation: breathe 2.8s ease-in-out infinite;
-}
-
-@keyframes breathe {
-  0%, 100% {
-    opacity: 0;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.35;
-    transform: scale(2.4);
-  }
-}
-
 /* A new item flashes a soft highlight that fades out (new KDS order). */
 .flash {
   animation: flash 1.6s var(--ease-out) both;
@@ -367,8 +350,6 @@ html .reveal.is-revealed {
   [class*="animate-fade-in"],
   [class*="animate-scale-in"],
   [class*="animate-slide-up-content"],
-  [class*="animate-slide-down-content"],
-  [class*="animate-blur-in"],
   [class*="animate-text-reveal"] {
     animation: fadeOnly 200ms linear backwards !important;
   }
@@ -377,10 +358,9 @@ html .reveal.is-revealed {
     transform: none;
   }
 
-  /* Emphasis loops, shakes and ambient halos are movement for its own sake. */
+  /* Emphasis rings and shakes are movement for its own sake. */
   .ping,
-  .shake,
-  .breathe {
+  .shake {
     animation: none !important;
   }
 

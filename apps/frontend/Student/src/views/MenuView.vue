@@ -37,9 +37,7 @@ const props = defineProps<{
 // 定义 Events (Events Definition)
 const emit = defineEmits<{
   (e: 'select-product', product: Product, origin?: HTMLElement | null): void; // 选中商品 (打开详情弹窗; origin 为卡片图片，用于共享元素过渡)
-  (e: 'remove-product-instance', productId: string): void; // 移除商品 (仅作为预留接口)
   (e: 'toggle-lang'): void; // 切换语言
-  (e: 'go-checkout'): void; // 跳转结算
 }>();
 
 // --- 状态定义 (State Definitions) ---
@@ -68,7 +66,7 @@ const t = computed(() => TRANSLATIONS[props.lang]);
 // 从别的标签页回来时停在原来的位置
 const { scroller, onScroll } = useKeepScroll();
 
-// 首次进入时卡片依次出现；之后切换分类用更快的级联
+// 首次进入时卡片依次出现；之后切换分类整块网格一起过渡
 const firstPaint = ref(true);
 
 // 新分类从它所在的一侧滑入 (later category: from the right)
@@ -354,7 +352,7 @@ const handleSuggestionClick = (p: Product) => {
                   class="suggest-in w-full min-h-[52px] flex items-center gap-3 p-2 rounded-tile text-left hover:bg-cream active:bg-cream"
                   :style="{ animationDelay: `${i * 25}ms` }"
                 >
-                   <img v-img-fade :src="p.image" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" alt="" decoding="async" />
+                   <img v-img-fade :src="p.thumb" :data-full="p.image" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" alt="" decoding="async" />
                    <span class="min-w-0 flex-1">
                       <span class="block text-[14px] font-medium text-text-main truncate">{{ lang === 'cn' ? p.nameCN : p.name }}</span>
                       <span class="block text-[13px] text-text-sub tabular-nums">¥{{ Number(p.price).toFixed(2) }}</span>
@@ -372,12 +370,12 @@ const handleSuggestionClick = (p: Product) => {
                 tag="div"
                 name="cards"
                 class="relative grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 md:gap-x-6 gap-y-8 md:gap-y-10"
-                :class="firstPaint ? 'stagger-in' : 'stagger-quick'"
+                :class="{ 'stagger-in': firstPaint }"
                 @before-leave="pinLeaving"
              >
                 <!-- Product: the photo is the card -->
                 <article
-                   v-for="product in filteredProducts"
+                   v-for="(product, i) in filteredProducts"
                    :key="product.id"
                    @click="pick(product, $event)"
                    data-testid="product-card"
@@ -388,9 +386,10 @@ const handleSuggestionClick = (p: Product) => {
                    <div class="relative aspect-square rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.98]">
                       <img
                          v-img-fade
-                         :src="product.image"
+                         :src="product.thumb"
+                         :data-full="product.image"
                          :alt="lang === 'cn' ? product.nameCN : product.name"
-                         loading="lazy"
+                         :loading="i < 6 ? 'eager' : 'lazy'"
                          decoding="async"
                          class="card-photo w-full h-full object-cover"
                          :class="{ 'grayscale opacity-60': isSoldOut(product) }"

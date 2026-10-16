@@ -23,6 +23,7 @@ import type { Order, Language } from '../types';
 import { useKeepScroll } from '../composables/useKeepScroll';
 import { usePullToRefresh } from '../composables/usePullToRefresh';
 import { spring, project, rubberband, VelocityTracker, type SpringHandle } from '../composables/spring';
+import { orderStage } from '../utils/orderStage';
 
 // --- Props & Events ---
 const props = defineProps<{
@@ -162,15 +163,8 @@ const formatTime = (dateStr: string) => {
   });
 };
 
-/**
- * 进行中订单的阶段 (Stage): label + how far along the three-step bar is.
- * 排队中 / 制作中 / 请取餐 —— 以前所有进行中的订单都显示「制作中」，做好了也看不出来。
- */
-const stageInfo = (order: Order): { label: string; step: number; progress: number } => {
-  if (order.stage === 'ready') return { label: t.value.ready, step: 2, progress: 1 };
-  if (order.stage === 'processing') return { label: t.value.preparing, step: 1, progress: 0.56 };
-  return { label: t.value.queued, step: 0, progress: 0.14 };
-};
+/** 进行中订单的阶段 (排队中 / 制作中 / 请取餐): label + how far along the bar is. */
+const stageInfo = (order: Order) => orderStage(order, t.value);
 
 const steps = computed(() => [t.value.queued, t.value.preparing, t.value.ready]);
 
@@ -244,15 +238,14 @@ const specLine = (item: Order['items'][number]) => {
                        <p class="eyebrow">{{ t.pickupNum }}</p>
                        <p class="mt-2 font-serif text-[60px] md:text-[72px] font-medium leading-[0.9] tabular-nums animate-text-reveal transition-colors duration-fade" :class="order.stage === 'ready' ? 'text-primary' : 'text-text-main'" style="animation-delay: 120ms">{{ order.dailyNumber }}</p>
                     </div>
-                    <!-- Stage: a dot that pings once when the order moves on -->
+                    <!-- Stage: a dot that pings once when the order moves on (no
+                         looping halo or pulse: the screen stays still while it waits) -->
                     <span class="flex items-center gap-2 text-[13px] font-medium pt-1" :class="order.stage === 'ready' ? 'text-primary' : 'text-text-main'">
                        <span class="relative flex size-2">
                           <span :key="order.stage" class="absolute inset-0 rounded-full ping" :class="order.stage === 'ready' ? 'bg-primary' : 'bg-text-sub'" aria-hidden="true"></span>
-                          <!-- while it waits at the counter, a slow halo keeps it noticeable -->
-                          <span v-if="order.stage === 'ready'" class="absolute inset-0 rounded-full bg-primary breathe" style="animation-delay: 1.1s" aria-hidden="true"></span>
                           <span
                              class="relative size-2 rounded-full"
-                             :class="order.stage === 'ready' ? 'bg-primary' : order.stage === 'processing' ? 'bg-text-main animate-pulse' : 'bg-text-sub'"
+                             :class="order.stage === 'ready' ? 'bg-primary' : order.stage === 'processing' ? 'bg-text-main' : 'bg-text-sub'"
                              aria-hidden="true"
                           ></span>
                        </span>

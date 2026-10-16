@@ -54,6 +54,23 @@ textarea {
     -webkit-touch-callout: default;
 }
 
+/* --- Timing (Student) ------------------------------------------------------ */
+/* The shared rhythm, a notch quicker on the iPad: entrances still glide in on
+   the strong ease-out (most of the travel is over in the first third), but no
+   tap waits half a second for the screen to settle. Exits stay shorter than
+   entrances. Overrides packages/shared/styles/motion.css for this app only. */
+:root {
+    --dur-page-out: 160ms;
+    --dur-fade: 260ms;
+    --dur-scale-in: 340ms;
+    --dur-enter: 420ms;
+    --dur-sheet-in: 440ms;
+    --dur-sheet-out: 280ms;
+    --dur-spring: 560ms;
+    --dur-spring-soft: 600ms;
+    --dur-count: 700ms;
+}
+
 /* --- Exits (Student) -------------------------------------------------------- */
 /* The shared list / drill-in / page swaps leave on the same strong ease-out
    they arrive with here (overrides packages/shared/styles/motion.css for the
@@ -71,15 +88,13 @@ textarea {
 }
 
 /* --- Images ----------------------------------------------------------------- */
-/* Photos fade in (and settle from a slight zoom) when they have decoded,
-   instead of popping in (v-img-fade). */
+/* Photos fade in when they have loaded instead of popping in (v-img-fade). */
 .img-fade {
-    transition: opacity var(--dur-fade) var(--ease-out), transform var(--dur-enter) var(--ease-out);
+    transition: opacity var(--dur-fade) var(--ease-out);
 }
 
 .img-fade.img-loading {
     opacity: 0;
-    transform: scale(1.03);
 }
 
 /* --- Product cards ------------------------------------------------------------ */
@@ -141,27 +156,6 @@ textarea {
     100% { transform: none; }
 }
 
-/* --- Headlines ------------------------------------------------------------- */
-/* Word by word: each word rises out of its own line box. */
-.word-mask {
-    display: inline-block;
-    overflow: hidden;
-    vertical-align: top;
-    padding-bottom: 0.08em;
-    margin-bottom: -0.08em;
-}
-
-.word-rise {
-    display: inline-block;
-    animation: wordRise var(--dur-enter) var(--ease-out) backwards;
-}
-
-@keyframes wordRise {
-    from {
-        transform: translate3d(0, 105%, 0);
-    }
-}
-
 /* --- Tabs ------------------------------------------------------------------ */
 /* Switching tabs slides the new tab in from the side it lives on (Home ->
    Order moves left, Order -> Home moves right) while the old one drifts a
@@ -186,8 +180,8 @@ textarea {
 
 /* --- Menu grid --------------------------------------------------------------- */
 /* A new category slides in from the side of its tab (later category: from the
-   right), the old grid fades out first. The cards inside arrive in a quick
-   cascade (.stagger-quick). */
+   right), the old grid fades out first. The grid moves as one piece: a
+   cascade of a dozen cards, each its own layer, dropped frames on iPad. */
 .grid-next-enter-active,
 .grid-prev-enter-active {
     transition: opacity var(--dur-fade) var(--ease-out), transform var(--dur-enter) var(--ease-out);
@@ -202,27 +196,6 @@ textarea {
 .grid-prev-enter-from { opacity: 0; transform: translate3d(-24px, 0, 0); }
 .grid-next-leave-to { opacity: 0; transform: translate3d(-10px, 0, 0); }
 .grid-prev-leave-to { opacity: 0; transform: translate3d(10px, 0, 0); }
-
-.stagger-quick > * {
-    animation: slideUpContent var(--dur-scale-in) var(--ease-out) backwards;
-}
-
-.stagger-quick > *:nth-child(2) { animation-delay: 30ms; }
-.stagger-quick > *:nth-child(3) { animation-delay: 60ms; }
-.stagger-quick > *:nth-child(4) { animation-delay: 90ms; }
-.stagger-quick > *:nth-child(5) { animation-delay: 120ms; }
-.stagger-quick > *:nth-child(n + 6) { animation-delay: 150ms; }
-
-/* --- Home hero --------------------------------------------------------------- */
-/* The featured photo settles from a slight zoom the first time Home is shown
-   (a slow, one-off Ken Burns). */
-.hero-settle {
-    animation: heroSettle 1400ms var(--ease-out) backwards;
-}
-
-@keyframes heroSettle {
-    from { transform: scale(1.08); }
-}
 
 /* --- Sheets ------------------------------------------------------------------ */
 /* Full-screen sheets (checkout) slide in from the bottom on the drawer curve
@@ -265,43 +238,35 @@ textarea {
     mix-blend-mode: normal;
 }
 
-/* Language switch: the old words dissolve into the new ones. */
+/* Language switch: a plain crossfade of the two languages (opacity only; a
+   blur on two full-screen snapshots was the most expensive frame in the app). */
 html[data-morph="lang"]::view-transition-old(root) {
-    animation: lang-out var(--dur-fade) var(--ease-out) both;
+    animation: morph-fade-out var(--dur-fade) var(--ease-out) both;
     mix-blend-mode: plus-lighter;
 }
 
 html[data-morph="lang"]::view-transition-new(root) {
-    animation: lang-in var(--dur-fade) var(--ease-out) both;
+    animation: morph-fade-in var(--dur-fade) var(--ease-out) both;
     mix-blend-mode: plus-lighter;
 }
 
-@keyframes lang-out {
-    to { opacity: 0; filter: blur(2px); }
+@keyframes morph-fade-out {
+    to { opacity: 0; }
 }
 
-@keyframes lang-in {
-    from { opacity: 0; filter: blur(2px); }
-}
-
-/* Closing: the page without the sheet fades in over the page with it, so the
-   sheet dissolves while the photo flies home. */
-html[data-morph="close"]::view-transition-new(root),
+/* Into the cart: the page without the sheet fades in over the page with it,
+   so the sheet dissolves while the photo flies. */
 html[data-morph="cart"]::view-transition-new(root) {
     animation: morph-fade-in var(--dur-sheet-out) var(--ease-out) both;
 }
 
 /* The page takes no input while a morph runs (the browser shows a snapshot
-   on top), so the flight stays short: ~0.5s on the iOS drawer curve. */
+   on top), so the flight stays short (--dur-sheet-in, the iOS drawer curve). */
 ::view-transition-group(product-hero) {
     animation-duration: var(--dur-sheet-in);
     animation-timing-function: var(--ease-drawer);
     border-radius: 16px;
     overflow: clip;
-}
-
-html[data-morph="close"]::view-transition-group(product-hero) {
-    animation-duration: var(--dur-scale-in);
 }
 
 /* Card photo and sheet photo have different shapes: crop, never squash. */
@@ -366,16 +331,12 @@ html[data-morph="cart"]::view-transition-new(product-hero) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .stagger-quick > *,
-    .hero-settle,
-    .word-rise,
     .suggest-in,
     .ready-lift {
         animation: fadeOnly 200ms linear backwards !important;
     }
 
-    .group:active .card-photo,
-    .img-fade.img-loading {
+    .group:active .card-photo {
         transform: none;
     }
 

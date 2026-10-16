@@ -66,36 +66,18 @@ watch(currentTab, (next, prev) => {
 });
 
 // --- Lifecycle ---
-const readStoredJSON = <T,>(key: string): T | null => {
-  // A corrupted/truncated sessionStorage entry used to throw out of onMounted
-  // and leave the whole app blank; tolerate it and fall back to a fresh load.
-  const raw = sessionStorage.getItem(key);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    sessionStorage.removeItem(key);
-    return null;
-  }
-};
-
 onMounted(() => {
-  // Auth first: reading another account's cached history before we know who is
-  // logged in is what let stale data flash on screen after an account switch.
   if (!auth.isLoggedIn()) {
     router.push('/login');
     return;
   }
 
-  const storedHistory = readStoredJSON<Order[]>('otia_cafe_history');
-  if (storedHistory) orders.value = storedHistory;
-
-  const storedProfile = readStoredJSON<UserProfile>('otia_cafe_profile');
-  if (storedProfile) userProfile.value = storedProfile;
-
   loadMenuData();
   loadProfile();
   checkShopStatus();
+  // Once at start: the Pickup badge and Home's order strip need it before the
+  // student ever opens Pickup.
+  fetchOrders();
 });
 
 const loadProfile = async () => {
@@ -133,27 +115,6 @@ const loadMenuData = async () => {
   }
 };
 
-const handleSignOut = () => {
-  auth.clearToken();
-
-  // Signing out has to tear down everything that describes the *previous*
-  // account. PRODUCTS is a module-level reactive singleton, and the order
-  // history / profile were mirrored into sessionStorage, so clearing only the
-  // token left the next user's first render populated with the old user's
-  // cart, balances and order history (until a fetch happened to overwrite it).
-  cart.value = [];
-  orders.value = [];
-  selectedProduct.value = null;
-  userProfile.value = { name: '', phone: '', email: '', uuid: '' };
-  PRODUCTS.splice(0, PRODUCTS.length);
-  sessionStorage.removeItem('otia_cafe_history');
-  sessionStorage.removeItem('otia_cafe_profile');
-
-  currentTab.value = 'order';
-  addToast('Signed out successfully');
-  router.push('/login');
-};
-
 // --- Methods ---
 // Toasts go through the shared store instead of a second, app-local queue.
 const addToast = (message: string, type: 'success' | 'info' | 'error' | 'warning' = 'info') => {
@@ -161,17 +122,16 @@ const addToast = (message: string, type: 'success' | 'info' | 'error' | 'warning
 };
 
 // --- Product sheet ---------------------------------------------------------
-// The photo grows out of the tapped card, and on close flies back into it
-// (or, after "Add", into the cart bar). See composables/morph.ts.
+// The photo grows out of the tapped card; after "Add" it flies into the cart
+// bar. See composables/morph.ts. A plain close is the sheet's own quick exit:
+// a morph holds the page still while it runs, and closing should never wait.
 const productSheet = ref<InstanceType<typeof ProductModal> | null>(null);
 const cartIconEl = ref<HTMLElement | null>(null);
 const heroOpen = ref(false);
-let productOrigin: HTMLElement | null = null;
 let productClosing = false;
 
 const handleSelectProduct = (product: Product, origin?: HTMLElement | null) => {
   if (selectedProduct.value) return;
-  productOrigin = origin ?? null;
   productClosing = false;
   heroOpen.value = canMorph() && onScreen(origin);
   void morph('open', heroOpen.value ? origin : null, () => {
@@ -192,10 +152,8 @@ const handleCloseProduct = async (reason: SheetCloseReason) => {
   }
 
   const photo = sheet.photo;
-  const flies = canMorph() && onScreen(photo) && (reason === 'added' || onScreen(productOrigin));
-  if (flies) {
-    await morph(reason === 'added' ? 'cart' : 'close', photo, unmount,
-      () => (reason === 'added' ? cartIconEl.value : productOrigin));
+  if (reason === 'added' && canMorph() && onScreen(photo)) {
+    await morph('cart', photo, unmount, () => cartIconEl.value);
   } else {
     await sheet.leave();
     unmount();
@@ -244,15 +202,6 @@ const handleAddToCart = (options: { size: string; temp: string; sugar: string })
   }
 };
 
-const handleRemoveProductInstance = (productId: string) => {
-  const lastIndex = cart.value.map(item => item.id).lastIndexOf(productId);
-  if (lastIndex !== -1) {
-    const newCart = [...cart.value];
-    newCart.splice(lastIndex, 1);
-    cart.value = newCart;
-  }
-};
-
 const updateCartItemQuantity = (cartId: string, delta: number) => {
   cart.value = cart.value.map(item => {
     if (item.cartId === cartId) return { ...item, quantity: Math.max(0, item.quantity + delta) };
@@ -260,7 +209,7 @@ const updateCartItemQuantity = (cartId: string, delta: number) => {
   }).filter(item => item.quantity > 0);
 };
 
-let pollInterval: any = null;
+let pollInterval: ReturnType<typeof setInterval> | null = null;
 const startPolling = () => {
   if (pollInterval) clearInterval(pollInterval);
   fetchOrders();
@@ -268,11 +217,13 @@ const startPolling = () => {
 };
 const stopPolling = () => {
   if (pollInterval) clearInterval(pollInterval);
+  pollInterval = null;
 };
 
 // Never leak the polling interval when the layout unmounts
 // (e.g. router-guard redirect on expired token)
 onUnmounted(stopPolling);
+const orderSignature = (list: Order[]) => list.map(o => `${o.id}:${o.stage}`).join('|');
 // Stage of each order at the previous poll, so an order that turns "ready"
 // raises one notice instead of relying on the student watching the card.
 let lastStages: Map<string, string> | null = null;
@@ -288,18 +239,21 @@ const fetchOrders = async () => {
        }
      }
      lastStages = new Map(fetchedOrders.map(o => [o.id, o.stage]));
-     orders.value = fetchedOrders;
+     // Most polls bring nothing new: keep the same array then, so the lists
+     // (and their FLIP bookkeeping) do not re-render every 3 seconds.
+     if (orderSignature(fetchedOrders) !== orderSignature(orders.value)) orders.value = fetchedOrders;
   } catch {
      console.error("Failed to fetch orders");
   }
 };
 
-watch(currentTab, (newTab) => {
-  if (newTab === 'pickup' || newTab === 'profile') {
-    startPolling();
-  } else {
-    stopPolling();
-  }
+// Poll while the orders are on screen: Pickup, Me, and Home while an order is
+// open (its strip follows the order to "ready").
+const shouldPoll = (tab: TabState) =>
+  tab === 'pickup' || tab === 'profile' || (tab === 'home' && activeOrderCount.value > 0);
+watch([currentTab, () => activeOrderCount.value > 0], ([tab], [prevTab]) => {
+  if (!shouldPoll(tab)) stopPolling();
+  else if (tab !== prevTab || !pollInterval) startPolling();
 });
 
 // 下单成功的一瞬 (the order went through): the pay button draws a check
@@ -369,10 +323,10 @@ const bumpCart = () => {
       <div class="relative h-full">
         <Transition :name="`tab-${tabDir}`">
           <KeepAlive>
-            <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleSelectProduct" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" />
-            <MenuView v-else-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" @remove-product-instance="handleRemoveProductInstance" :lang="language" @toggle-lang="handleToggleLang" @go-checkout="isCheckoutOpen = true" />
+            <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleSelectProduct" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" :orders="orders" />
+            <MenuView v-else-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" :lang="language" @toggle-lang="handleToggleLang" />
             <PickupView v-else-if="currentTab === 'pickup'" :orders="orders" :lang="language" :refresh="fetchOrders" />
-            <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @toggle-lang="handleToggleLang" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" @sign-out="handleSignOut" />
+            <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @toggle-lang="handleToggleLang" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" />
           </KeepAlive>
         </Transition>
       </div>

@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 # Vite servers are matched by this repo's own vite binary, so a dev server of
 # another project on the same ports is left alone, and any port works.
-for pattern in "bin/server -addr" "uvicorn main:app" "$ROOT/node_modules/.bin/vite"; do
+for pattern in "bin/server -addr" "$ROOT/node_modules/.bin/vite"; do
   if pkill -f "$pattern" 2>/dev/null; then
     echo "stopped: ${pattern#$ROOT/}"
   else

@@ -8,7 +8,7 @@
  * down to close. While the on-screen keyboard is up, the sheet moves above it
  * so the field being typed into stays visible.
  */
-import { ref, toRef } from 'vue';
+import { ref, toRef, watch, nextTick } from 'vue';
 import { useSheetDrag } from '../composables/useSheetDrag';
 import { useKeyboardInset } from '../composables/useKeyboardInset';
 import { motionMs } from '@shared/motion';
@@ -30,7 +30,15 @@ const { handlers } = useSheetDrag({
   onDismiss: () => emit('close'),
 });
 
-const duration = { enter: motionMs('--dur-sheet-in', 560), leave: motionMs('--dur-sheet-out', 360) };
+const duration = { enter: motionMs('--dur-sheet-in', 440), leave: motionMs('--dur-sheet-out', 280) };
+
+// Focus moves into the sheet when it opens, so Esc closes it and keyboard
+// focus starts inside it rather than on the page behind.
+watch(() => props.open, async (open) => {
+  if (!open) return;
+  await nextTick();
+  sheetEl.value?.focus({ preventScroll: true });
+});
 </script>
 
 <template>
@@ -48,7 +56,8 @@ const duration = { enter: motionMs('--dur-sheet-in', 560), leave: motionMs('--du
           role="dialog"
           aria-modal="true"
           :aria-label="title"
-          class="bsheet-panel relative w-full md:w-[460px] bg-surface-light rounded-t-sheet md:rounded-sheet shadow-sheet md:shadow-float px-6 pb-[max(env(safe-area-inset-bottom),28px)] md:pb-8"
+          tabindex="-1"
+          class="bsheet-panel outline-none relative w-full md:w-[460px] bg-surface-light rounded-t-sheet md:rounded-sheet shadow-sheet md:shadow-float px-6 pb-[max(env(safe-area-inset-bottom),28px)] md:pb-8"
         >
           <!-- Drag handle: swipe down to close -->
           <div class="touch-none -mx-6 px-6 pt-3 pb-5" v-on="handlers">

@@ -101,7 +101,6 @@ docker-compose -f docker-compose.prod.yml up -d --build   # 生产编排
 - [API 接口文档](docs/API.md) - 完整接口参考
 - [技术架构](docs/technical_architecture.md) - 系统设计与 ER 图
 - [产品手册](docs/product_manual.md) - 操作指南
-- [实施计划](docs/implementation_plan.md) - 项目进度
 
 ---
 

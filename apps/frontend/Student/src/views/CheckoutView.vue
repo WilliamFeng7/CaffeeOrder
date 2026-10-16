@@ -110,7 +110,7 @@ const { handlers: dragHandlers } = useSheetDrag({
                class="flex gap-4 py-5 border-b border-line bg-background-light animate-slide-up-content"
                :style="{ animationDelay: `${Math.min(idx, 6) * 45}ms` }"
             >
-               <img v-img-fade :src="item.image" :alt="item.name" class="size-[72px] md:size-24 rounded-tile object-cover bg-cream shrink-0" decoding="async" />
+               <img v-img-fade :src="item.thumb || item.image" :data-full="item.image" :alt="item.name" class="size-[72px] md:size-24 rounded-tile object-cover bg-cream shrink-0" decoding="async" />
 
                <div class="flex-1 min-w-0 flex flex-col">
                   <div class="flex items-start justify-between gap-3">

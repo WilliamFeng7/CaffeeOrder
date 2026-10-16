@@ -1,19 +1,18 @@
 /**
  * vite.config.ts
- * 
+ *
  * Vite 构建配置文件 (Vite Configuration).
- * 
- * 主要功能 (Core Features):
- * 1. 代理配置 (Proxy): 将前端 `/api` 和 `/static` 请求转发到后端 FastAPI 服务 (127.0.0.1:8000)，解决跨域问题。
- * 2. 构建输出 (Build): 将打包后的静态文件输出到 `../../backend/static` 目录，方便后端统一托管。
- * 3. 插件集成 (Plugins): 使用 @vitejs/plugin-vue 支持 Vue 3 单文件组件。
- * 4. 路径别名 (Alias): 配置 `@` 指向项目根目录，方便模块导入。
+ *
+ * 1. 代理 (Proxy): `/api/v1` 和 `/static` 转发到本地 Go 后端 (127.0.0.1:8000)；
+ *    `vite preview` 沿用同一套代理。
+ * 2. 构建输出 (Build): `dist/` (Docker 镜像与演示部署都从这里取)。
+ * 3. 路径别名 (Alias): `@` 指向 src，`@shared` 指向 packages/shared/src。
  */
 
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { createRequire } from 'node:module';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -22,8 +21,6 @@ const studentRequire = createRequire(resolve(__dirname, 'package.json'));
 const piniaEntry = resolve(dirname(studentRequire.resolve('pinia/package.json')), 'dist/pinia.mjs');
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-
   return {
     server: {
       proxy: {
@@ -43,7 +40,7 @@ export default defineConfig(({ mode }) => {
         ]
       }
     },
-    base: mode === 'production' ? '/' : '/',
+    base: '/',
     build: {
       // This used to be '../../backend/static' together with
       // `emptyOutDir: true`, which meant a routine `npm run build` deleted the
@@ -66,10 +63,6 @@ export default defineConfig(({ mode }) => {
     plugins: [
       vue(),
     ],
-    define: {
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
-    },
     resolve: {
       alias: {
         // Shared components otherwise resolve the hoisted Pinia 2 while this

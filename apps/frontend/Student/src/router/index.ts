@@ -6,6 +6,10 @@ import { demoMode, prepareStudentSession } from '../demo';
 const StudentLayout = () => import('../layouts/StudentLayout.vue');
 const LoginView = () => import('../views/LoginView.vue');
 
+// The guard waits for the session handshake before the route's chunk is even
+// requested; start downloading the main screen alongside it instead.
+if (!window.location.pathname.endsWith('/login')) void StudentLayout();
+
 const router = createRouter({
     history: createWebHistory(import.meta.env.BASE_URL),
     routes: [

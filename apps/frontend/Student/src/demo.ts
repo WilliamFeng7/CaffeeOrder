@@ -16,10 +16,5 @@ export async function prepareStudentSession(): Promise<void> {
   if (!demoMode.value) return;
 
   const { data } = await apiClient.post('/demo/session');
-  if (sessionStorage.getItem('coffee_demo_uuid') !== data.uuid) {
-    sessionStorage.removeItem('otia_cafe_history');
-    sessionStorage.removeItem('otia_cafe_profile');
-  }
-  sessionStorage.setItem('coffee_demo_uuid', data.uuid);
   auth.setSession(data.access_token, data.role);
 }

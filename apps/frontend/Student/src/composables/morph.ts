@@ -2,8 +2,8 @@
  * morph.ts
  *
  * 共享元素过渡 (Shared-element transitions): the tapped product photo grows out
- * of its card into the product sheet and shrinks back into it on close; an
- * item added to the cart flies from the sheet into the cart bar.
+ * of its card into the product sheet; an item added to the cart flies from the
+ * sheet into the cart bar.
  *
  * Built on the View Transitions API (Safari / iPadOS 18, Chrome 111+): the
  * browser morphs the photo's box between its old and new place, so nothing is
@@ -14,7 +14,7 @@
  */
 import { nextTick } from 'vue';
 
-export type MorphKind = 'open' | 'close' | 'cart';
+export type MorphKind = 'open' | 'cart';
 
 const NAME = 'product-hero';
 

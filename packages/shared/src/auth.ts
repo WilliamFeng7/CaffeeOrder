@@ -16,8 +16,6 @@ export const UserRole = {
     ADMIN: 'admin',
 } as const;
 
-export type UserRoleValue = (typeof UserRole)[keyof typeof UserRole];
-
 export const auth = {
     setToken(token: string) {
         sessionStorage.setItem(TOKEN_KEY, token);

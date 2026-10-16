@@ -13,10 +13,13 @@
  * - "Add" turns into "Added", then the photo flies into the cart bar.
  * The parent decides how it closes (morph or `leave()`), because only it knows
  * where the photo should go; this component just says why it wants to close.
+ *
+ * Photo: the card's small photo (already loaded) sits underneath while the
+ * full-size one loads and fades in on top, so the morph always has a picture.
  */
 import AppIcon from '@/components/AppIcon.vue';
 import SlidingTabs from '@shared/components/SlidingTabs.vue';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Product, Language, SheetCloseReason } from '../types';
 import { useSheetDrag } from '../composables/useSheetDrag';
@@ -54,7 +57,7 @@ const sugarOptions = computed(() => (['0%', '50%', 'Regular', '120%'] as const).
 // 下拉关闭: 按住商品图往下拖 (手机抽屉和 iPad 卡片都支持)
 const sheetEl = ref<HTMLElement | null>(null);
 const backdropEl = ref<HTMLElement | null>(null);
-const photo = ref<HTMLImageElement | null>(null);
+const photo = ref<HTMLElement | null>(null);
 const { handlers: dragHandlers } = useSheetDrag({
   sheet: sheetEl,
   backdrop: backdropEl,
@@ -75,12 +78,16 @@ const leave = () => new Promise<void>((resolve) => {
 
 defineExpose({ photo, leave });
 
+// Focus moves into the sheet, so Esc closes it and the page behind it is not
+// where the next Tab lands.
+onMounted(() => sheetEl.value?.focus({ preventScroll: true }));
+
 const handleAdd = () => {
   if (isSuccess.value || closeRequested) return;
   emit('add-to-cart', { size: 'Regular', temp: temp.value, sugar: sugar.value });
   // "Added" stays long enough to be read, then the photo leaves for the cart.
   isSuccess.value = true;
-  window.setTimeout(() => requestClose('added'), motionMs('--dur-fade', 360) + 160);
+  window.setTimeout(() => requestClose('added'), motionMs('--dur-fade', 260) + 120);
 };
 </script>
 
@@ -100,7 +107,8 @@ const handleAdd = () => {
        role="dialog"
        aria-modal="true"
        aria-labelledby="modal-title"
-       class="bg-surface-light w-full max-h-[92%] md:max-h-full md:max-w-[520px] rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10 transition-[transform,opacity] duration-sheet-out ease-drawer"
+       tabindex="-1"
+       class="outline-none bg-surface-light w-full max-h-[92%] md:max-h-full md:max-w-[520px] rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10 transition-[transform,opacity] duration-sheet-out ease-drawer"
        :class="isClosing
          ? 'translate-y-full md:translate-y-4 md:scale-[0.97] opacity-0'
          : (hero ? 'animate-fade-in' : 'animate-slide-up-modal md:animate-scale-in')"
@@ -118,14 +126,13 @@ const handleAdd = () => {
 
         <div class="flex-1 min-h-0 overflow-y-auto no-scrollbar scroll-smooth-touch">
            <!-- Photo (also the drag handle: swipe down to close) -->
-           <div class="relative h-[280px] md:h-[340px] w-full shrink-0 overflow-hidden bg-cream touch-none" v-on="dragHandlers">
+           <div ref="photo" class="relative h-[280px] md:h-[340px] w-full shrink-0 overflow-hidden bg-cream touch-none" v-on="dragHandlers">
+              <img :src="product.thumb" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover" decoding="async" />
               <img
-                ref="photo"
                 v-img-fade
                 :src="product.image"
                 :alt="lang === 'cn' ? product.nameCN : product.name"
-                class="w-full h-full object-cover"
-                :class="{ 'animate-blur-in': !hero }"
+                class="relative w-full h-full object-cover"
                 decoding="async"
               />
               <div class="absolute top-2.5 left-1/2 -translate-x-1/2 h-1 w-9 bg-white/80 rounded-full" aria-hidden="true"></div>

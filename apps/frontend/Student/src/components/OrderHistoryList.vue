@@ -102,7 +102,7 @@ const specLine = (item: Order['items'][number]) => {
 
             <div class="mt-4 space-y-2">
                 <div v-for="(item, i) in order.items" :key="i" class="flex items-center gap-3">
-                    <img v-if="item.image" v-img-fade :src="item.image" alt="" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" loading="lazy" decoding="async" />
+                    <img v-if="item.image" v-img-fade :src="item.thumb || item.image" :data-full="item.image" alt="" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" loading="lazy" decoding="async" />
                     <p class="flex-1 min-w-0 text-[14px] text-text-main truncate">
                         {{ lang === 'cn' ? (item.nameCN || item.name) : item.name }}
                         <span v-if="specLine(item)" class="text-text-sub"> · {{ specLine(item) }}</span>

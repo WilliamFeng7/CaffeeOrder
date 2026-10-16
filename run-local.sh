@@ -4,6 +4,11 @@
 #
 #   ./run-local.sh          start backend + 3 frontends (detached)
 #   ./run-local.sh backend   start only the backend
+#   STUDENT_MODE=preview ./run-local.sh
+#                           serve the Student app from a production build
+#                           (what an iPad gets in real use; the dev server
+#                           sends hundreds of unbundled modules and runs Vue
+#                           in dev mode, which is much slower on a tablet)
 #
 # Logs: *.log in the repo root (gitignored). Stop with ./stop-local.sh
 # ------------------------------------------------------------------
@@ -17,6 +22,7 @@ BACKEND_PORT=8000
 STUDENT_PORT=${STUDENT_PORT:-5173}
 ADMIN_PORT=${ADMIN_PORT:-8080}
 BARISTA_PORT=${BARISTA_PORT:-8081}
+STUDENT_MODE=${STUDENT_MODE:-dev}
 
 # --- 1. Backend (Go) --------------------------------------------------------
 if ! command -v go >/dev/null 2>&1; then
@@ -53,8 +59,15 @@ start_backend() {
 start_frontend() {
   local dir="apps/frontend/$1" port="$2" log="$3"
   echo "==> $1$([ ${#1} -lt 8 ] && printf '%*s' $((8 - ${#1})) '') http://localhost:$port"
-  ( cd "$dir" && nohup npx vite --port "$port" --strictPort --host 0.0.0.0 \
-      > "$ROOT/$log" 2>&1 & )
+  if [ "$1" = Student ] && [ "$STUDENT_MODE" = preview ]; then
+    # Same proxy as the dev server (vite preview reuses server.proxy).
+    ( cd "$dir" && npx vite build > "$ROOT/$log" 2>&1 \
+        && nohup npx vite preview --port "$port" --strictPort --host 0.0.0.0 \
+        >> "$ROOT/$log" 2>&1 & )
+  else
+    ( cd "$dir" && nohup npx vite --port "$port" --strictPort --host 0.0.0.0 \
+        > "$ROOT/$log" 2>&1 & )
+  fi
 }
 
 case "${1:-all}" in

@@ -29,8 +29,9 @@ export interface Product {
   descriptionCN: string;
   // 商品基础价格 (元)
   price: number;
-  // 商品图片 URL (相对路径或绝对路径)
+  // 商品图片 URL: 原图 (详情面板、首页主推) 与 640px 小图 (卡片、缩略图)，见 utils/photo.ts
   image: string;
+  thumb: string;
   // 商品所属类别 ID (如: 'coffee', 'bakery')
   category: string;
   // 商品标签列表 (如: ['Best Seller', 'New'])
@@ -133,19 +134,6 @@ export interface Category {
   name: string;
   // 类别中文名称
   nameCN: string;
-}
-
-/**
- * 全局提示信息接口定义 (Toast Interface)
- * 用于顶部全局消息提示。
- */
-export interface Toast {
-  // 提示 ID (用于列表渲染 key)
-  id: string;
-  // 提示内容文本
-  message: string;
-  // 提示类型 (成功/信息/错误)
-  type?: 'success' | 'info' | 'error';
 }
 
 /**
