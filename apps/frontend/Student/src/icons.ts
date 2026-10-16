@@ -4,8 +4,7 @@
  * 超简约线条图标 (Ultra-minimal line icons) for the Student app. Each icon is
  * one to four strokes on a 24px grid - no fills, no inner detail (no steam
  * on the cup, no lines on the bag) - drawn with one stroke weight and round
- * ends by components/AppIcon.vue. Paths are written so each stroke can be
- * traced in with a dash animation (see AppIcon's `draw`).
+ * ends by components/AppIcon.vue.
  *
  * The Admin and KDS apps keep the shared Phosphor set (packages/shared).
  */

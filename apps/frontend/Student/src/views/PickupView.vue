@@ -16,7 +16,6 @@
  */
 
 import AppIcon from '@/components/AppIcon.vue';
-import { vReveal } from '@shared/reveal';
 import { ref, computed, onMounted, onBeforeUnmount, onActivated } from 'vue';
 import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Order, Language } from '../types';
@@ -223,7 +222,7 @@ const specLine = (item: Order['items'][number]) => {
            </div>
            <div ref="currentContent" class="px-5 md:px-10 pt-2 pb-40 max-w-3xl mx-auto">
            <div v-if="currentOrders.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
-              <AppIcon name="coffee" weight="light" draw class="text-[34px] mb-3" />
+              <AppIcon name="coffee" weight="light" class="text-[34px] mb-3" />
               <p class="text-[15px]">{{ t.noOrders }}</p>
               <button type="button" class="btn btn-outline mt-6" @click="emit('browse')">{{ lang === 'cn' ? '去点餐' : 'Browse the menu' }}</button>
            </div>
@@ -239,7 +238,7 @@ const specLine = (item: Order['items'][number]) => {
                  <div class="flex items-start justify-between gap-3">
                     <div>
                        <p class="eyebrow">{{ t.pickupNum }}</p>
-                       <p class="mt-2 font-serif text-[60px] md:text-[72px] font-normal leading-[0.9] tabular-nums animate-text-reveal transition-colors duration-fade" :class="order.stage === 'ready' ? 'text-primary' : 'text-text-main'" style="animation-delay: 120ms">{{ order.dailyNumber }}</p>
+                       <p class="mt-2 font-serif text-[60px] md:text-[72px] font-normal leading-[0.9] tabular-nums transition-colors duration-fade" :class="order.stage === 'ready' ? 'text-primary' : 'text-text-main'">{{ order.dailyNumber }}</p>
                     </div>
                     <!-- Stage: a dot that pings once when the order moves on (no
                          looping halo or pulse: the screen stays still while it waits) -->
@@ -308,7 +307,7 @@ const specLine = (item: Order['items'][number]) => {
            </div>
            <div ref="historyContent" class="px-5 md:px-10 pt-2 pb-40 max-w-3xl mx-auto">
            <div v-if="pastOrders.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
-              <AppIcon name="receipt" weight="light" draw class="text-[34px] mb-3" />
+              <AppIcon name="receipt" weight="light" class="text-[34px] mb-3" />
               <p class="text-[15px]">{{ t.noOrders }}</p>
            </div>
 
@@ -316,7 +315,6 @@ const specLine = (item: Order['items'][number]) => {
               <li
                  v-for="(order, idx) in pastOrders"
                  :key="order.id"
-                 v-reveal="Math.min(idx, 8) * 40"
                  class="py-4 flex flex-col gap-1.5"
               >
                  <div class="flex items-center justify-between gap-3">

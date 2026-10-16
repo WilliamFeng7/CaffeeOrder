@@ -69,6 +69,9 @@ textarea {
     --dur-spring: 560ms;
     --dur-spring-soft: 600ms;
     --dur-count: 700ms;
+    --dur-modal: 260ms;        /* centred dialogs (the product card on iPad) */
+    --dur-modal-out: 200ms;
+    --dur-modal-fade: 150ms;   /* ...whose opacity lands first, so the page never shows through */
 }
 
 /* --- Type (Student) --------------------------------------------------------- */
@@ -132,21 +135,33 @@ textarea {
 }
 
 /* --- Product cards ------------------------------------------------------------ */
-/* Pressing a card pushes it in while its photo leans forward a touch - a
-   small counter-motion that reads as depth under the finger. */
-.card-photo {
-    transition: transform var(--dur-release) var(--ease-out), opacity var(--dur-fade) var(--ease-out);
+/* A pressed card goes in a touch (scale on the card itself, nothing moving
+   inside it). Cards live in scrolling lists, so the press starts 75ms late,
+   like a UIScrollView: a finger that is starting a scroll never makes the
+   card under it twitch. Pointer devices get a slow photo zoom on hover. */
+.press-card {
+    transition: transform var(--dur-release) var(--ease-out);
 }
 
-.group:active .card-photo {
-    transform: scale(1.045);
-    transition-duration: var(--dur-press), var(--dur-fade);
+.press-card:active:not(:disabled) {
+    transform: scale(0.98);
+    transition-duration: var(--dur-press);
+    transition-delay: 75ms;
+}
+
+.card-photo {
+    transition: transform var(--dur-release) var(--ease-out), opacity var(--dur-fade) var(--ease-out);
 }
 
 @media (hover: hover) and (pointer: fine) {
     .group:hover .card-photo {
         transform: scale(1.03);
     }
+}
+
+/* Segmented controls answer with their sliding thumb; the labels stay put. */
+button[role="tab"]:active:not(:disabled) {
+    transform: none;
 }
 
 /* Search results: the cards that stay glide to their new places, the ones
@@ -238,6 +253,66 @@ textarea {
 .grid-next-leave-to { opacity: 0; transform: translate3d(-8px, 0, 0); }
 .grid-prev-leave-to { opacity: 0; transform: translate3d(8px, 0, 0); }
 
+/* --- Product sheet (components/ProductModal.vue) ----------------------------- */
+/* One surface, one movement. iPad: a centred card fades in from 97% and a few
+   pixels lower and leaves the same way, quicker (the modal recipe). Phones: a
+   bottom sheet that rises on the drawer curve and goes back down. The backdrop
+   fades with it so the two read as one. Transitions, not keyframes: closing
+   halfway through the entrance simply turns it around. */
+.psheet-backdrop {
+    transition: opacity var(--dur-modal) var(--ease-out);
+}
+
+.psheet-backdrop.is-entering,
+.psheet-backdrop.is-closing {
+    opacity: 0;
+}
+
+.psheet-backdrop.is-closing {
+    transition-duration: var(--dur-modal-out);
+}
+
+.psheet {
+    transition: transform var(--dur-sheet-in) var(--ease-drawer);
+}
+
+.psheet.is-entering,
+.psheet.is-closing {
+    transform: translate3d(0, 100%, 0);
+}
+
+.psheet.is-closing {
+    transition-duration: var(--dur-sheet-out);
+}
+
+@media (min-width: 768px) {
+    /* The card turns opaque within the first ~150ms and keeps settling for
+       the rest: a slow opacity ramp let the page show through the card. */
+    .psheet {
+        transition:
+            opacity var(--dur-modal-fade) var(--ease-out),
+            transform var(--dur-modal) var(--ease-out);
+    }
+
+    .psheet.is-entering {
+        opacity: 0;
+        transform: translate3d(0, 10px, 0) scale(0.97);
+    }
+
+    .psheet.is-closing {
+        opacity: 0;
+        transform: translate3d(0, 6px, 0) scale(0.98);
+        transition-duration: var(--dur-modal-fade), var(--dur-modal-out);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .psheet.is-entering,
+    .psheet.is-closing {
+        opacity: 0;
+    }
+}
+
 /* --- Sheets ------------------------------------------------------------------ */
 /* Full-screen sheets (checkout) slide in from the bottom on the drawer curve
    and leave the same way, a little faster. */
@@ -271,119 +346,14 @@ textarea {
     opacity: 0;
 }
 
-/* --- Shared-element morphs (composables/morph.ts) --------------------------- */
-/* Only the product photo travels; the page itself does not crossfade. */
-::view-transition-old(root),
-::view-transition-new(root) {
-    animation: none;
-    mix-blend-mode: normal;
-}
-
-/* Language switch: a plain crossfade of the two languages (opacity only; a
-   blur on two full-screen snapshots was the most expensive frame in the app). */
-html[data-morph="lang"]::view-transition-old(root) {
-    animation: morph-fade-out var(--dur-fade) var(--ease-out) both;
-    mix-blend-mode: plus-lighter;
-}
-
-html[data-morph="lang"]::view-transition-new(root) {
-    animation: morph-fade-in var(--dur-fade) var(--ease-out) both;
-    mix-blend-mode: plus-lighter;
-}
-
-@keyframes morph-fade-out {
-    to { opacity: 0; }
-}
-
-/* Into the cart: the page without the sheet fades in over the page with it,
-   so the sheet dissolves while the photo flies. */
-html[data-morph="cart"]::view-transition-new(root) {
-    animation: morph-fade-in var(--dur-sheet-out) var(--ease-out) both;
-}
-
-/* The page takes no input while a morph runs (the browser shows a snapshot
-   on top), so the flight stays short (--dur-sheet-in, the iOS drawer curve). */
-::view-transition-group(product-hero) {
-    animation-duration: var(--dur-sheet-in);
-    animation-timing-function: var(--ease-drawer);
-    border-radius: 16px;
-    overflow: clip;
-}
-
-/* Card photo and sheet photo have different shapes: crop, never squash. */
-::view-transition-old(product-hero),
-::view-transition-new(product-hero) {
-    height: 100%;
-    object-fit: cover;
-    animation-duration: var(--dur-fade);
-}
-
-/* Into the cart: the photo glides down and shrinks into the bag icon, stays a
-   photo most of the way and hands over to the icon at the end. */
-html[data-morph="cart"]::view-transition-group(product-hero) {
-    animation-duration: var(--dur-sheet-in);
-    animation-timing-function: var(--ease-in-out);
-}
-
-/* ...and rounds off into a dot on the way (a photo-shaped rectangle landing on
-   a round icon looked pasted on). */
-html[data-morph="cart"]::view-transition-old(product-hero) {
-    animation:
-        morph-hold-out var(--dur-sheet-in) linear both,
-        morph-round var(--dur-sheet-in) var(--ease-in-out) both;
-}
-
-/* The group travels in a straight line from the sheet to the bag; lifting
-   the photo a little at the start (a small anticipation, then the drop)
-   bends that line into a toss. */
-html[data-morph="cart"]::view-transition-image-pair(product-hero) {
-    animation: morph-toss var(--dur-sheet-in) var(--ease-out) both;
-}
-
-html[data-morph="cart"]::view-transition-new(product-hero) {
-    height: auto;
-    object-fit: contain;
-    animation: morph-late-in var(--dur-sheet-in) linear both;
-}
-
-@keyframes morph-fade-in {
-    from { opacity: 0; }
-}
-
-@keyframes morph-hold-out {
-    0%, 55% { opacity: 1; }
-    100% { opacity: 0; }
-}
-
-@keyframes morph-toss {
-    0% { transform: translate3d(0, 0, 0) scale(1); }
-    22% { transform: translate3d(0, -36px, 0) scale(1.04); }
-    100% { transform: translate3d(0, 0, 0) scale(1); }
-}
-
-@keyframes morph-round {
-    from { border-radius: 16px; }
-    to { border-radius: 50%; }
-}
-
-@keyframes morph-late-in {
-    0%, 70% { opacity: 0; }
-    100% { opacity: 1; }
-}
-
 @media (prefers-reduced-motion: reduce) {
     .suggest-in,
     .ready-lift {
         animation: fadeOnly 200ms linear backwards !important;
     }
 
-    .group:active .card-photo {
+    .press-card:active:not(:disabled) {
         transform: none;
     }
 
-    ::view-transition-group(*),
-    ::view-transition-old(*),
-    ::view-transition-new(*) {
-        animation: none !important;
-    }
 }

@@ -4,14 +4,14 @@
  *
  * 设置与个人中心视图组件 (Settings & Profile View).
  *
- * Motion: the balance counts up when the page is first shown, the settings
- * rows rise in one after another, and Order history slides in from the right.
+ * Motion: the balance counts up when the page is first shown and Order
+ * history slides in from the right. The rows themselves stay still (a page
+ * visited every day does not re-perform itself).
  */
 
 import AppIcon from '@/components/AppIcon.vue';
 import AnimatedNumber from '@shared/components/AnimatedNumber.vue';
 import SlidingTabs from '@shared/components/SlidingTabs.vue';
-import { vReveal } from '@shared/reveal';
 import { ref, computed, watch } from 'vue';
 import { TRANSLATIONS } from '../data';
 import type { Order, Language, UserProfile } from '../types';
@@ -169,7 +169,7 @@ const handleLogout = () => {
 
          <!-- Settings -->
          <div class="mt-10 border-y border-line divide-y divide-line">
-             <button v-reveal="120" type="button" @click.stop="showHistory = true" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4 text-left">
+             <button type="button" @click.stop="showHistory = true" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4 text-left">
                 <span class="flex-1 min-w-0">
                    <span class="block text-[16px] text-text-main">{{ t.orderHistory }}</span>
                    <span class="block mt-0.5 text-[13px] text-text-sub">{{ t.viewDetailedHistory }}</span>
@@ -177,12 +177,12 @@ const handleLogout = () => {
                 <AppIcon name="caret-right" weight="light" class="text-lg text-text-sub nudge" />
              </button>
 
-             <div v-reveal="170" class="w-full min-h-[72px] py-3 flex items-center gap-4">
+             <div class="w-full min-h-[72px] py-3 flex items-center gap-4">
                 <span class="flex-1 min-w-0 text-[16px] text-text-main">{{ t.language }}</span>
-                <SlidingTabs :model-value="lang" @update:model-value="setLang" :options="langOptions" variant="segment" size="lg" :label="t.language" />
+                <SlidingTabs :model-value="lang" @update:model-value="setLang" :options="langOptions" variant="segment" size="lg" stretch :label="t.language" class="w-[172px]" />
              </div>
 
-             <button v-if="!demoMode" v-reveal="220" type="button" @click="showPasswordModal = true" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4 text-left">
+             <button v-if="!demoMode" type="button" @click="showPasswordModal = true" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4 text-left">
                 <span class="flex-1 min-w-0">
                    <span class="block text-[16px] text-text-main">{{ lang === 'cn' ? '修改密码' : 'Change Password' }}</span>
                    <span class="block mt-0.5 text-[13px] text-text-sub">{{ lang === 'cn' ? '更新您的账户密码' : 'Update your account password' }}</span>
@@ -190,7 +190,7 @@ const handleLogout = () => {
                 <AppIcon name="caret-right" weight="light" class="text-lg text-text-sub nudge" />
              </button>
 
-             <a v-if="!demoMode" v-reveal="270" :href="adminUrl" target="_blank" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4">
+             <a v-if="!demoMode" :href="adminUrl" target="_blank" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4">
                 <span class="flex-1 min-w-0">
                    <span class="block text-[16px] text-text-main">{{ lang === 'cn' ? '管理后台' : 'Admin System' }}</span>
                    <span class="block mt-0.5 text-[13px] text-text-sub">{{ lang === 'cn' ? '进入系统管理界面' : 'Access system administration' }}</span>

@@ -25,6 +25,8 @@ const props = defineProps<{
   userName?: string;  // 问候用
   shopOpen?: boolean; // 来自 /shop/status
   orders: Order[];
+  /** The cart bar floats over the bottom of the screen: keep it off the shelf. */
+  reserveCartBar?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -83,7 +85,7 @@ const openCard = (p: Product, event: MouseEvent) => {
          whatever height is left; type and spacing follow the screen height
          (clamp + vh), so it fits in Safari and as a home-screen app alike.
          Phones scroll as usual. -->
-    <div class="mx-auto max-w-5xl flex flex-col px-5 md:px-10 pt-4 pb-8 md:h-full md:pt-5 md:pb-6">
+    <div class="mx-auto max-w-5xl flex flex-col px-5 md:px-10 pt-4 md:h-full md:pt-5" :class="reserveCartBar ? 'pb-24 md:pb-[84px]' : 'pb-8 md:pb-6'">
 
       <!-- Wordmark & status -->
       <header class="shrink-0 flex items-center justify-between h-10 animate-fade-in">
@@ -137,7 +139,7 @@ const openCard = (p: Product, event: MouseEvent) => {
            landscape) and melts into the card - towards the copy beside it in
            landscape, down into the copy below it in portrait and on phones. -->
       <article
-        class="group relative mt-6 md:mt-[clamp(14px,2.4vh,28px)] md:flex-1 md:min-h-[230px] flex flex-col md:landscape:flex-row rounded-[28px] overflow-hidden bg-surface-light border border-line cursor-pointer animate-slide-up-content"
+        class="group press-card relative mt-6 md:mt-[clamp(14px,2.4vh,28px)] md:flex-1 md:min-h-[200px] flex flex-col md:landscape:flex-row rounded-[28px] overflow-hidden bg-surface-light border border-line cursor-pointer animate-slide-up-content"
         style="animation-delay: 120ms"
         data-testid="featured-card"
         @click="featured && open(featured, featuredImg)"
@@ -162,7 +164,7 @@ const openCard = (p: Product, event: MouseEvent) => {
                 {{ t.bestSeller }}
               </p>
               <h2 class="mt-2 font-serif text-[32px] md:text-[clamp(30px,5.4vh,46px)] font-normal leading-[1.04] tracking-[-0.015em] text-text-main">{{ name(featured) }}</h2>
-              <p class="mt-2.5 max-w-[44ch] text-[15px] text-text-sub leading-relaxed line-clamp-2 text-balance">{{ lang === 'cn' ? featured.descriptionCN : featured.description }}</p>
+              <p class="mt-2.5 max-w-[44ch] text-[15px] text-text-sub leading-relaxed line-clamp-2 [@media(max-height:760px)]:line-clamp-1 text-balance">{{ lang === 'cn' ? featured.descriptionCN : featured.description }}</p>
             </div>
             <div class="mt-6 md:portrait:mt-0 md:portrait:shrink-0 md:portrait:flex-col md:portrait:items-end md:portrait:gap-3 flex items-center justify-between gap-6">
               <PriceTag :value="featured.price" class="font-serif text-[34px] md:text-[clamp(30px,4.6vh,40px)] text-text-main" />
@@ -195,7 +197,7 @@ const openCard = (p: Product, event: MouseEvent) => {
           >
             <button
               type="button"
-              class="group w-full text-left md:flex md:items-center md:gap-3 md:p-2.5 md:pr-3 md:rounded-[20px] md:bg-surface-light md:border md:border-line"
+              class="group press-card w-full text-left md:flex md:items-center md:gap-3 md:p-2.5 md:pr-3 md:rounded-[20px] md:bg-surface-light md:border md:border-line"
               data-testid="product-card"
               @click="openCard(p, $event)"
             >

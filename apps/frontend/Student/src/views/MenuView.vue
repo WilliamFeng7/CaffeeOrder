@@ -256,8 +256,7 @@ const handleSuggestionClick = (p: Product) => {
 <template>
   <div class="flex flex-col md:flex-row h-full bg-background-light relative z-0">
 
-    <!-- Sidebar (iPad): an icon and a name per category; a white highlight springs to the selected one,
-         whose icon draws itself in again -->
+    <!-- Sidebar (iPad): an icon and a name per category; a white highlight springs to the selected one -->
     <aside class="hidden md:flex flex-col w-[184px] shrink-0 border-r border-line h-full">
        <p class="px-7 pt-10 pb-5 eyebrow">{{ lang === 'cn' ? '菜单' : 'Menu' }}</p>
        <nav class="relative flex-1 overflow-y-auto no-scrollbar px-3" :aria-label="lang === 'cn' ? '商品分类' : 'Categories'">
@@ -278,12 +277,9 @@ const handleSuggestionClick = (p: Product) => {
             :class="isActiveCategory(cat.id) ? 'text-text-main' : 'text-text-sub hover:text-text-main'"
           >
              <AppIcon
-                :key="isActiveCategory(cat.id) ? 'on' : 'off'"
                 :name="cat.icon"
                 :weight="isActiveCategory(cat.id) ? 'regular' : 'light'"
-                :draw="isActiveCategory(cat.id)"
                 class="text-[20px] shrink-0"
-                :class="{ 'animate-icon-pop': isActiveCategory(cat.id) }"
              />
              <span class="text-[15px] leading-tight" :class="isActiveCategory(cat.id) ? 'font-medium' : ''">
                 {{ lang === 'cn' ? cat.nameCN : cat.name }}
@@ -393,11 +389,11 @@ const handleSuggestionClick = (p: Product) => {
                    :key="product.id"
                    @click="pick(product, $event)"
                    data-testid="product-card"
-                   class="group relative flex flex-col cursor-pointer"
+                   class="group press-card relative flex flex-col cursor-pointer"
                    :aria-disabled="isSoldOut(product) || undefined"
                 >
                    <div class="flex flex-col" :class="{ shake: shakingId === product.id }" @animationend.self="shakingId = null">
-                   <div class="relative aspect-square rounded-card overflow-hidden bg-cream transition-transform duration-release ease-out group-active:duration-press group-active:scale-[0.98]">
+                   <div class="relative aspect-square rounded-card overflow-hidden bg-cream">
                       <img
                          v-img-fade
                          :src="product.thumb"
@@ -435,7 +431,7 @@ const handleSuggestionClick = (p: Product) => {
 
           <!-- Nothing found -->
           <div v-if="filteredProducts.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
-             <AppIcon name="search" weight="light" draw class="text-[34px] mb-3" />
+             <AppIcon name="search" weight="light" class="text-[34px] mb-3" />
              <p class="text-[15px]">{{ lang === 'cn' ? '没有找到相关商品' : 'Nothing matches that' }}</p>
           </div>
        </main>

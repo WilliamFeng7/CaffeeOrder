@@ -105,10 +105,9 @@ const { handlers: dragHandlers } = useSheetDrag({
 
          <TransitionGroup tag="div" name="list" class="relative">
             <div
-               v-for="(item, idx) in cart"
+               v-for="item in cart"
                :key="item.cartId"
-               class="flex gap-4 py-5 border-b border-line bg-background-light animate-slide-up-content"
-               :style="{ animationDelay: `${Math.min(idx, 6) * 45}ms` }"
+               class="flex gap-4 py-5 border-b border-line bg-background-light"
             >
                <img v-img-fade :src="item.thumb || item.image" :data-full="item.image" :alt="item.name" class="size-[72px] md:size-24 rounded-tile object-cover bg-cream shrink-0" decoding="async" />
 
@@ -148,13 +147,13 @@ const { handlers: dragHandlers } = useSheetDrag({
          </TransitionGroup>
 
          <div v-if="cart.length === 0" class="py-16 flex flex-col items-center text-text-sub animate-fade-in">
-            <AppIcon name="bag" weight="light" draw class="text-[34px] mb-3" />
+            <AppIcon name="bag" weight="light" class="text-[34px] mb-3" />
             <p class="text-[15px]">{{ t.noOrders }}</p>
          </div>
       </section>
 
       <!-- Summary -->
-      <aside class="lg:w-[360px] shrink-0 animate-slide-up-content" style="animation-delay: 120ms">
+      <aside class="lg:w-[360px] shrink-0">
          <div class="lg:sticky lg:top-0 card p-6 md:p-7 flex flex-col gap-4">
             <p class="eyebrow">{{ t.pay }}</p>
             <div class="flex justify-between text-[15px] text-text-sub">
@@ -175,7 +174,7 @@ const { handlers: dragHandlers } = useSheetDrag({
                class="hidden md:flex btn btn-primary btn-lg w-full mt-1"
             >
                <template v-if="done">
-                  <AppIcon name="check" weight="fill" draw class="text-lg" />
+                  <AppIcon name="check" weight="fill" class="text-lg pop-in" />
                   {{ lang === 'cn' ? '已下单' : 'Order placed' }}
                </template>
                <template v-else-if="placing">
@@ -205,7 +204,7 @@ const { handlers: dragHandlers } = useSheetDrag({
            class="btn btn-primary btn-lg w-full"
         >
            <template v-if="done">
-              <AppIcon name="check" weight="fill" draw class="text-lg" />
+              <AppIcon name="check" weight="fill" class="text-lg pop-in" />
               {{ lang === 'cn' ? '已下单' : 'Order placed' }}
            </template>
            <template v-else-if="placing">

@@ -6,7 +6,7 @@
 import AppIcon from '@/components/AppIcon.vue';
 import AnimatedNumber from '@shared/components/AnimatedNumber.vue';
 import RollingNumber from '@shared/components/RollingNumber.vue';
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
 import MenuView from '../views/MenuView.vue';
@@ -21,7 +21,6 @@ import { useToastStore } from '../stores/toast';
 import { type CartItem, type Product, type Order, type Language, type TabState, type UserProfile, type SheetCloseReason } from '../types';
 import { auth } from '@shared/auth';
 import type { IconName } from '@/icons';
-import { canMorph, morph, onScreen } from '../composables/morph';
 import { motionMs } from '@shared/motion';
 
 const router = useRouter();
@@ -122,59 +121,41 @@ const addToast = (message: string, type: 'success' | 'info' | 'error' | 'warning
 };
 
 // --- Product sheet ---------------------------------------------------------
-// The photo grows out of the tapped card; after "Add" it flies into the cart
-// bar. See composables/morph.ts. A plain close is the sheet's own quick exit:
-// a morph holds the page still while it runs, and closing should never wait.
+// The sheet animates itself in and out (components/ProductModal.vue). Nothing
+// flies between the card and the sheet or into the cart: those full-page
+// snapshot morphs froze the page while they ran and double-exposed the photo.
 const productSheet = ref<InstanceType<typeof ProductModal> | null>(null);
-const cartIconEl = ref<HTMLElement | null>(null);
-const heroOpen = ref(false);
 let productClosing = false;
+// An item added in the sheet lands in the cart once the sheet has gone, so
+// the count rolling over and the bar's nudge are seen rather than happening
+// behind the sheet. (Held here so a drag-dismiss during "Added" still adds it.)
+const pendingAdd = ref<CartItem | null>(null);
 
-const handleSelectProduct = (product: Product, origin?: HTMLElement | null) => {
+const handleSelectProduct = (product: Product) => {
   if (selectedProduct.value) return;
   productClosing = false;
-  heroOpen.value = canMorph() && onScreen(origin);
-  void morph('open', heroOpen.value ? origin : null, () => {
-    selectedProduct.value = product;
-  }, () => productSheet.value?.photo);
+  selectedProduct.value = product;
 };
 
 const handleCloseProduct = async (reason: SheetCloseReason) => {
   const sheet = productSheet.value;
   if (!sheet || productClosing) return;
   productClosing = true;
-  const unmount = () => { selectedProduct.value = null; };
-
   // Dragged away: the sheet is already off-screen.
-  if (reason === 'dragged') {
-    unmount();
-    return;
+  if (reason !== 'dragged') await sheet.leave();
+  selectedProduct.value = null;
+  if (pendingAdd.value) {
+    const first = cart.value.length === 0; // the bar rises in; no nudge on top
+    cart.value = [...cart.value, pendingAdd.value];
+    pendingAdd.value = null;
+    if (!first) bumpCart();
   }
-
-  const photo = sheet.photo;
-  if (reason === 'added' && canMorph() && onScreen(photo)) {
-    await morph('cart', photo, unmount, () => cartIconEl.value);
-  } else {
-    await sheet.leave();
-    unmount();
-  }
-  // The bar swells a touch as the item lands in it.
-  if (reason === 'added') bumpCart();
 };
 
-// 切换语言时整屏文字交叉淡入，而不是一帧之内全部换掉 (a crossfade with a
-// hint of blur, so the two languages never read as a double exposure).
+// 切换语言: the words change in place, at once. (A full-page crossfade froze
+// a frame to take its snapshots and dimmed the screen while it played.)
 const handleToggleLang = () => {
-  const swap = () => { language.value = language.value === 'en' ? 'cn' : 'en'; };
-  const start = (document as Document & { startViewTransition?: (cb: () => Promise<void>) => unknown }).startViewTransition;
-  if (typeof start !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    swap();
-    return;
-  }
-  const root = document.documentElement;
-  root.dataset.morph = 'lang';
-  const vt = start.call(document, async () => { swap(); await nextTick(); }) as { finished: Promise<void> };
-  void vt.finished.finally(() => { if (root.dataset.morph === 'lang') delete root.dataset.morph; });
+  language.value = language.value === 'en' ? 'cn' : 'en';
 };
 
 const handleAddToCart = (options: { size: string; temp: string; sugar: string }) => {
@@ -195,10 +176,9 @@ const handleAddToCart = (options: { size: string; temp: string; sugar: string })
       temperature: options.temp as any,
       sugar: options.sugar,
     };
-    cart.value = [...cart.value, newItem];
-    // The sheet shows "Added" and the photo flies into the cart bar, which
-    // lives on the Order tab.
-    currentTab.value = 'order';
+    // The student stays where they are: the sheet shows "Added", closes, and
+    // the cart bar (on Home and Order) takes the item (handleCloseProduct).
+    pendingAdd.value = newItem;
   }
 };
 
@@ -323,7 +303,7 @@ const bumpCart = () => {
       <div class="relative h-full">
         <Transition :name="`tab-${tabDir}`">
           <KeepAlive>
-            <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleSelectProduct" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" :orders="orders" />
+            <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleSelectProduct" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" :orders="orders" :reserve-cart-bar="cartCount > 0 || !!pendingAdd" />
             <MenuView v-else-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" :lang="language" @toggle-lang="handleToggleLang" />
             <PickupView v-else-if="currentTab === 'pickup'" :orders="orders" :lang="language" :refresh="fetchOrders" @browse="currentTab = 'order'" />
             <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @toggle-lang="handleToggleLang" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" />
@@ -332,9 +312,9 @@ const bumpCart = () => {
       </div>
     </div>
 
-    <!-- Cart bar: floats above the tab bar on the menu -->
+    <!-- Cart bar: floats above the tab bar on Home and the menu -->
     <Transition name="cartbar">
-      <div v-if="cartCount > 0 && !isCheckoutOpen && !selectedProduct && currentTab === 'order'" class="absolute inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] md:bottom-[calc(88px+env(safe-area-inset-bottom))] z-40 flex justify-center px-4 pointer-events-none">
+      <div v-if="cartCount > 0 && (currentTab === 'order' || currentTab === 'home')" class="absolute inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] md:bottom-[calc(88px+env(safe-area-inset-bottom))] z-40 flex justify-center px-4 pointer-events-none">
          <button
            type="button"
            @click="isCheckoutOpen = true"
@@ -342,8 +322,8 @@ const bumpCart = () => {
            class="group pointer-events-auto w-full max-w-md h-14 rounded-full bg-primary text-white shadow-float flex items-center gap-4 pl-5 pr-6 transition-transform duration-spring ease-spring active:duration-press active:scale-[0.98]"
            :class="{ 'scale-[1.03]': cartBump }"
          >
-            <span ref="cartIconEl" class="relative flex items-center">
-               <AppIcon name="bag" weight="light" draw class="text-[24px]" />
+            <span class="relative flex items-center">
+               <AppIcon name="bag" weight="light" class="text-[24px]" />
                <span class="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-primary text-[11px] font-semibold flex items-center justify-center leading-none">
                   <RollingNumber :value="cartCount" />
                </span>
@@ -374,15 +354,12 @@ const bumpCart = () => {
           :class="currentTab === tab.id ? 'text-text-main' : 'text-text-sub'"
         >
           <span class="relative">
-            <!-- Re-keyed on selection: the line is drawn again while the icon
-                 dips and pops back (~8% overshoot) -->
+            <!-- Switching tabs happens all the time: the icon only changes
+                 weight and colour, the line under the bar does the moving -->
             <AppIcon
-              :key="currentTab === tab.id ? 'on' : 'off'"
               :name="tab.icon"
               :weight="currentTab === tab.id ? 'fill' : 'light'"
-              :draw="currentTab === tab.id"
               class="text-[24px]"
-              :class="{ 'animate-icon-pop': currentTab === tab.id }"
             />
             <span v-if="tab.id === 'pickup' && activeOrderCount > 0" class="absolute -top-1 -right-2.5 min-w-4 h-4 px-1 rounded-full bg-primary text-white text-[10px] font-semibold leading-none flex items-center justify-center ring-2 ring-white pop-in">
               <RollingNumber :value="activeOrderCount" />
@@ -405,7 +382,6 @@ const bumpCart = () => {
       ref="productSheet"
       :key="selectedProduct.id"
       :product="selectedProduct"
-      :hero="heroOpen"
       :lang="language"
       @close="handleCloseProduct"
       @add-to-cart="handleAddToCart"

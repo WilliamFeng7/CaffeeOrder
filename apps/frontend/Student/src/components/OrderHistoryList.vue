@@ -7,7 +7,6 @@
  * scroll into view.
  */
 import AppIcon from '@/components/AppIcon.vue';
-import { vReveal } from '@shared/reveal';
 import type { Order, Language } from '../types';
 import { computed } from 'vue';
 import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
@@ -80,12 +79,12 @@ const specLine = (item: Order['items'][number]) => {
      <main class="flex-1 overflow-y-auto no-scrollbar px-5 md:px-10 pt-2 pb-32">
         <div class="max-w-2xl mx-auto">
         <div v-if="orders.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
-          <AppIcon name="history" weight="light" draw class="text-[34px] mb-3" />
+          <AppIcon name="history" weight="light" class="text-[34px] mb-3" />
           <p class="text-[15px]">{{ t.noOrders }}</p>
         </div>
 
         <ul v-else class="divide-y divide-line border-y border-line">
-          <li v-for="(order, idx) in historyOrders" :key="order.id" v-reveal="Math.min(idx, 6) * 50" class="py-5">
+          <li v-for="order in historyOrders" :key="order.id" class="py-5">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <p class="font-serif text-[24px] font-normal text-text-main tabular-nums leading-none">{{ order.dailyNumber }}</p>

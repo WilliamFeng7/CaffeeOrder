@@ -5,17 +5,20 @@
  * 商品详情面板 (Product sheet): photo, name, description, sweetness, and the
  * add button. A bottom sheet on phones, a centred card on iPad.
  *
- * Motion:
- * - Opened from a card, the photo grows out of the card (shared-element
- *   morph, see composables/morph.ts) while the sheet fades in around it; with
- *   no card to grow from, the sheet slides up / scales in instead.
+ * Motion (one surface, one movement):
+ * - iPad: the card fades in from 97% and a few pixels lower (the modal
+ *   recipe, ~260ms on the strong ease-out); phones: the sheet rises from the
+ *   bottom edge on the drawer curve. Everything inside moves with it - no
+ *   photo flying in from the tapped card, no inner cascade.
+ * - It leaves the way it came, faster (~200ms).
  * - Swipe the photo down to dismiss (useSheetDrag).
- * - "Add" turns into "Added", then the photo flies into the cart bar.
- * The parent decides how it closes (morph or `leave()`), because only it knows
- * where the photo should go; this component just says why it wants to close.
+ * - "Add" rolls over to "Added" with a check, then the sheet closes and the
+ *   cart bar shows the new count.
+ * The parent unmounts it after `leave()` (or at once after a drag-dismiss,
+ * when it is already off-screen); this component says why it wants to close.
  *
  * Photo: the card's small photo (already loaded) sits underneath while the
- * full-size one loads and fades in on top, so the morph always has a picture.
+ * full-size one loads and fades in on top, so there is never an empty frame.
  */
 import AppIcon from '@/components/AppIcon.vue';
 import SlidingTabs from '@shared/components/SlidingTabs.vue';
@@ -32,8 +35,6 @@ type Sugar = '0%' | '50%' | 'Regular' | '120%';
 const props = defineProps<{
   product: Product;
   lang: Language;
-  /** The photo is arriving from a card (the sheet fades instead of sliding). */
-  hero?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -45,6 +46,10 @@ const emit = defineEmits<{
 const temp = ref('Hot');
 const sugar = ref<Sugar>('Regular');
 const isClosing = ref(false);
+// Mounted in its "from" state, then let go on the next style pass, so the
+// entrance is a transition (interruptible: closing mid-entrance just turns
+// it around) rather than keyframes.
+const isEntering = ref(true);
 const isSuccess = ref(false);
 let closeRequested = false;
 
@@ -71,17 +76,22 @@ const requestClose = (reason: SheetCloseReason) => {
   emit('close', reason);
 };
 
-/** The sheet's own exit, for when the photo has nowhere to fly to. */
+/** The sheet's own exit (resolves when it has finished). */
 const leave = () => new Promise<void>((resolve) => {
   isClosing.value = true;
-  window.setTimeout(resolve, motionMs('--dur-sheet-out', 380));
+  const phone = window.matchMedia('(max-width: 767px)').matches;
+  window.setTimeout(resolve, phone ? motionMs('--dur-sheet-out', 280) : motionMs('--dur-modal-out', 200));
 });
 
 defineExpose({ photo, leave });
 
-// Focus moves into the sheet, so Esc closes it and the page behind it is not
-// where the next Tab lands.
-onMounted(() => sheetEl.value?.focus({ preventScroll: true }));
+onMounted(() => {
+  void sheetEl.value?.offsetHeight; // commit the "from" state
+  isEntering.value = false;
+  // Focus moves into the sheet, so Esc closes it and the page behind it is
+  // not where the next Tab lands.
+  sheetEl.value?.focus({ preventScroll: true });
+});
 
 const handleAdd = () => {
   if (isSuccess.value || closeRequested) return;
@@ -97,8 +107,8 @@ const handleAdd = () => {
      <!-- Backdrop (tap to close); no blur, which repaints the whole screen every frame the sheet moves -->
      <div
         ref="backdropEl"
-        class="absolute inset-0 bg-[rgba(23,28,25,0.32)] transition-opacity duration-sheet-out ease-out"
-        :class="isClosing ? 'opacity-0' : 'animate-fade-in'"
+        class="psheet-backdrop absolute inset-0 bg-[rgba(23,28,25,0.32)]"
+        :class="{ 'is-entering': isEntering, 'is-closing': isClosing }"
         @click="requestClose('dismiss')"
      ></div>
 
@@ -109,10 +119,8 @@ const handleAdd = () => {
        aria-modal="true"
        aria-labelledby="modal-title"
        tabindex="-1"
-       class="outline-none bg-surface-light w-full max-h-[92%] md:max-h-full md:max-w-[520px] rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10 transition-[transform,opacity] duration-sheet-out ease-drawer"
-       :class="isClosing
-         ? 'translate-y-full md:translate-y-4 md:scale-[0.97] opacity-0'
-         : (hero ? 'animate-fade-in' : 'animate-slide-up-modal md:animate-scale-in')"
+       class="psheet outline-none bg-surface-light w-full max-h-[92%] md:max-h-full md:max-w-[520px] rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10"
+       :class="{ 'is-entering': isEntering, 'is-closing': isClosing }"
        @keydown.esc="requestClose('dismiss')"
      >
         <!-- 44px, and inset from the corner so a thumb near the edge still lands on it -->
@@ -140,20 +148,19 @@ const handleAdd = () => {
            </div>
 
            <div class="px-6 md:px-8 pt-7 pb-8">
-              <p v-if="product.isPopular" class="eyebrow !text-secondary-content animate-slide-up-content" style="animation-delay: 60ms">{{ t.bestSeller }}</p>
+              <p v-if="product.isPopular" class="eyebrow !text-secondary-content">{{ t.bestSeller }}</p>
               <h1
                 id="modal-title"
-                class="mt-1.5 font-serif text-[30px] md:text-[34px] font-normal leading-[1.1] tracking-[-0.01em] text-text-main animate-slide-up-content"
-                style="animation-delay: 90ms"
+                class="mt-1.5 font-serif text-[30px] md:text-[34px] font-normal leading-[1.1] tracking-[-0.01em] text-text-main"
               >
                 {{ lang === 'cn' ? product.nameCN : product.name }}
               </h1>
-              <p class="mt-3 text-[15px] text-text-sub leading-relaxed line-clamp-3 animate-slide-up-content" style="animation-delay: 140ms">
+              <p class="mt-3 text-[15px] text-text-sub leading-relaxed line-clamp-3">
                 {{ lang === 'cn' ? product.descriptionCN : product.description }}
               </p>
 
               <!-- Sweetness -->
-              <div class="mt-9 animate-slide-up-content" style="animation-delay: 190ms">
+              <div class="mt-9">
                 <p class="eyebrow">{{ t.sweetness }}</p>
                 <SlidingTabs
                   v-model="sugar"
@@ -187,8 +194,8 @@ const handleAdd = () => {
               <span class="relative inline-grid overflow-hidden" aria-live="polite">
                  <Transition name="roll-up">
                     <span v-if="isSuccess" key="done" class="col-start-1 row-start-1 flex items-center gap-2">
-                       <!-- the check pops in just after the label rolls over -->
-                       <AppIcon name="check" weight="fill" draw class="text-lg" />
+                       <!-- the check pops in as the label rolls over -->
+                       <AppIcon name="check" weight="fill" class="text-lg pop-in" />
                        {{ lang === 'cn' ? '已加入' : 'Added' }}
                     </span>
                     <span v-else key="add" class="col-start-1 row-start-1">{{ t.addToCart }}</span>
