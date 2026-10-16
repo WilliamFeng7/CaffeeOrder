@@ -2,7 +2,7 @@
  * icons.ts
  *
  * 超简约线条图标 (Ultra-minimal line icons) for the Student app. Each icon is
- * one to three strokes on a 24px grid - no fills, no inner detail (no steam
+ * one to four strokes on a 24px grid - no fills, no inner detail (no steam
  * on the cup, no lines on the bag) - drawn with one stroke weight and round
  * ends by components/AppIcon.vue. Paths are written so each stroke can be
  * traced in with a dash animation (see AppIcon's `draw`).
@@ -15,6 +15,13 @@ export const ICONS = {
   coffee: ['M5 9.5h11v4a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5Z', 'M16 11h1.25a2.25 2.25 0 0 1 0 4.5H16'],
   bell: ['M6.5 16.5v-5a5.5 5.5 0 0 1 11 0v5l1.5 1.5h-14Z', 'M10.5 20.75h3'],
   user: ['M12 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 1 0 0 7', 'M5.5 19.5a6.5 6.5 0 0 1 13 0'],
+
+  // Menu categories (the iPad sidebar)
+  star: ['M12 4.4l2.17 5.21 5.63.46-4.28 3.67 1.3 5.49L12 16.3l-4.82 2.93 1.3-5.49-4.28-3.67 5.63-.46Z'],
+  leaf: ['M5.5 18.5C5.5 10.5 10.5 5.5 18.5 5.5c0 8-5 13-13 13Z', 'M5.5 18.5l7-7'],
+  'cup-straw': ['M7 9h10l-1.25 10.5h-7.5Z', 'M13 9l1.5-5.5H17'],
+  bread: ['M6.5 19.5V11.4A3.2 3.2 0 0 1 7.6 5.5h8.8a3.2 3.2 0 0 1 1.1 5.9v8.1Z'],
+  grid: ['M5 5h5.25v5.25H5Z', 'M13.75 5H19v5.25h-5.25Z', 'M5 13.75h5.25V19H5Z', 'M13.75 13.75H19V19h-5.25Z'],
 
   // Objects
   bag: ['M5.5 8.5h13l-1 11h-11Z', 'M9 8.5V7a3 3 0 0 1 6 0v1.5'],

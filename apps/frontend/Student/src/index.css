@@ -159,10 +159,11 @@ textarea {
 /* --- Tabs ------------------------------------------------------------------ */
 /* Switching tabs slides the new tab in from the side it lives on (Home ->
    Order moves left, Order -> Home moves right) while the old one drifts a
-   little the other way and fades. Short, because it happens all the time. */
+   little the other way and fades. Short and small, because it happens all
+   the time. */
 .tab-fwd-enter-active,
 .tab-back-enter-active {
-    transition: opacity var(--dur-fade) var(--ease-out), transform var(--dur-enter) var(--ease-out);
+    transition: opacity var(--dur-fade) var(--ease-out), transform var(--dur-scale-in) var(--ease-out);
 }
 
 .tab-fwd-leave-active,
@@ -173,29 +174,35 @@ textarea {
     pointer-events: none;
 }
 
-.tab-fwd-enter-from { opacity: 0; transform: translate3d(28px, 0, 0); }
-.tab-fwd-leave-to { opacity: 0; transform: translate3d(-12px, 0, 0); }
-.tab-back-enter-from { opacity: 0; transform: translate3d(-28px, 0, 0); }
-.tab-back-leave-to { opacity: 0; transform: translate3d(12px, 0, 0); }
+.tab-fwd-enter-from { opacity: 0; transform: translate3d(18px, 0, 0); }
+.tab-fwd-leave-to { opacity: 0; transform: translate3d(-8px, 0, 0); }
+.tab-back-enter-from { opacity: 0; transform: translate3d(-18px, 0, 0); }
+.tab-back-leave-to { opacity: 0; transform: translate3d(8px, 0, 0); }
 
 /* --- Menu grid --------------------------------------------------------------- */
 /* A new category slides in from the side of its tab (later category: from the
-   right), the old grid fades out first. The grid moves as one piece: a
-   cascade of a dozen cards, each its own layer, dropped frames on iPad. */
+   right) while the old grid fades out on top of the same spot - a crossfade,
+   with no empty beat between the two. The grid moves as one piece: a cascade
+   of a dozen cards, each its own layer, dropped frames on iPad. */
 .grid-next-enter-active,
 .grid-prev-enter-active {
-    transition: opacity var(--dur-fade) var(--ease-out), transform var(--dur-enter) var(--ease-out);
+    transition: opacity var(--dur-fade) var(--ease-out), transform var(--dur-scale-in) var(--ease-out);
 }
 
 .grid-next-leave-active,
 .grid-prev-leave-active {
     transition: opacity var(--dur-page-out) var(--ease-out), transform var(--dur-page-out) var(--ease-out);
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    pointer-events: none;
 }
 
-.grid-next-enter-from { opacity: 0; transform: translate3d(24px, 0, 0); }
-.grid-prev-enter-from { opacity: 0; transform: translate3d(-24px, 0, 0); }
-.grid-next-leave-to { opacity: 0; transform: translate3d(-10px, 0, 0); }
-.grid-prev-leave-to { opacity: 0; transform: translate3d(10px, 0, 0); }
+.grid-next-enter-from { opacity: 0; transform: translate3d(16px, 0, 0); }
+.grid-prev-enter-from { opacity: 0; transform: translate3d(-16px, 0, 0); }
+.grid-next-leave-to { opacity: 0; transform: translate3d(-8px, 0, 0); }
+.grid-prev-leave-to { opacity: 0; transform: translate3d(8px, 0, 0); }
 
 /* --- Sheets ------------------------------------------------------------------ */
 /* Full-screen sheets (checkout) slide in from the bottom on the drawer curve

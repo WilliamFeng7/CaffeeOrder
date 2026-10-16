@@ -94,6 +94,9 @@ const countUnit = computed(() => {
 
 const isSoldOut = (p: Product) => p.inventoryCount === 0;
 
+// 侧栏当前分类 (searching selects none of them)
+const isActiveCategory = (id: string) => activeCategory.value === id && !searchTerm.value;
+
 const categoryOptions = computed(() => CATEGORIES.map(c => ({
   value: c.id,
   label: props.lang === 'cn' ? c.nameCN : c.name,
@@ -252,7 +255,8 @@ const handleSuggestionClick = (p: Product) => {
 <template>
   <div class="flex flex-col md:flex-row h-full bg-background-light relative z-0">
 
-    <!-- Sidebar (iPad): a numbered text index; a white highlight springs to the selected category -->
+    <!-- Sidebar (iPad): an icon and a name per category; a white highlight springs to the selected one,
+         whose icon draws itself in again -->
     <aside class="hidden md:flex flex-col w-[184px] shrink-0 border-r border-line h-full">
        <p class="px-7 pt-10 pb-5 eyebrow">{{ lang === 'cn' ? '菜单' : 'Menu' }}</p>
        <nav class="relative flex-1 overflow-y-auto no-scrollbar px-3" :aria-label="lang === 'cn' ? '商品分类' : 'Categories'">
@@ -263,17 +267,24 @@ const handleSuggestionClick = (p: Product) => {
             aria-hidden="true"
           ></span>
           <button
-            v-for="(cat, i) in CATEGORIES"
+            v-for="cat in CATEGORIES"
             :key="cat.id"
             type="button"
             @click="handleCategoryClick(cat.id)"
             data-testid="category-nav"
-            :aria-pressed="activeCategory === cat.id && !searchTerm"
+            :aria-pressed="isActiveCategory(cat.id)"
             class="relative z-10 w-full h-14 px-4 flex items-center gap-3 text-left transition-colors duration-color"
-            :class="activeCategory === cat.id && !searchTerm ? 'text-text-main' : 'text-text-sub hover:text-text-main'"
+            :class="isActiveCategory(cat.id) ? 'text-text-main' : 'text-text-sub hover:text-text-main'"
           >
-             <span class="w-5 text-[11px] tabular-nums text-text-sub/70">{{ String(i + 1).padStart(2, '0') }}</span>
-             <span class="text-[15px] leading-tight" :class="activeCategory === cat.id && !searchTerm ? 'font-medium' : ''">
+             <AppIcon
+                :key="isActiveCategory(cat.id) ? 'on' : 'off'"
+                :name="cat.icon"
+                :weight="isActiveCategory(cat.id) ? 'regular' : 'light'"
+                :draw="isActiveCategory(cat.id)"
+                class="text-[20px] shrink-0"
+                :class="{ 'animate-icon-pop': isActiveCategory(cat.id) }"
+             />
+             <span class="text-[15px] leading-tight" :class="isActiveCategory(cat.id) ? 'font-medium' : ''">
                 {{ lang === 'cn' ? cat.nameCN : cat.name }}
              </span>
           </button>
@@ -364,7 +375,9 @@ const handleSuggestionClick = (p: Product) => {
 
        <!-- Product Grid -->
        <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-5 md:px-10 pt-1 pb-40">
-          <Transition :name="`grid-${gridDir}`" mode="out-in">
+          <!-- The old grid leaves on top of the new one (positioned against this box) -->
+          <div class="relative">
+          <Transition :name="`grid-${gridDir}`">
              <TransitionGroup
                 :key="gridKey"
                 tag="div"
@@ -417,6 +430,7 @@ const handleSuggestionClick = (p: Product) => {
                 </article>
              </TransitionGroup>
           </Transition>
+          </div>
 
           <!-- Nothing found -->
           <div v-if="filteredProducts.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">

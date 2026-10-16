@@ -9,6 +9,8 @@
  * 3. 辅助接口 (Helper Interfaces): 语言 (Language), 购物车项 (CartItem).
  */
 
+import type { IconName } from '@/icons';
+
 // 语言类型：支持英文 ('en') 和中文 ('cn')
 export type Language = 'en' | 'cn';
 
@@ -134,6 +136,8 @@ export interface Category {
   name: string;
   // 类别中文名称
   nameCN: string;
+  // iPad 侧栏里的线条图标
+  icon: IconName;
 }
 
 /**

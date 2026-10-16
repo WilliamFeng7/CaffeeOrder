@@ -27,7 +27,7 @@ import { motionMs } from '@shared/motion';
 const router = useRouter();
 
 // --- State ---
-const currentTab = ref<TabState>('order');
+const currentTab = ref<TabState>('home');
 const isCheckoutOpen = ref(false);
 const cart = ref<CartItem[]>([]);
 const selectedProduct = ref<Product | null>(null);
