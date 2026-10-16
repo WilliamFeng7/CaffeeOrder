@@ -299,13 +299,13 @@ const handleSuggestionClick = (p: Product) => {
     <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
 
        <!-- Categories (phone): text tabs with an underline that glides -->
-       <div class="md:hidden shrink-0 overflow-x-auto no-scrollbar px-5 pt-3 border-b border-line">
+       <div class="phone-categories md:hidden shrink-0 overflow-x-auto no-scrollbar px-5 pt-3 border-b border-line">
           <SlidingTabs v-model="categoryModel" :options="categoryOptions" :label="lang === 'cn' ? '商品分类' : 'Categories'" />
        </div>
 
        <!-- Header & Search -->
-       <header class="px-5 md:px-10 pt-6 md:pt-10 pb-5 md:pb-8 flex items-end justify-between gap-6 shrink-0 z-30">
-          <div class="min-w-0">
+       <header class="menu-header px-5 md:px-10 pt-6 md:pt-10 pb-5 md:pb-8 flex items-end justify-between gap-6 shrink-0 z-30">
+          <div class="menu-heading min-w-0">
              <p class="eyebrow flex items-center gap-1">
                 <RollingNumber :value="filteredProducts.length" />
                 <span>{{ countUnit }}</span>
@@ -318,7 +318,11 @@ const handleSuggestionClick = (p: Product) => {
              </h1>
           </div>
 
-          <div ref="searchContainerRef" class="relative w-40 md:w-72 shrink-0">
+          <button type="button" @click="emit('toggle-lang')" :aria-label="t.language" class="menu-language md:hidden btn btn-outline h-11 px-4">
+             {{ lang === 'en' ? '中文' : 'English' }}
+          </button>
+
+          <div ref="searchContainerRef" class="menu-search relative w-40 md:w-72 shrink-0">
              <AppIcon name="search" weight="light" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-text-sub pointer-events-none z-10" />
              <input
                 ref="searchInputRef"
@@ -333,6 +337,7 @@ const handleSuggestionClick = (p: Product) => {
                 @input="showSuggestions = true"
                 @keydown.enter="($event.target as HTMLInputElement).blur()"
                 :placeholder="t.search"
+                :aria-label="t.search"
                 class="w-full h-12 pl-10 pr-12 rounded-full bg-cream border border-transparent text-[16px] text-text-main placeholder:text-text-sub outline-none transition-[background-color,border-color] duration-color focus:bg-surface-light focus:border-line-strong"
              />
              <button
@@ -349,7 +354,7 @@ const handleSuggestionClick = (p: Product) => {
 
              <!-- Suggestions -->
              <div
-                class="absolute top-full right-0 mt-2 w-full md:w-80 bg-surface-light rounded-card shadow-float border border-line p-1.5 origin-top-right transition-[opacity,transform] duration-popover ease-out z-40"
+                class="menu-suggestions absolute top-full right-0 mt-2 w-full md:w-80 bg-surface-light rounded-card shadow-float border border-line p-1.5 origin-top-right transition-[opacity,transform] duration-popover ease-out z-40"
                 :class="showSuggestions && suggestions.length > 0 ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-[0.97] -translate-y-1 pointer-events-none'"
              >
                 <button
@@ -371,7 +376,7 @@ const handleSuggestionClick = (p: Product) => {
        </header>
 
        <!-- Product Grid -->
-       <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar px-5 md:px-10 pt-1 pb-40">
+       <main ref="scroller" @scroll.passive="onScroll" class="menu-products flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar px-5 md:px-10 pt-1 pb-40">
           <!-- The old grid leaves on top of the new one (positioned against this box) -->
           <div class="relative">
           <Transition :name="`grid-${gridDir}`">

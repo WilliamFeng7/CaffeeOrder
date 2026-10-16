@@ -47,7 +47,7 @@ watch(() => props.open, async (open) => {
       <div
         v-if="open"
         class="bsheet-root fixed inset-0 z-[150] flex items-end md:items-center justify-center"
-        :style="{ paddingBottom: `${keyboardInset}px` }"
+        :style="{ paddingBottom: `${keyboardInset}px`, '--keyboard-inset': `${keyboardInset}px` }"
         @keydown.esc="emit('close')"
       >
         <div ref="backdropEl" class="bsheet-backdrop absolute inset-0 bg-[rgba(23,28,25,0.28)]" @click="emit('close')"></div>

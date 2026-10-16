@@ -103,7 +103,7 @@ const handleAdd = () => {
 </script>
 
 <template>
-  <div class="fixed inset-0 z-[110] flex items-end md:items-center justify-center md:p-8">
+  <div class="product-overlay fixed inset-0 z-[110] flex items-end md:items-center justify-center md:p-8">
      <!-- Backdrop (tap to close); no blur, which repaints the whole screen every frame the sheet moves -->
      <div
         ref="backdropEl"
@@ -119,7 +119,7 @@ const handleAdd = () => {
        aria-modal="true"
        aria-labelledby="modal-title"
        tabindex="-1"
-       class="psheet outline-none bg-surface-light w-full max-h-[92%] md:max-h-full md:max-w-[520px] rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10"
+       class="product-sheet psheet outline-none bg-surface-light w-full max-h-[92%] md:max-h-full md:max-w-[520px] rounded-t-sheet md:rounded-sheet overflow-hidden flex flex-col shadow-sheet md:shadow-float relative z-10"
        :class="{ 'is-entering': isEntering, 'is-closing': isClosing }"
        @keydown.esc="requestClose('dismiss')"
      >
@@ -135,7 +135,7 @@ const handleAdd = () => {
 
         <div class="flex-1 min-h-0 overflow-y-auto no-scrollbar scroll-smooth-touch">
            <!-- Photo (also the drag handle: swipe down to close) -->
-           <div ref="photo" class="sheet-photo relative h-[280px] md:h-[340px] w-full shrink-0 overflow-hidden touch-none" v-on="dragHandlers">
+           <div ref="photo" class="product-photo sheet-photo relative h-[280px] md:h-[340px] w-full shrink-0 overflow-hidden touch-none" v-on="dragHandlers">
               <img :src="product.thumb" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover" decoding="async" />
               <img
                 v-img-fade
@@ -147,7 +147,7 @@ const handleAdd = () => {
               <div class="absolute top-2.5 left-1/2 -translate-x-1/2 h-1 w-9 bg-white/80 rounded-full" aria-hidden="true"></div>
            </div>
 
-           <div class="px-6 md:px-8 pt-7 pb-8">
+           <div class="product-copy px-6 md:px-8 pt-7 pb-8">
               <p v-if="product.isPopular" class="eyebrow !text-secondary-content">{{ t.bestSeller }}</p>
               <h1
                 id="modal-title"
@@ -160,7 +160,7 @@ const handleAdd = () => {
               </p>
 
               <!-- Sweetness -->
-              <div class="mt-9">
+              <div class="product-options mt-9">
                 <p class="eyebrow">{{ t.sweetness }}</p>
                 <SlidingTabs
                   v-model="sugar"
@@ -176,7 +176,7 @@ const handleAdd = () => {
         </div>
 
         <!-- Price & Add -->
-        <div class="flex-none px-6 md:px-8 pt-4 pb-[max(env(safe-area-inset-bottom),18px)] md:pb-6 border-t border-line flex items-center gap-6">
+        <div class="product-actions flex-none px-6 md:px-8 pt-4 pb-[max(env(safe-area-inset-bottom),18px)] md:pb-6 border-t border-line flex items-center gap-6">
            <div class="flex flex-col">
               <span class="eyebrow">{{ t.total }}</span>
               <PriceTag :value="product.price" class="mt-1 font-serif text-[30px] text-text-main" />

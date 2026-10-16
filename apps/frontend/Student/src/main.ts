@@ -26,9 +26,10 @@ setUnauthorizedHandler(() => {
 // without this the press feedback never shows on iPhone / iPad.
 document.addEventListener('touchstart', () => {}, { passive: true })
 
-// Pinch-zoom is also blocked in CSS (touch-action: pan-x pan-y); Safari's own
-// gesture events are the fallback for iPadOS versions that zoom anyway.
-document.addEventListener('gesturestart', (e) => e.preventDefault())
+// Keep the iPad kiosk gesture behaviour, while phones retain pinch zoom.
+document.addEventListener('gesturestart', (e) => {
+  if (window.matchMedia('(min-width: 768px) and (min-height: 501px)').matches) e.preventDefault()
+})
 
 // 创建 Vue 应用实例
 const app = createApp(App)

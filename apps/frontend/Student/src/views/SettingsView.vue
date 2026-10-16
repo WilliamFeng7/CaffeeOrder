@@ -137,7 +137,7 @@ const handleLogout = () => {
 
     <!-- MAIN VIEW: Profile & Settings -->
     <div v-else class="flex flex-col h-full bg-background-light relative">
-       <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto no-scrollbar px-5 md:px-10 pt-6 md:pt-10 pb-32">
+       <main ref="scroller" @scroll.passive="onScroll" class="profile-content flex-1 min-h-0 overflow-y-auto no-scrollbar px-5 md:px-10 pt-6 md:pt-10 pb-32">
          <div class="max-w-2xl mx-auto">
 
          <h1 class="font-serif text-[30px] md:text-[42px] font-normal leading-tight tracking-[-0.015em] text-text-main animate-fade-in">{{ t.profile }}</h1>

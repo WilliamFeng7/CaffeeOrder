@@ -15,6 +15,146 @@ body {
     text-rendering: optimizeLegibility;
 }
 
+/* Layout aliases use the existing Tailwind spacing scale. Navigation, content
+   and the floating cart share the same measurements, including safe areas. */
+:root {
+    --app-safe-top: env(safe-area-inset-top, 0px);
+    --app-safe-right: env(safe-area-inset-right, 0px);
+    --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --app-safe-left: env(safe-area-inset-left, 0px);
+    --app-gutter: theme('spacing.5');
+    --app-nav-height: theme('spacing.16');
+    --app-cart-height: theme('spacing.14');
+    --app-cart-gap: theme('spacing.3');
+    --app-nav-inset: calc(var(--app-nav-height) + var(--app-safe-bottom));
+}
+
+@media (min-width: 768px) {
+    :root {
+        --app-nav-height: calc(theme('spacing.16') + theme('spacing.2'));
+        --app-cart-gap: theme('spacing.4');
+    }
+}
+
+.student-shell {
+    --app-scroll-end: theme('spacing.6');
+}
+
+.student-shell.has-cart {
+    --app-scroll-end: calc(var(--app-cart-height) + var(--app-cart-gap) + theme('spacing.4'));
+}
+
+.student-content { padding-bottom: var(--app-nav-inset); }
+.student-nav { padding-bottom: var(--app-safe-bottom); }
+.student-nav-items { height: var(--app-nav-height); }
+.student-cart { bottom: calc(var(--app-nav-inset) + var(--app-cart-gap)); }
+
+/* Phones keep the same visual system, with room for a thumb, readable labels
+   and browser chrome. This also covers short phone landscape viewports. */
+@media (max-width: 767px), (max-width: 1023px) and (max-height: 500px) {
+    :root {
+        --app-nav-height: theme('spacing.16');
+        --app-cart-gap: theme('spacing.3');
+    }
+
+    body { min-height: 100dvh; }
+
+    html, body, .student-shell, .student-shell :not(.touch-none):not(.touch-pan-y) {
+        touch-action: manipulation;
+    }
+    .student-shell .touch-pan-y { touch-action: pan-y pinch-zoom; }
+
+    .student-shell {
+        top: var(--app-safe-top);
+        left: var(--app-safe-left);
+        right: var(--app-safe-right);
+        width: auto;
+        height: calc(100dvh - var(--app-safe-top) - var(--app-keyboard-inset, 0px));
+    }
+
+    .student-cart { padding-inline: theme('spacing.4'); }
+    .student-shell.keyboard-open .student-nav,
+    .student-shell.keyboard-open .student-cart { display: none; }
+    .student-shell.keyboard-open .student-content { padding-bottom: 0; }
+    .student-shell.keyboard-open .phone-categories,
+    .student-shell.keyboard-open .menu-heading,
+    .student-shell.keyboard-open .menu-language { display: none; }
+    .student-shell.keyboard-open .menu-header { display: block; padding-block: theme('spacing.3'); }
+    .student-shell.keyboard-open .menu-search { width: 100%; }
+    .student-shell.keyboard-open .menu-suggestions {
+        max-height: calc(100dvh - var(--app-keyboard-inset, 0px) - var(--app-safe-top) - theme('spacing.20'));
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .product-overlay { height: 100dvh; }
+    .product-overlay .product-sheet { max-height: calc(100% - var(--app-safe-top) - theme('spacing.4')); }
+    .product-sheet .product-photo { height: clamp(theme('spacing.32'), 30dvh, theme('spacing.64')); }
+    .product-sheet .product-copy { padding: theme('spacing.4') var(--app-gutter) theme('spacing.6'); }
+    .product-copy > p:not(.eyebrow) { font-size: theme('fontSize.base'); }
+    .product-options { margin-top: theme('spacing.6'); }
+    .product-options [role='tab'] { padding-inline: theme('spacing.1'); }
+    .product-sheet .product-actions {
+        gap: theme('spacing.4');
+        padding-inline: var(--app-gutter);
+        padding-bottom: calc(var(--app-safe-bottom) + theme('spacing.4'));
+    }
+    .product-actions > button { min-width: 0; padding-inline: theme('spacing.4'); }
+
+    .student-shell .checkout-content {
+        padding-inline: var(--app-gutter);
+        padding-bottom: calc(var(--app-cart-height) + theme('spacing.12') + var(--app-safe-bottom));
+    }
+    .checkout-item-controls { flex-wrap: wrap; gap: theme('spacing.2'); }
+    .checkout-quantity { margin-left: auto; }
+    .student-shell .checkout-footer {
+        display: block;
+        padding-inline: var(--app-gutter);
+        padding-bottom: calc(var(--app-safe-bottom) + theme('spacing.4'));
+    }
+    .student-shell .checkout-summary-pay { display: none; }
+
+    .profile-content { padding-inline: var(--app-gutter); padding-bottom: theme('spacing.6'); }
+
+    .bsheet-panel {
+        max-height: calc(100dvh - var(--keyboard-inset, 0px) - var(--app-safe-top) - theme('spacing.4'));
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scroll-padding-block: theme('spacing.4');
+        padding-bottom: calc(var(--app-safe-bottom) + theme('spacing.6'));
+    }
+}
+
+@media (max-width: 767px) {
+    .home-content { padding-inline: var(--app-gutter); padding-bottom: var(--app-scroll-end); }
+    .home-featured { margin-top: theme('spacing.5'); }
+    .home-featured .featured-photo { aspect-ratio: 16 / 9; }
+    .home-featured-copy { padding-inline: theme('spacing.5'); padding-bottom: theme('spacing.5'); }
+    .home-featured-name { font-size: clamp(28px, 8vw, 32px); line-height: 1.12; }
+    .home-trending { margin-top: theme('spacing.8'); }
+
+    .phone-categories { padding-inline: var(--app-gutter); }
+    .menu-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: theme('spacing.4');
+        padding: theme('spacing.5') var(--app-gutter);
+    }
+    .menu-search { grid-column: 1 / -1; width: 100%; }
+    .menu-suggestions { max-height: min(20rem, calc(100dvh - 14rem)); overflow-y: auto; overscroll-behavior: contain; }
+    .menu-products { padding-inline: var(--app-gutter); padding-bottom: var(--app-scroll-end); }
+}
+
+@media (max-width: 359px) {
+    :root { --app-gutter: theme('spacing.4'); }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) and (max-height: 500px) {
+    .student-shell .home-content { height: auto; min-height: 100%; padding-bottom: var(--app-scroll-end); }
+    .home-featured .featured-photo { width: 40%; height: auto; flex: none; }
+}
+
 .no-scrollbar::-webkit-scrollbar {
     display: none;
 }

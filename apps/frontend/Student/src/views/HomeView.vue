@@ -85,7 +85,7 @@ const openCard = (p: Product, event: MouseEvent) => {
          whatever height is left; type and spacing follow the screen height
          (clamp + vh), so it fits in Safari and as a home-screen app alike.
          Phones scroll as usual. -->
-    <div class="mx-auto max-w-5xl flex flex-col px-5 md:px-10 pt-4 md:h-full md:pt-5" :class="reserveCartBar ? 'pb-24 md:pb-[84px]' : 'pb-8 md:pb-6'">
+    <div class="home-content mx-auto max-w-5xl flex flex-col px-5 md:px-10 pt-4 md:h-full md:pt-5" :class="reserveCartBar ? 'pb-24 md:pb-[84px]' : 'pb-8 md:pb-6'">
 
       <!-- Wordmark & status -->
       <header class="shrink-0 flex items-center justify-between h-10 animate-fade-in">
@@ -139,7 +139,7 @@ const openCard = (p: Product, event: MouseEvent) => {
            landscape) and melts into the card - towards the copy beside it in
            landscape, down into the copy below it in portrait and on phones. -->
       <article
-        class="group press-card relative mt-6 md:mt-[clamp(14px,2.4vh,28px)] md:flex-1 md:min-h-[200px] flex flex-col md:landscape:flex-row rounded-[28px] overflow-hidden bg-surface-light border border-line cursor-pointer animate-slide-up-content"
+        class="home-featured group press-card relative mt-6 md:mt-[clamp(14px,2.4vh,28px)] md:flex-1 md:min-h-[200px] flex flex-col md:landscape:flex-row rounded-[28px] overflow-hidden bg-surface-light border border-line cursor-pointer animate-slide-up-content"
         style="animation-delay: 120ms"
         data-testid="featured-card"
         @click="featured && open(featured, featuredImg)"
@@ -156,14 +156,14 @@ const openCard = (p: Product, event: MouseEvent) => {
             decoding="async"
           />
         </div>
-        <div class="relative -mt-6 md:mt-0 flex flex-col px-6 pb-6 md:p-[clamp(20px,3.2vh,32px)] md:portrait:-mt-8 md:portrait:flex-row md:portrait:items-end md:portrait:gap-8 md:landscape:flex-1 md:landscape:min-w-0 md:landscape:justify-center md:landscape:-ml-14 md:landscape:pl-0 md:landscape:pr-[clamp(28px,4vw,56px)]">
+        <div class="home-featured-copy relative -mt-6 md:mt-0 flex flex-col px-6 pb-6 md:p-[clamp(20px,3.2vh,32px)] md:portrait:-mt-8 md:portrait:flex-row md:portrait:items-end md:portrait:gap-8 md:landscape:flex-1 md:landscape:min-w-0 md:landscape:justify-center md:landscape:-ml-14 md:landscape:pl-0 md:landscape:pr-[clamp(28px,4vw,56px)]">
           <template v-if="featured">
             <div class="min-w-0 md:portrait:flex-1">
               <p v-if="featured.isPopular" class="flex items-center gap-1.5 text-[13px] font-medium text-secondary-content">
                 <AppIcon name="star" weight="regular" class="text-[14px]" />
                 {{ t.bestSeller }}
               </p>
-              <h2 class="mt-2 font-serif text-[32px] md:text-[clamp(30px,5.4vh,46px)] font-normal leading-[1.04] tracking-[-0.015em] text-text-main">{{ name(featured) }}</h2>
+              <h2 class="home-featured-name mt-2 font-serif text-[32px] md:text-[clamp(30px,5.4vh,46px)] font-normal leading-[1.04] tracking-[-0.015em] text-text-main">{{ name(featured) }}</h2>
               <p class="mt-2.5 max-w-[44ch] text-[15px] text-text-sub leading-relaxed line-clamp-2 [@media(max-height:760px)]:line-clamp-1 text-balance">{{ lang === 'cn' ? featured.descriptionCN : featured.description }}</p>
             </div>
             <div class="mt-6 md:portrait:mt-0 md:portrait:shrink-0 md:portrait:flex-col md:portrait:items-end md:portrait:gap-3 flex items-center justify-between gap-6">
@@ -180,7 +180,7 @@ const openCard = (p: Product, event: MouseEvent) => {
       <!-- Popular: a quiet shelf under the feature. iPad: compact cards with
            the whole photo as a square thumbnail (four across in landscape, two
            by two in portrait); phones: photo cards, two by two. -->
-      <section v-if="trending.length" class="shrink-0 mt-10 md:mt-[clamp(16px,3vh,32px)]">
+      <section v-if="trending.length" class="home-trending shrink-0 mt-10 md:mt-[clamp(16px,3vh,32px)]">
         <div class="flex items-center justify-between animate-fade-in" style="animation-delay: 160ms">
           <h2 class="font-serif text-[22px] md:text-[clamp(20px,3vh,26px)] font-normal text-text-main">{{ t.trendingNow }}</h2>
           <button type="button" @click="emit('navigate', 'order')" class="h-11 -mr-2 px-2 text-[14px] font-medium text-text-main underline decoration-line-strong decoration-1 underline-offset-[5px]">
@@ -208,7 +208,7 @@ const openCard = (p: Product, event: MouseEvent) => {
                 </span>
               </span>
               <span class="block min-w-0 md:flex-1">
-                <span class="mt-2.5 md:mt-0 block text-[15px] font-medium leading-snug text-text-main truncate md:whitespace-normal md:line-clamp-2">{{ name(p) }}</span>
+                <span class="mt-2.5 md:mt-0 block text-[15px] font-medium leading-snug text-text-main line-clamp-2">{{ name(p) }}</span>
                 <span class="mt-0.5 block text-[14px] text-text-sub tabular-nums">{{ menuPrice(p.price) }}</span>
               </span>
             </button>

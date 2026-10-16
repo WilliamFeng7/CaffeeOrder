@@ -16,8 +16,9 @@ export function useKeyboardInset(active: Ref<boolean>) {
   const update = () => {
     if (!vv) return;
     const covered = window.innerHeight - vv.height - vv.offsetTop;
-    // Small differences are browser chrome, not a keyboard.
-    inset.value = covered > 80 ? Math.round(covered) : 0;
+    // Pinch zoom also shrinks the visual viewport. It must not be treated as
+    // a keyboard or hide the phone's navigation. Small gaps are browser chrome.
+    inset.value = vv.scale <= 1.01 && covered > 80 ? Math.round(covered) : 0;
   };
 
   const start = () => {

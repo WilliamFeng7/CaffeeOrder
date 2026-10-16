@@ -95,7 +95,7 @@ const { handlers: dragHandlers } = useSheetDrag({
       </span>
     </header>
 
-    <main class="flex-1 overflow-y-auto no-scrollbar px-5 md:px-10 pt-6 md:pt-8 pb-40 md:pb-10">
+    <main class="checkout-content flex-1 min-h-0 overflow-y-auto no-scrollbar px-5 md:px-10 pt-6 md:pt-8 pb-40 md:pb-10">
       <!-- iPad portrait: one centred column (items, then the summary); side by side in landscape -->
       <div class="mx-auto w-full max-w-2xl lg:max-w-5xl flex flex-col lg:flex-row gap-8 lg:gap-12">
 
@@ -113,14 +113,14 @@ const { handlers: dragHandlers } = useSheetDrag({
 
                <div class="flex-1 min-w-0 flex flex-col">
                   <div class="flex items-start justify-between gap-3">
-                     <h3 class="text-[16px] font-medium text-text-main line-clamp-1">{{ lang === 'cn' ? item.nameCN : item.name }}</h3>
+                     <h3 class="text-[16px] font-medium text-text-main line-clamp-2 md:line-clamp-1">{{ lang === 'cn' ? item.nameCN : item.name }}</h3>
                      <AnimatedNumber class="text-[16px] font-medium text-text-main shrink-0" :value="toCents(item.price) * item.quantity" :format="money" :from-zero="false" />
                   </div>
                   <p v-if="specLine(item)" class="mt-1 text-[13px] text-text-sub">{{ specLine(item) }}</p>
 
-                  <div class="flex items-center justify-between mt-auto pt-3">
+                  <div class="checkout-item-controls flex items-center justify-between mt-auto pt-3">
                      <span class="text-[13px] text-text-sub tabular-nums">¥{{ formatCents(toCents(item.price)) }} / {{ lang === 'cn' ? '杯' : 'ea' }}</span>
-                     <div class="flex items-center gap-1">
+                     <div class="checkout-quantity flex items-center gap-1">
                         <button
                            type="button"
                            @click="emit('update-quantity', item.cartId, -1)"
@@ -171,7 +171,7 @@ const { handlers: dragHandlers } = useSheetDrag({
                type="button"
                @click="emit('place-order')"
                :disabled="cart.length === 0 || (placing && !done)"
-               class="hidden md:flex btn btn-primary btn-lg w-full mt-1"
+               class="checkout-summary-pay hidden md:flex btn btn-primary btn-lg w-full mt-1"
             >
                <template v-if="done">
                   <AppIcon name="check" weight="fill" class="text-lg pop-in" />
@@ -196,7 +196,7 @@ const { handlers: dragHandlers } = useSheetDrag({
     </main>
 
     <!-- Pay (phone): pinned to the bottom -->
-    <div class="md:hidden absolute bottom-0 inset-x-0 bg-background-light border-t border-line px-5 pt-3 pb-[max(env(safe-area-inset-bottom),16px)] z-30">
+    <div class="checkout-footer md:hidden absolute bottom-0 inset-x-0 bg-background-light border-t border-line px-5 pt-3 pb-[max(env(safe-area-inset-bottom),16px)] z-30">
        <button
            type="button"
            @click="emit('place-order')"

@@ -22,8 +22,10 @@ import { type CartItem, type Product, type Order, type Language, type TabState, 
 import { auth } from '@shared/auth';
 import type { IconName } from '@/icons';
 import { motionMs } from '@shared/motion';
+import { useKeyboardInset } from '../composables/useKeyboardInset';
 
 const router = useRouter();
+const appKeyboardInset = useKeyboardInset(ref(true));
 
 // --- State ---
 const currentTab = ref<TabState>('home');
@@ -291,11 +293,11 @@ const bumpCart = () => {
 </script>
 
 <template>
-  <div class="fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans text-text-main select-none z-0">
+  <div class="student-shell fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans text-text-main select-none z-0" :class="{ 'has-cart': cartCount > 0 || !!pendingAdd, 'keyboard-open': appKeyboardInset > 0 }" :style="{ '--app-keyboard-inset': `${appKeyboardInset}px` }">
     <!-- Toasts are rendered once, globally, by <ToastContainer /> in App.vue. -->
 
     <div class="absolute inset-0 flex flex-col bg-background-light">
-    <div class="flex-1 overflow-hidden relative w-full h-full z-0 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-[calc(72px+env(safe-area-inset-bottom))]">
+    <div class="student-content flex-1 min-h-0 overflow-hidden relative w-full h-full z-0">
       <!-- KeepAlive: switching tabs keeps each tab's scroll position, category
            and sub-view; the Transition slides the new tab in from its side.
            The leaving tab is positioned against the inner box (not the padded
@@ -314,7 +316,7 @@ const bumpCart = () => {
 
     <!-- Cart bar: floats above the tab bar on Home and the menu -->
     <Transition name="cartbar">
-      <div v-if="cartCount > 0 && (currentTab === 'order' || currentTab === 'home')" class="absolute inset-x-0 bottom-[calc(76px+env(safe-area-inset-bottom))] md:bottom-[calc(88px+env(safe-area-inset-bottom))] z-40 flex justify-center px-4 pointer-events-none">
+      <div v-if="cartCount > 0 && (currentTab === 'order' || currentTab === 'home')" class="student-cart absolute inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
          <button
            type="button"
            @click="isCheckoutOpen = true"
@@ -335,8 +337,8 @@ const bumpCart = () => {
     </Transition>
 
     <!-- Tab bar: a short line marks the current tab and springs between slots -->
-    <nav class="absolute bottom-0 inset-x-0 z-30 bg-surface-light border-t border-line pb-[env(safe-area-inset-bottom)]" :aria-label="language === 'cn' ? '主导航' : 'Main'">
-      <div class="relative mx-auto max-w-lg grid grid-cols-4 h-16 md:h-[72px]">
+    <nav class="student-nav absolute bottom-0 inset-x-0 z-30 bg-surface-light border-t border-line" :aria-label="language === 'cn' ? '主导航' : 'Main'">
+      <div class="student-nav-items relative mx-auto max-w-lg grid grid-cols-4">
         <div
           class="absolute left-0 top-0 w-1/4 transition-transform duration-spring ease-spring pointer-events-none"
           :style="{ transform: `translateX(${tabIndex * 100}%)` }"
@@ -365,7 +367,7 @@ const bumpCart = () => {
               <RollingNumber :value="activeOrderCount" />
             </span>
           </span>
-          <span class="text-[11px] md:text-[12px] tracking-wide" :class="currentTab === tab.id ? 'font-semibold' : 'font-medium'">{{ tabLabel(tab.id) }}</span>
+          <span class="text-[12px] tracking-wide" :class="currentTab === tab.id ? 'font-semibold' : 'font-medium'">{{ tabLabel(tab.id) }}</span>
         </button>
       </div>
     </nav>
