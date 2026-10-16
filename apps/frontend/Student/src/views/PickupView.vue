@@ -33,6 +33,8 @@ const props = defineProps<{
   refresh?: () => Promise<unknown>;
 }>();
 
+const emit = defineEmits<{ (e: 'browse'): void }>(); // 空状态: 去点餐
+
 // 计算属性: 获取翻译
 const t = computed(() => TRANSLATIONS[props.lang]);
 
@@ -187,7 +189,7 @@ const specLine = (item: Order['items'][number]) => {
   <div class="flex flex-col h-full bg-background-light">
      <!-- Title + segmented control (its thumb follows the pages) -->
      <header class="px-5 md:px-10 pt-6 md:pt-10 pb-5 shrink-0 max-w-3xl w-full mx-auto">
-       <h1 class="font-serif text-[30px] md:text-[42px] font-medium leading-tight tracking-[-0.015em] text-text-main">{{ t.navPickup }}</h1>
+       <h1 class="font-serif text-[30px] md:text-[42px] font-normal leading-tight tracking-[-0.015em] text-text-main">{{ t.navPickup }}</h1>
        <div class="relative mt-5 grid grid-cols-2 p-1 rounded-full bg-cream w-full md:max-w-sm" role="tablist" :aria-label="t.navPickup">
           <span ref="thumb" class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-surface-light shadow-card pointer-events-none" aria-hidden="true"></span>
           <button
@@ -223,6 +225,7 @@ const specLine = (item: Order['items'][number]) => {
            <div v-if="currentOrders.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
               <AppIcon name="coffee" weight="light" draw class="text-[34px] mb-3" />
               <p class="text-[15px]">{{ t.noOrders }}</p>
+              <button type="button" class="btn btn-outline mt-6" @click="emit('browse')">{{ lang === 'cn' ? '去点餐' : 'Browse the menu' }}</button>
            </div>
 
            <TransitionGroup v-else tag="div" name="list" class="relative space-y-4">
@@ -236,7 +239,7 @@ const specLine = (item: Order['items'][number]) => {
                  <div class="flex items-start justify-between gap-3">
                     <div>
                        <p class="eyebrow">{{ t.pickupNum }}</p>
-                       <p class="mt-2 font-serif text-[60px] md:text-[72px] font-medium leading-[0.9] tabular-nums animate-text-reveal transition-colors duration-fade" :class="order.stage === 'ready' ? 'text-primary' : 'text-text-main'" style="animation-delay: 120ms">{{ order.dailyNumber }}</p>
+                       <p class="mt-2 font-serif text-[60px] md:text-[72px] font-normal leading-[0.9] tabular-nums animate-text-reveal transition-colors duration-fade" :class="order.stage === 'ready' ? 'text-primary' : 'text-text-main'" style="animation-delay: 120ms">{{ order.dailyNumber }}</p>
                     </div>
                     <!-- Stage: a dot that pings once when the order moves on (no
                          looping halo or pulse: the screen stays still while it waits) -->
@@ -289,9 +292,9 @@ const specLine = (item: Order['items'][number]) => {
                  <div class="flex items-end justify-between gap-4 mt-5 text-[12px] text-text-sub">
                     <span class="tabular-nums leading-relaxed">
                        {{ formatTime(order.date) }} · {{ itemCount(order) }}
-                       <span class="block font-mono text-[11px] text-text-sub/80">{{ order.order_no }}</span>
+                       <span class="block text-[11px] tabular-nums tracking-wide text-text-sub/80">{{ order.order_no }}</span>
                     </span>
-                    <span class="font-serif text-[20px] font-medium text-text-main tabular-nums">¥{{ order.total.toFixed(2) }}</span>
+                    <span class="font-serif text-[20px] font-normal text-text-main tabular-nums">¥{{ order.total.toFixed(2) }}</span>
                  </div>
               </article>
            </TransitionGroup>
@@ -318,7 +321,7 @@ const specLine = (item: Order['items'][number]) => {
               >
                  <div class="flex items-center justify-between gap-3">
                      <div class="flex items-center gap-4 min-w-0">
-                        <span class="w-12 font-serif text-[26px] font-medium text-text-main tabular-nums leading-none">{{ order.dailyNumber }}</span>
+                        <span class="w-12 font-serif text-[26px] font-normal text-text-main tabular-nums leading-none">{{ order.dailyNumber }}</span>
                         <div class="min-w-0">
                            <p class="text-[15px] text-text-main tabular-nums">{{ formatTime(order.date) }}</p>
                            <p class="text-[13px] text-text-sub tabular-nums">{{ itemCount(order) }} · ¥{{ order.total.toFixed(2) }}</p>

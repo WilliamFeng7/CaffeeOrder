@@ -17,6 +17,8 @@ import type { Product, Language, Order, TabState } from '../types';
 import { useKeepScroll } from '../composables/useKeepScroll';
 import { vImgFade } from '../directives/imgFade';
 import { orderStage } from '../utils/orderStage';
+import { menuPrice } from '../utils/money';
+import PriceTag from '../components/PriceTag.vue';
 
 const props = defineProps<{
   lang: Language;
@@ -32,7 +34,6 @@ const emit = defineEmits<{
 
 const t = computed(() => TRANSLATIONS[props.lang]);
 const name = (p: Product) => (props.lang === 'cn' ? p.nameCN : p.name);
-const price = (p: Product) => `¥${Number(p.price).toFixed(2)}`;
 
 // 主推: 第一款推荐且有货的商品；没有推荐就取第一款有货的
 const inStock = (p: Product) => p.inventoryCount !== 0;
@@ -97,7 +98,7 @@ const openCard = (p: Product, event: MouseEvent) => {
       <div class="shrink-0 mt-6 md:mt-[clamp(12px,2.2vh,24px)] md:landscape:flex md:landscape:items-end md:landscape:justify-between md:landscape:gap-10">
         <section class="min-w-0 animate-slide-up-content" style="animation-delay: 40ms">
           <p class="eyebrow">{{ greeting }} {{ displayName }}</p>
-          <h1 class="mt-2 font-serif text-[32px] md:text-[clamp(30px,5vh,44px)] font-medium leading-[1.08] tracking-[-0.02em] text-text-main text-balance">{{ t.homeSubtitle }}</h1>
+          <h1 class="mt-1.5 font-serif text-[32px] md:text-[clamp(30px,5vh,44px)] font-normal leading-[1.06] tracking-[-0.02em] text-text-main text-balance">{{ t.homeSubtitle }}</h1>
         </section>
 
         <!-- The order in progress: number, stage, and a bar that grows with it -->
@@ -110,8 +111,8 @@ const openCard = (p: Product, event: MouseEvent) => {
           style="animation-delay: 80ms"
         >
           <span class="shrink-0">
-            <span class="block text-[10px] font-medium uppercase tracking-[0.16em] text-white/65">{{ t.pickupNum }}</span>
-            <span class="mt-1 block font-serif text-[28px] font-medium leading-none tabular-nums">{{ activeOrder.dailyNumber }}</span>
+            <span class="block text-[12px] font-medium text-white/70">{{ t.pickupNum }}</span>
+            <span class="mt-1 block font-serif text-[30px] font-normal leading-none tabular-nums">{{ activeOrder.dailyNumber }}</span>
           </span>
           <span class="flex-1 min-w-0">
             <span class="flex items-baseline justify-between gap-3 text-[15px] font-medium">
@@ -127,19 +128,21 @@ const openCard = (p: Product, event: MouseEvent) => {
             </span>
           </span>
           <span class="size-11 -my-1 rounded-full flex items-center justify-center shrink-0" aria-hidden="true">
-            <AppIcon name="arrow-right" class="text-lg nudge" />
+            <AppIcon name="caret-right" class="text-lg nudge" />
           </span>
         </button>
       </div>
 
-      <!-- Featured: photo beside the copy in landscape, above it in portrait -->
+      <!-- Featured: the photo is shown whole (never cut at the top or bottom in
+           landscape) and melts into the card - towards the copy beside it in
+           landscape, down into the copy below it in portrait and on phones. -->
       <article
-        class="group mt-6 md:mt-[clamp(14px,2.4vh,28px)] md:flex-1 md:min-h-[220px] flex flex-col md:landscape:flex-row rounded-sheet overflow-hidden bg-surface-light border border-line cursor-pointer animate-slide-up-content"
+        class="group relative mt-6 md:mt-[clamp(14px,2.4vh,28px)] md:flex-1 md:min-h-[230px] flex flex-col md:landscape:flex-row rounded-[28px] overflow-hidden bg-surface-light border border-line cursor-pointer animate-slide-up-content"
         style="animation-delay: 120ms"
         data-testid="featured-card"
         @click="featured && open(featured, featuredImg)"
       >
-        <div class="relative aspect-[16/10] md:aspect-auto md:flex-1 md:min-h-0 md:landscape:flex-none md:landscape:w-[53%] bg-cream overflow-hidden">
+        <div class="featured-photo relative shrink-0 aspect-[16/10] md:aspect-auto md:flex-1 md:min-h-0 md:landscape:flex-none md:landscape:h-full md:landscape:aspect-[4/3]">
           <img
             v-if="featured"
             ref="featuredImg"
@@ -151,17 +154,18 @@ const openCard = (p: Product, event: MouseEvent) => {
             decoding="async"
           />
         </div>
-        <!-- Copy: price and Add at the bottom; in iPad portrait they sit to the
-             right of the name instead, so the photo keeps more of the height -->
-        <div class="flex flex-col md:portrait:flex-row md:portrait:items-center md:portrait:gap-8 p-6 md:p-[clamp(20px,3.2vh,32px)] md:landscape:flex-1 md:landscape:min-w-0">
+        <div class="relative -mt-6 md:mt-0 flex flex-col px-6 pb-6 md:p-[clamp(20px,3.2vh,32px)] md:portrait:-mt-8 md:portrait:flex-row md:portrait:items-end md:portrait:gap-8 md:landscape:flex-1 md:landscape:min-w-0 md:landscape:justify-center md:landscape:-ml-14 md:landscape:pl-0 md:landscape:pr-[clamp(28px,4vw,56px)]">
           <template v-if="featured">
             <div class="min-w-0 md:portrait:flex-1">
-              <p v-if="featured.isPopular" class="eyebrow !text-secondary-content">{{ t.bestSeller }}</p>
-              <h2 class="mt-1.5 font-serif text-[30px] md:text-[clamp(26px,4.4vh,36px)] font-medium leading-[1.08] tracking-[-0.01em] text-text-main">{{ name(featured) }}</h2>
-              <p class="mt-2 text-[15px] text-text-sub leading-relaxed line-clamp-2">{{ lang === 'cn' ? featured.descriptionCN : featured.description }}</p>
+              <p v-if="featured.isPopular" class="flex items-center gap-1.5 text-[13px] font-medium text-secondary-content">
+                <AppIcon name="star" weight="regular" class="text-[14px]" />
+                {{ t.bestSeller }}
+              </p>
+              <h2 class="mt-2 font-serif text-[32px] md:text-[clamp(30px,5.4vh,46px)] font-normal leading-[1.04] tracking-[-0.015em] text-text-main">{{ name(featured) }}</h2>
+              <p class="mt-2.5 max-w-[44ch] text-[15px] text-text-sub leading-relaxed line-clamp-2 text-balance">{{ lang === 'cn' ? featured.descriptionCN : featured.description }}</p>
             </div>
-            <div class="mt-auto pt-4 md:portrait:m-0 md:portrait:p-0 md:portrait:shrink-0 md:portrait:flex-col md:portrait:items-end md:portrait:gap-3 flex items-center justify-between gap-4">
-              <span class="font-serif text-[26px] font-medium text-text-main tabular-nums">{{ price(featured) }}</span>
+            <div class="mt-6 md:portrait:mt-0 md:portrait:shrink-0 md:portrait:flex-col md:portrait:items-end md:portrait:gap-3 flex items-center justify-between gap-6">
+              <PriceTag :value="featured.price" class="font-serif text-[34px] md:text-[clamp(30px,4.6vh,40px)] text-text-main" />
               <button type="button" class="btn btn-primary px-6 gap-1.5" @click.stop="open(featured, featuredImg)">
                 <AppIcon name="plus" class="text-[17px]" />
                 {{ lang === 'cn' ? '加入' : 'Add' }}
@@ -171,32 +175,40 @@ const openCard = (p: Product, event: MouseEvent) => {
         </div>
       </article>
 
-      <!-- Popular: four cards in a row from iPad up, two by two on phones -->
+      <!-- Popular: a quiet shelf under the feature. iPad: compact cards with
+           the whole photo as a square thumbnail (four across in landscape, two
+           by two in portrait); phones: photo cards, two by two. -->
       <section v-if="trending.length" class="shrink-0 mt-10 md:mt-[clamp(16px,3vh,32px)]">
         <div class="flex items-center justify-between animate-fade-in" style="animation-delay: 160ms">
-          <h2 class="font-serif text-[22px] md:text-[clamp(20px,3vh,26px)] font-medium text-text-main">{{ t.trendingNow }}</h2>
-          <button type="button" @click="emit('navigate', 'order')" class="group h-11 -mr-2 px-2 flex items-center gap-1 text-[14px] font-medium text-text-main">
-            <span class="link">{{ t.seeAll }}</span>
-            <AppIcon name="arrow-right" class="text-sm nudge" />
+          <h2 class="font-serif text-[22px] md:text-[clamp(20px,3vh,26px)] font-normal text-text-main">{{ t.trendingNow }}</h2>
+          <button type="button" @click="emit('navigate', 'order')" class="h-11 -mr-2 px-2 text-[14px] font-medium text-text-main underline decoration-line-strong decoration-1 underline-offset-[5px]">
+            {{ t.fullMenu }}
           </button>
         </div>
 
-        <ul class="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-x-4 md:gap-x-5 gap-y-6">
+        <ul class="mt-2 grid grid-cols-2 gap-x-4 gap-y-6 md:gap-3 md:landscape:grid-cols-4">
           <li
             v-for="(p, i) in trending"
             :key="p.id"
             class="animate-slide-up-content"
             :style="{ animationDelay: `${180 + i * 45}ms` }"
           >
-            <button type="button" class="group w-full text-left" data-testid="product-card" @click="openCard(p, $event)">
-              <span class="relative block aspect-square md:aspect-auto md:h-[clamp(96px,15vh,190px)] md:portrait:h-[clamp(96px,12vh,180px)] rounded-card overflow-hidden bg-cream">
+            <button
+              type="button"
+              class="group w-full text-left md:flex md:items-center md:gap-3 md:p-2.5 md:pr-3 md:rounded-[20px] md:bg-surface-light md:border md:border-line"
+              data-testid="product-card"
+              @click="openCard(p, $event)"
+            >
+              <span class="relative block aspect-square md:w-[clamp(56px,9vh,84px)] md:shrink-0 rounded-card md:rounded-[14px] overflow-hidden bg-cream">
                 <img v-img-fade :src="p.thumb" :data-full="p.image" :alt="name(p)" class="card-photo w-full h-full object-cover" decoding="async" />
-                <span class="absolute right-2.5 bottom-2.5 size-9 rounded-full bg-white/95 text-text-main shadow-card flex items-center justify-center" aria-hidden="true">
+                <span class="md:hidden absolute right-2.5 bottom-2.5 size-9 rounded-full bg-white/95 text-text-main shadow-card flex items-center justify-center" aria-hidden="true">
                   <AppIcon name="plus" class="text-[16px]" />
                 </span>
               </span>
-              <span class="mt-2.5 block text-[15px] font-medium text-text-main truncate">{{ name(p) }}</span>
-              <span class="mt-0.5 block text-[14px] text-text-sub tabular-nums">{{ price(p) }}</span>
+              <span class="block min-w-0 md:flex-1">
+                <span class="mt-2.5 md:mt-0 block text-[15px] font-medium leading-snug text-text-main truncate md:whitespace-normal md:line-clamp-2">{{ name(p) }}</span>
+                <span class="mt-0.5 block text-[14px] text-text-sub tabular-nums">{{ menuPrice(p.price) }}</span>
+              </span>
             </button>
           </li>
         </ul>

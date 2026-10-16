@@ -216,7 +216,7 @@ const handleLogin = async () => {
       <!-- Brand -->
       <div class="mb-14">
         <p class="eyebrow animate-slide-up-content">{{ lang === 'cn' ? '欢迎回来' : 'Welcome back' }}</p>
-        <h1 class="mt-3 font-serif text-[46px] font-medium leading-none tracking-[-0.02em] text-text-main animate-text-reveal" style="animation-delay: 60ms">OTIA Café</h1>
+        <h1 class="mt-3 font-serif text-[46px] font-normal leading-none tracking-[-0.02em] text-text-main animate-text-reveal" style="animation-delay: 60ms">OTIA Café</h1>
         <p class="mt-4 text-[15px] text-text-sub animate-slide-up-content" style="animation-delay: 120ms">{{ lang === 'cn' ? '登录后开始点单' : 'Sign in to start your order' }}</p>
       </div>
 
@@ -270,10 +270,7 @@ const handleLogin = async () => {
         <div class="pt-3 animate-slide-up-content" style="animation-delay: 280ms">
           <button type="submit" :disabled="isLoading" class="btn btn-primary btn-lg w-full group">
             <span v-if="isLoading" class="size-4 border-[1.5px] border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
-            <template v-else>
-              {{ lang === 'cn' ? '登录' : 'Sign In' }}
-              <AppIcon name="arrow-right" class="text-base nudge" />
-            </template>
+            <template v-else>{{ lang === 'cn' ? '登录' : 'Sign in' }}</template>
           </button>
         </div>
       </form>

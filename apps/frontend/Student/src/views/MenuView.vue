@@ -27,6 +27,7 @@ import { useKeepScroll } from '../composables/useKeepScroll';
 import { useToastStore } from '../stores/toast';
 import { vImgFade } from '../directives/imgFade';
 import { pinLeaving } from '@shared/list';
+import { menuPrice } from '../utils/money';
 
 // 定义 Props (Props Definition)
 const props = defineProps<{
@@ -314,7 +315,7 @@ const handleSuggestionClick = (p: Product) => {
                 <span>{{ countUnit }}</span>
              </p>
              <!-- The title rolls to the new category's name -->
-             <h1 class="mt-1 grid grid-cols-[minmax(0,1fr)] overflow-hidden py-0.5 font-serif text-[30px] md:text-[42px] font-medium leading-[1.15] tracking-[-0.015em] text-text-main">
+             <h1 class="mt-1 grid grid-cols-[minmax(0,1fr)] overflow-hidden py-0.5 font-serif text-[30px] md:text-[42px] font-normal leading-[1.15] tracking-[-0.015em] text-text-main">
                 <Transition :name="gridDir === 'next' ? 'roll-up' : 'roll-down'">
                    <span :key="pageTitle" class="col-start-1 row-start-1 truncate">{{ pageTitle }}</span>
                 </Transition>
@@ -366,7 +367,7 @@ const handleSuggestionClick = (p: Product) => {
                    <img v-img-fade :src="p.thumb" :data-full="p.image" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" alt="" decoding="async" />
                    <span class="min-w-0 flex-1">
                       <span class="block text-[14px] font-medium text-text-main truncate">{{ lang === 'cn' ? p.nameCN : p.name }}</span>
-                      <span class="block text-[13px] text-text-sub tabular-nums">¥{{ Number(p.price).toFixed(2) }}</span>
+                      <span class="block text-[13px] text-text-sub tabular-nums">{{ menuPrice(p.price) }}</span>
                    </span>
                 </button>
              </div>
@@ -424,7 +425,7 @@ const handleSuggestionClick = (p: Product) => {
                       <h3 class="text-[15px] md:text-base font-medium leading-snug line-clamp-2 md:line-clamp-1" :class="isSoldOut(product) ? 'text-text-sub' : 'text-text-main'">
                          {{ lang === 'cn' ? product.nameCN : product.name }}
                       </h3>
-                      <p class="mt-1 text-[14px] text-text-sub tabular-nums">¥{{ Number(product.price).toFixed(2) }}</p>
+                      <p class="mt-1 text-[14px] text-text-sub tabular-nums">{{ menuPrice(product.price) }}</p>
                    </div>
                    </div>
                 </article>

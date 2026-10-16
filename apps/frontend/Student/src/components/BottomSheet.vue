@@ -62,7 +62,7 @@ watch(() => props.open, async (open) => {
           <!-- Drag handle: swipe down to close -->
           <div class="touch-none -mx-6 px-6 pt-3 pb-5" v-on="handlers">
             <div class="w-9 h-1 rounded-full bg-line mx-auto mb-5" aria-hidden="true"></div>
-            <h3 class="font-serif text-[24px] font-medium leading-tight text-text-main">{{ title }}</h3>
+            <h3 class="font-serif text-[24px] font-normal leading-tight text-text-main">{{ title }}</h3>
           </div>
           <div class="bsheet-rise">
             <slot />

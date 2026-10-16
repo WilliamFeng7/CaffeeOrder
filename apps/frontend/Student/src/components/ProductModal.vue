@@ -19,6 +19,7 @@
  */
 import AppIcon from '@/components/AppIcon.vue';
 import SlidingTabs from '@shared/components/SlidingTabs.vue';
+import PriceTag from './PriceTag.vue';
 import { ref, computed, onMounted } from 'vue';
 import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Product, Language, SheetCloseReason } from '../types';
@@ -126,7 +127,7 @@ const handleAdd = () => {
 
         <div class="flex-1 min-h-0 overflow-y-auto no-scrollbar scroll-smooth-touch">
            <!-- Photo (also the drag handle: swipe down to close) -->
-           <div ref="photo" class="relative h-[280px] md:h-[340px] w-full shrink-0 overflow-hidden bg-cream touch-none" v-on="dragHandlers">
+           <div ref="photo" class="sheet-photo relative h-[280px] md:h-[340px] w-full shrink-0 overflow-hidden touch-none" v-on="dragHandlers">
               <img :src="product.thumb" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover" decoding="async" />
               <img
                 v-img-fade
@@ -142,7 +143,7 @@ const handleAdd = () => {
               <p v-if="product.isPopular" class="eyebrow !text-secondary-content animate-slide-up-content" style="animation-delay: 60ms">{{ t.bestSeller }}</p>
               <h1
                 id="modal-title"
-                class="mt-1.5 font-serif text-[30px] md:text-[34px] font-medium leading-[1.1] tracking-[-0.01em] text-text-main animate-slide-up-content"
+                class="mt-1.5 font-serif text-[30px] md:text-[34px] font-normal leading-[1.1] tracking-[-0.01em] text-text-main animate-slide-up-content"
                 style="animation-delay: 90ms"
               >
                 {{ lang === 'cn' ? product.nameCN : product.name }}
@@ -171,7 +172,7 @@ const handleAdd = () => {
         <div class="flex-none px-6 md:px-8 pt-4 pb-[max(env(safe-area-inset-bottom),18px)] md:pb-6 border-t border-line flex items-center gap-6">
            <div class="flex flex-col">
               <span class="eyebrow">{{ t.total }}</span>
-              <span class="mt-1 font-serif text-[24px] font-medium text-text-main tabular-nums leading-none">¥{{ Number(product.price).toFixed(2) }}</span>
+              <PriceTag :value="product.price" class="mt-1 font-serif text-[30px] text-text-main" />
            </div>
 
            <button

@@ -71,6 +71,40 @@ textarea {
     --dur-count: 700ms;
 }
 
+/* --- Type (Student) --------------------------------------------------------- */
+/* Small labels are plain words in sentence case - the shared uppercase,
+   letter-spaced eyebrow read as template chrome on every screen. Display
+   text (names, headings, prices) is New York at its regular weight; on iPad
+   the medium weight came out heavy. */
+.eyebrow {
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+/* --- Home feature ------------------------------------------------------------ */
+/* The photo melts into the card instead of ending on a hard edge: down into
+   the copy below it (phones, iPad portrait), sideways into the copy beside it
+   (iPad landscape). A mask, so it fades to whatever the card shows. */
+.featured-photo {
+    -webkit-mask-image: linear-gradient(to bottom, #000 64%, transparent);
+    mask-image: linear-gradient(to bottom, #000 64%, transparent);
+}
+
+/* The product sheet's photo fades into the copy the same way. */
+.sheet-photo {
+    -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent);
+    mask-image: linear-gradient(to bottom, #000 72%, transparent);
+}
+
+@media (min-width: 768px) and (orientation: landscape) {
+    .featured-photo {
+        -webkit-mask-image: linear-gradient(to right, #000 56%, transparent 98%);
+        mask-image: linear-gradient(to right, #000 56%, transparent 98%);
+    }
+}
+
 /* --- Exits (Student) -------------------------------------------------------- */
 /* The shared list / drill-in / page swaps leave on the same strong ease-out
    they arrive with here (overrides packages/shared/styles/motion.css for the

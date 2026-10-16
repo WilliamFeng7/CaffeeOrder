@@ -88,7 +88,7 @@ const { handlers: dragHandlers } = useSheetDrag({
       >
          <AppIcon name="arrow-left" weight="light" class="text-[22px]" />
       </button>
-      <h1 class="font-serif text-[22px] md:text-[26px] font-medium text-text-main">{{ t.reviewOrder }}</h1>
+      <h1 class="font-serif text-[22px] md:text-[26px] font-normal text-text-main">{{ t.reviewOrder }}</h1>
       <span class="ml-auto pr-2 eyebrow flex items-center gap-1">
          <RollingNumber :value="itemCount" />
          <span>{{ lang === 'cn' ? '件' : (itemCount === 1 ? 'item' : 'items') }}</span>
@@ -164,7 +164,7 @@ const { handlers: dragHandlers } = useSheetDrag({
             <div class="h-px bg-line"></div>
             <div class="flex items-baseline justify-between text-text-main">
                <span class="text-[15px]">{{ t.total }}</span>
-               <AnimatedNumber class="font-serif text-[34px] font-medium" :value="totalCents" :format="money" :from-zero="false" />
+               <AnimatedNumber class="font-serif text-[34px] font-normal" :value="totalCents" :format="money" :from-zero="false" />
             </div>
 
             <!-- Pay (iPad) -->

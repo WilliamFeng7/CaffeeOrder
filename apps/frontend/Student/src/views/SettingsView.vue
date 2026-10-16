@@ -140,14 +140,14 @@ const handleLogout = () => {
        <main ref="scroller" @scroll.passive="onScroll" class="flex-1 overflow-y-auto no-scrollbar px-5 md:px-10 pt-6 md:pt-10 pb-32">
          <div class="max-w-2xl mx-auto">
 
-         <h1 class="font-serif text-[30px] md:text-[42px] font-medium leading-tight tracking-[-0.015em] text-text-main animate-fade-in">{{ t.profile }}</h1>
+         <h1 class="font-serif text-[30px] md:text-[42px] font-normal leading-tight tracking-[-0.015em] text-text-main animate-fade-in">{{ t.profile }}</h1>
 
          <!-- Member card -->
          <div class="mt-6 rounded-card bg-primary text-white p-6 md:p-8 animate-slide-up-content" style="animation-delay: 60ms">
             <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0">
                     <p class="eyebrow !text-white/60">{{ t.memberLevel }}</p>
-                    <h2 class="mt-2 font-serif text-[26px] md:text-[30px] font-medium leading-tight truncate">{{ userProfile.name || 'User' }}</h2>
+                    <h2 class="mt-2 font-serif text-[26px] md:text-[30px] font-normal leading-tight truncate">{{ userProfile.name || 'User' }}</h2>
                 </div>
                 <button
                    type="button"
@@ -161,9 +161,9 @@ const handleLogout = () => {
             <div class="mt-10 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
                 <div class="min-w-0">
                     <p class="eyebrow !text-white/60">{{ t.balance }}</p>
-                    <AnimatedNumber class="mt-2 block font-serif font-medium leading-none break-all" :class="balanceSize" :value="balance" :format="formatBalance" />
+                    <AnimatedNumber class="mt-2 block font-serif font-normal leading-none break-all" :class="balanceSize" :value="balance" :format="formatBalance" />
                 </div>
-                <p class="ml-auto text-[11px] font-mono text-white/50 text-right break-all max-w-[190px] leading-relaxed">{{ userProfile.uuid }}</p>
+                <p class="ml-auto text-[11px] tabular-nums tracking-wide text-white/55 text-right break-all max-w-[190px] leading-relaxed">{{ userProfile.uuid }}</p>
             </div>
          </div>
 

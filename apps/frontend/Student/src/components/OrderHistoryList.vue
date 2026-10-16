@@ -74,7 +74,7 @@ const specLine = (item: Order['items'][number]) => {
        >
           <AppIcon name="arrow-left" weight="light" class="text-[22px]" />
        </button>
-       <h1 class="font-serif text-[26px] md:text-[32px] font-medium tracking-[-0.01em] text-text-main">{{ t.orderHistory }}</h1>
+       <h1 class="font-serif text-[26px] md:text-[32px] font-normal tracking-[-0.01em] text-text-main">{{ t.orderHistory }}</h1>
      </header>
 
      <main class="flex-1 overflow-y-auto no-scrollbar px-5 md:px-10 pt-2 pb-32">
@@ -88,11 +88,11 @@ const specLine = (item: Order['items'][number]) => {
           <li v-for="(order, idx) in historyOrders" :key="order.id" v-reveal="Math.min(idx, 6) * 50" class="py-5">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                  <p class="font-serif text-[24px] font-medium text-text-main tabular-nums leading-none">{{ order.dailyNumber }}</p>
+                  <p class="font-serif text-[24px] font-normal text-text-main tabular-nums leading-none">{{ order.dailyNumber }}</p>
                   <p class="mt-2 text-[13px] text-text-sub tabular-nums">{{ formatDate(order.date) }}</p>
                 </div>
                 <div class="text-right shrink-0">
-                  <p class="font-serif text-[18px] font-medium text-text-main tabular-nums">¥{{ order.total.toFixed(2) }}</p>
+                  <p class="font-serif text-[18px] font-normal text-text-main tabular-nums">¥{{ order.total.toFixed(2) }}</p>
                   <p class="mt-1 flex items-center justify-end gap-1.5 text-[12px] font-medium" :class="order.isCompleted ? 'text-primary' : 'text-secondary-content'">
                       <span class="dot" aria-hidden="true"></span>
                       {{ order.isCompleted ? t.completed : (lang === 'cn' ? '进行中' : 'In progress') }}
@@ -110,7 +110,7 @@ const specLine = (item: Order['items'][number]) => {
                     <span class="text-[14px] text-text-sub tabular-nums">×{{ item.quantity }}</span>
                 </div>
             </div>
-            <p class="mt-3 text-[11px] font-mono text-text-sub/80 truncate">{{ order.order_no }}</p>
+            <p class="mt-3 text-[11px] tabular-nums tracking-wide text-text-sub/80 truncate">{{ order.order_no }}</p>
           </li>
         </ul>
         </div>

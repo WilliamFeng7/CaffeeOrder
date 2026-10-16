@@ -325,7 +325,7 @@ const bumpCart = () => {
           <KeepAlive>
             <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleSelectProduct" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" :orders="orders" />
             <MenuView v-else-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" :lang="language" @toggle-lang="handleToggleLang" />
-            <PickupView v-else-if="currentTab === 'pickup'" :orders="orders" :lang="language" :refresh="fetchOrders" />
+            <PickupView v-else-if="currentTab === 'pickup'" :orders="orders" :lang="language" :refresh="fetchOrders" @browse="currentTab = 'order'" />
             <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @toggle-lang="handleToggleLang" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" />
           </KeepAlive>
         </Transition>
@@ -349,10 +349,7 @@ const bumpCart = () => {
                </span>
             </span>
             <AnimatedNumber class="text-[17px] font-medium" :value="cartTotalCents" :format="formatTotal" :from-zero="false" />
-            <span class="ml-auto flex items-center gap-1.5 text-[15px] font-medium">
-              {{ t.checkout }}
-              <AppIcon name="arrow-right" class="text-base nudge" />
-            </span>
+            <span class="ml-auto text-[15px] font-medium">{{ t.checkout }}</span>
          </button>
       </div>
     </Transition>

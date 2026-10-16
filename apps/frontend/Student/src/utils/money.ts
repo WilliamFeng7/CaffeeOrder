@@ -32,3 +32,12 @@ export function sumCents(
 ): number {
   return items.reduce((total, item) => total + toCents(item.price) * item.quantity, 0);
 }
+
+/**
+ * A menu price for browsing: "¥15" for whole yuan, "¥15.50" otherwise (the
+ * checkout and receipts keep formatCents' exact two decimals).
+ */
+export function menuPrice(yuan: number): string {
+  const cents = toCents(yuan);
+  return `¥${cents % CENT === 0 ? String(cents / CENT) : formatCents(cents)}`;
+}
