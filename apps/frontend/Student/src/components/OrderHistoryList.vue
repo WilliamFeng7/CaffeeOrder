@@ -64,16 +64,22 @@ const specLine = (item: Order['items'][number]) => {
 
 <template>
   <div class="flex flex-col h-full bg-background-light">
-     <header class="flex items-center gap-2 px-3 md:px-8 pt-5 md:pt-8 pb-3 shrink-0">
-       <button
-           type="button"
-           @click="emit('close')"
-           :aria-label="lang === 'cn' ? '返回' : 'Back'"
-           class="icon-btn size-11 text-text-main"
-       >
-          <AppIcon name="arrow-left" weight="light" class="text-[22px]" />
-       </button>
-       <h1 class="font-serif text-[26px] md:text-[32px] font-normal tracking-[-0.01em] text-text-main">{{ t.orderHistory }}</h1>
+     <!-- The back button and title sit in the same column as the list below
+          (the arrow's own padding hangs into the margin) -->
+     <header class="shrink-0 px-5 md:px-10 pt-5 md:pt-8 pb-3">
+       <div class="max-w-2xl mx-auto">
+       <div class="flex items-center gap-2 -ml-3">
+         <button
+             type="button"
+             @click="emit('close')"
+             :aria-label="lang === 'cn' ? '返回' : 'Back'"
+             class="icon-btn size-11 text-text-main"
+         >
+            <AppIcon name="arrow-left" weight="light" class="text-[22px]" />
+         </button>
+         <h1 class="font-serif text-[26px] md:text-[32px] font-normal tracking-[-0.01em] text-text-main">{{ t.orderHistory }}</h1>
+       </div>
+       </div>
      </header>
 
      <main class="flex-1 overflow-y-auto no-scrollbar px-5 md:px-10 pt-2 pb-32">

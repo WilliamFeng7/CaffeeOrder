@@ -186,10 +186,11 @@ const specLine = (item: Order['items'][number]) => {
 
 <template>
   <div class="flex flex-col h-full bg-background-light">
-     <!-- Title + segmented control (its thumb follows the pages) -->
-     <header class="px-5 md:px-10 pt-6 md:pt-10 pb-5 shrink-0 max-w-3xl w-full mx-auto">
+     <!-- Title + segmented control (its thumb follows the pages); side by side
+          in landscape, where the orders below run two to a row -->
+     <header class="px-5 md:px-10 pt-6 md:pt-10 pb-5 shrink-0 max-w-3xl lg:max-w-5xl w-full mx-auto lg:flex lg:items-end lg:justify-between lg:gap-8">
        <h1 class="font-serif text-[30px] md:text-[42px] font-normal leading-tight tracking-[-0.015em] text-text-main">{{ t.navPickup }}</h1>
-       <div class="relative mt-5 grid grid-cols-2 p-1 rounded-full bg-cream w-full md:max-w-sm" role="tablist" :aria-label="t.navPickup">
+       <div class="relative mt-5 lg:mt-0 grid grid-cols-2 p-1 rounded-full bg-cream w-full md:max-w-sm lg:w-[360px] shrink-0" role="tablist" :aria-label="t.navPickup">
           <span ref="thumb" class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-surface-light shadow-card pointer-events-none" aria-hidden="true"></span>
           <button
              v-for="(label, i) in [t.currentOrders, t.pastOrders]"
@@ -220,14 +221,14 @@ const specLine = (item: Order['items'][number]) => {
            <div ref="currentIndicator" class="ptr absolute left-1/2 top-0 z-10 size-7 text-text-sub" :class="{ 'is-refreshing': refreshingCurrent }" style="opacity: 0" aria-hidden="true">
               <svg viewBox="0 0 24 24" class="size-full" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="8.5" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" /></svg>
            </div>
-           <div ref="currentContent" class="px-5 md:px-10 pt-2 pb-40 max-w-3xl mx-auto">
+           <div ref="currentContent" class="px-5 md:px-10 pt-2 pb-40 max-w-3xl lg:max-w-5xl mx-auto">
            <div v-if="currentOrders.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
               <AppIcon name="coffee" weight="light" class="text-[34px] mb-3" />
               <p class="text-[15px]">{{ t.noOrders }}</p>
               <button type="button" class="btn btn-outline mt-6" @click="emit('browse')">{{ lang === 'cn' ? '去点餐' : 'Browse the menu' }}</button>
            </div>
 
-           <TransitionGroup v-else tag="div" name="list" class="relative space-y-4">
+           <TransitionGroup v-else tag="div" name="list" class="relative grid gap-4 lg:grid-cols-2 lg:gap-5 items-start">
               <article
                  v-for="(order, idx) in currentOrders"
                  :key="order.id"
@@ -305,17 +306,18 @@ const specLine = (item: Order['items'][number]) => {
            <div ref="historyIndicator" class="ptr absolute left-1/2 top-0 z-10 size-7 text-text-sub" :class="{ 'is-refreshing': refreshingHistory }" style="opacity: 0" aria-hidden="true">
               <svg viewBox="0 0 24 24" class="size-full" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="8.5" pathLength="1" stroke-dasharray="1 1" stroke-dashoffset="1" /></svg>
            </div>
-           <div ref="historyContent" class="px-5 md:px-10 pt-2 pb-40 max-w-3xl mx-auto">
+           <div ref="historyContent" class="px-5 md:px-10 pt-2 pb-40 max-w-3xl lg:max-w-5xl mx-auto">
            <div v-if="pastOrders.length === 0" class="py-24 flex flex-col items-center text-text-sub animate-fade-in">
               <AppIcon name="receipt" weight="light" class="text-[34px] mb-3" />
               <p class="text-[15px]">{{ t.noOrders }}</p>
            </div>
 
-           <ul v-else class="border-y border-line divide-y divide-line">
+           <!-- Hairline rows; two columns in landscape -->
+           <ul v-else class="border-t border-line lg:grid lg:grid-cols-2 lg:gap-x-10">
               <li
-                 v-for="(order, idx) in pastOrders"
+                 v-for="order in pastOrders"
                  :key="order.id"
-                 class="py-4 flex flex-col gap-1.5"
+                 class="py-4 flex flex-col gap-1.5 border-b border-line"
               >
                  <div class="flex items-center justify-between gap-3">
                      <div class="flex items-center gap-4 min-w-0">

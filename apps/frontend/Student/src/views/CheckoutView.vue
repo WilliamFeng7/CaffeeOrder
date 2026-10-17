@@ -155,7 +155,7 @@ const { handlers: dragHandlers } = useSheetDrag({
       <!-- Summary -->
       <aside class="lg:w-[360px] shrink-0">
          <div class="lg:sticky lg:top-0 card p-6 md:p-7 flex flex-col gap-4">
-            <p class="eyebrow">{{ t.pay }}</p>
+            <p class="eyebrow">{{ t.orderSummary }}</p>
             <div class="flex justify-between text-[15px] text-text-sub">
                <span>{{ t.subtotal }}</span>
                <AnimatedNumber :value="subtotalCents" :format="money" :from-zero="false" />

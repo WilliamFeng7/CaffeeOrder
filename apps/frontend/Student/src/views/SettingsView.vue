@@ -138,12 +138,15 @@ const handleLogout = () => {
     <!-- MAIN VIEW: Profile & Settings -->
     <div v-else class="flex flex-col h-full bg-background-light relative">
        <main ref="scroller" @scroll.passive="onScroll" class="profile-content flex-1 min-h-0 overflow-y-auto no-scrollbar px-5 md:px-10 pt-6 md:pt-10 pb-32">
-         <div class="max-w-2xl mx-auto">
+         <div class="max-w-2xl lg:max-w-5xl mx-auto">
 
          <h1 class="font-serif text-[30px] md:text-[42px] font-normal leading-tight tracking-[-0.015em] text-text-main animate-fade-in">{{ t.profile }}</h1>
 
+         <!-- Landscape: the member card on the left, the settings beside it -->
+         <div class="lg:mt-8 lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-12 lg:items-start">
+
          <!-- Member card -->
-         <div class="mt-6 rounded-card bg-primary text-white p-6 md:p-8 animate-slide-up-content" style="animation-delay: 60ms">
+         <div class="mt-6 lg:mt-0 rounded-card bg-primary text-white p-6 md:p-8 animate-slide-up-content" style="animation-delay: 60ms">
             <div class="flex items-start justify-between gap-4">
                 <div class="min-w-0">
                     <p class="eyebrow !text-white/60">{{ t.memberLevel }}</p>
@@ -167,8 +170,9 @@ const handleLogout = () => {
             </div>
          </div>
 
+         <div class="animate-slide-up-content" style="animation-delay: 120ms">
          <!-- Settings -->
-         <div class="mt-10 border-y border-line divide-y divide-line">
+         <div class="mt-10 lg:mt-0 border-y border-line divide-y divide-line">
              <button type="button" @click.stop="showHistory = true" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4 text-left">
                 <span class="flex-1 min-w-0">
                    <span class="block text-[16px] text-text-main">{{ t.orderHistory }}</span>
@@ -203,7 +207,9 @@ const handleLogout = () => {
             {{ t.signOut }}
          </button>
 
-         <p class="mt-6 text-center text-[12px] text-text-sub">OTIA Café · v3.0</p>
+         <p class="mt-6 text-center lg:text-left text-[12px] text-text-sub">OTIA Café · v3.0</p>
+         </div>
+         </div>
          </div>
        </main>
     </div>
