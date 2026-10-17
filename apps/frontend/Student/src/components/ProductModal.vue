@@ -10,12 +10,16 @@
  *   recipe, ~260ms on the strong ease-out); phones: the sheet rises from the
  *   bottom edge on the drawer curve. Everything inside moves with it - no
  *   photo flying in from the tapped card, no inner cascade.
+ * - The photo settles from a slight zoom as the card arrives.
  * - It leaves the way it came, faster (~200ms).
  * - Swipe the photo down to dismiss (useSheetDrag).
- * - "Add" rolls over to "Added" with a check, then the sheet closes and the
- *   cart bar shows the new count.
- * The parent unmounts it after `leave()` (or at once after a drag-dismiss,
- * when it is already off-screen); this component says why it wants to close.
+ * - "Add" rolls over to "Added" with a check, then the whole card shrinks
+ *   into the cart: it lifts a little, arcs down into the bag icon of the cart
+ *   bar while it shrinks, and fades out at the very end (`flyTo`, one WAAPI
+ *   animation of transform and opacity on the card itself).
+ * The parent unmounts it after `leave()` / `flyTo()` (or at once after a
+ * drag-dismiss, when it is already off-screen); this component says why it
+ * wants to close.
  *
  * Photo: the card's small photo (already loaded) sits underneath while the
  * full-size one loads and fades in on top, so there is never an empty frame.
@@ -28,7 +32,7 @@ import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Product, Language, SheetCloseReason } from '../types';
 import { useSheetDrag } from '../composables/useSheetDrag';
 import { vImgFade } from '../directives/imgFade';
-import { motionMs } from '@shared/motion';
+import { motionMs, cubicBezier, prefersReducedMotion } from '@shared/motion';
 
 type Sugar = '0%' | '50%' | 'Regular' | '120%';
 
@@ -83,7 +87,53 @@ const leave = () => new Promise<void>((resolve) => {
   window.setTimeout(resolve, phone ? motionMs('--dur-sheet-out', 280) : motionMs('--dur-modal-out', 200));
 });
 
-defineExpose({ photo, leave });
+// 飞进购物车 (Into the cart). The card travels a curved path - a quadratic
+// curve through a point above where it starts, so it lifts a touch and then
+// drops into the bag - eased off the spot and gliding in, while its size
+// holds and then goes quickly. Sampled into keyframes so position and size
+// can have their own curves in one compositor-only animation.
+const FLIGHT_MS = 640;
+const along = cubicBezier(0.45, 0, 0.2, 1);
+const shrink = cubicBezier(0.55, 0, 0.75, 0.4);
+
+const flyTo = (target: HTMLElement | null | undefined) => new Promise<void>((resolve) => {
+  const sheet = sheetEl.value;
+  const to = target?.getBoundingClientRect();
+  if (!sheet || !to || !to.width || prefersReducedMotion()) {
+    void leave().then(resolve);
+    return;
+  }
+  const from = sheet.getBoundingClientRect();
+  const dx = to.left + to.width / 2 - (from.left + from.width / 2);
+  const dy = to.top + to.height / 2 - (from.top + from.height / 2);
+  const end = Math.max(0.04, (to.width * 1.4) / from.width);
+  const cx = dx * 0.25;
+  const cy = -Math.min(72, Math.max(24, Math.abs(dy) * 0.2));
+  const frames: Keyframe[] = [];
+  for (let i = 0; i <= 20; i++) {
+    const u = i / 20;
+    const t = along(u);
+    const x = 2 * (1 - t) * t * cx + t * t * dx;
+    const y = 2 * (1 - t) * t * cy + t * t * dy;
+    const s = 1 - (1 - end) * shrink(u);
+    frames.push({
+      offset: u,
+      transform: `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${s.toFixed(4)})`,
+      opacity: u < 0.7 ? 1 : Number((1 - (u - 0.7) / 0.3).toFixed(3)),
+    });
+  }
+  sheet.style.transformOrigin = '50% 50%';
+  const flight = sheet.animate(frames, { duration: FLIGHT_MS, easing: 'linear', fill: 'forwards' });
+  backdropEl.value?.animate([{ opacity: 1 }, { opacity: 0 }], {
+    duration: FLIGHT_MS * 0.8,
+    easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+    fill: 'forwards',
+  });
+  flight.onfinish = () => resolve();
+  flight.oncancel = () => resolve();
+});
+
+defineExpose({ photo, leave, flyTo });
 
 onMounted(() => {
   void sheetEl.value?.offsetHeight; // commit the "from" state
@@ -136,14 +186,16 @@ const handleAdd = () => {
         <div class="flex-1 min-h-0 overflow-y-auto no-scrollbar scroll-smooth-touch">
            <!-- Photo (also the drag handle: swipe down to close) -->
            <div ref="photo" class="product-photo sheet-photo relative h-[280px] md:h-[340px] w-full shrink-0 overflow-hidden touch-none" v-on="dragHandlers">
-              <img :src="product.thumb" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover" decoding="async" />
-              <img
-                v-img-fade
-                :src="product.image"
-                :alt="lang === 'cn' ? product.nameCN : product.name"
-                class="relative w-full h-full object-cover"
-                decoding="async"
-              />
+              <div class="sheet-photo-media absolute inset-0">
+                <img :src="product.thumb" alt="" aria-hidden="true" class="absolute inset-0 w-full h-full object-cover" decoding="async" />
+                <img
+                  v-img-fade
+                  :src="product.image"
+                  :alt="lang === 'cn' ? product.nameCN : product.name"
+                  class="relative w-full h-full object-cover"
+                  decoding="async"
+                />
+              </div>
               <div class="absolute top-2.5 left-1/2 -translate-x-1/2 h-1 w-9 bg-white/80 rounded-full" aria-hidden="true"></div>
            </div>
 

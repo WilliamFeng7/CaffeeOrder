@@ -21,7 +21,7 @@ import { useToastStore } from '../stores/toast';
 import { type CartItem, type Product, type Order, type Language, type TabState, type UserProfile, type SheetCloseReason } from '../types';
 import { auth } from '@shared/auth';
 import type { IconName } from '@/icons';
-import { motionMs } from '@shared/motion';
+import { motionMs, prefersReducedMotion } from '@shared/motion';
 import { useKeyboardInset } from '../composables/useKeyboardInset';
 
 const router = useRouter();
@@ -123,15 +123,37 @@ const addToast = (message: string, type: 'success' | 'info' | 'error' | 'warning
 };
 
 // --- Product sheet ---------------------------------------------------------
-// The sheet animates itself in and out (components/ProductModal.vue). Nothing
-// flies between the card and the sheet or into the cart: those full-page
-// snapshot morphs froze the page while they ran and double-exposed the photo.
+// The sheet animates itself in and out (components/ProductModal.vue). After
+// "Add" the whole card shrinks along an arc into the bag icon of the cart bar
+// (ProductModal.flyTo: one transform/opacity animation of the card - not a
+// page snapshot), and the bag catches it.
 const productSheet = ref<InstanceType<typeof ProductModal> | null>(null);
+const cartBagEl = ref<HTMLElement | null>(null);
+const cartBadgeEl = ref<HTMLElement | null>(null);
 let productClosing = false;
-// An item added in the sheet lands in the cart once the sheet has gone, so
-// the count rolling over and the bar's nudge are seen rather than happening
-// behind the sheet. (Held here so a drag-dismiss during "Added" still adds it.)
+// The item counts once the card has landed in the bag, so the number rolls
+// over as it lands. (Held here so a drag-dismiss during "Added" still adds
+// it.) The first item goes in at once instead: the cart bar has to rise in
+// first, as the place the card flies to.
 const pendingAdd = ref<CartItem | null>(null);
+
+// The bag takes the card: pressed down a touch by the impact, then up past
+// its size and back, like catching something. Its badge pops with the count.
+const catchInBag = () => {
+  if (prefersReducedMotion()) return;
+  cartBagEl.value?.animate([
+    { transform: 'scale(1)', easing: 'cubic-bezier(0.3, 0, 0.6, 1)' },
+    { transform: 'scale(0.86)', offset: 0.16, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+    { transform: 'scale(1.18)', offset: 0.46, easing: 'cubic-bezier(0.45, 0, 0.25, 1)' },
+    { transform: 'scale(0.97)', offset: 0.74, easing: 'cubic-bezier(0.45, 0, 0.25, 1)' },
+    { transform: 'scale(1)' },
+  ], { duration: 560 });
+  cartBadgeEl.value?.animate([
+    { transform: 'scale(1)' },
+    { transform: 'scale(1.32)', offset: 0.35 },
+    { transform: 'scale(1)' },
+  ], { duration: 420, delay: 60, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
+};
 
 const handleSelectProduct = (product: Product) => {
   if (selectedProduct.value) return;
@@ -143,15 +165,14 @@ const handleCloseProduct = async (reason: SheetCloseReason) => {
   const sheet = productSheet.value;
   if (!sheet || productClosing) return;
   productClosing = true;
-  // Dragged away: the sheet is already off-screen.
-  if (reason !== 'dragged') await sheet.leave();
+  if (reason === 'added') await sheet.flyTo(cartBagEl.value);
+  else if (reason !== 'dragged') await sheet.leave(); // dragged: already off-screen
   selectedProduct.value = null;
   if (pendingAdd.value) {
-    const first = cart.value.length === 0; // the bar rises in; no nudge on top
     cart.value = [...cart.value, pendingAdd.value];
     pendingAdd.value = null;
-    if (!first) bumpCart();
   }
+  if (reason === 'added') catchInBag();
 };
 
 // 切换语言: the words change in place, at once. (A full-page crossfade froze
@@ -178,9 +199,10 @@ const handleAddToCart = (options: { size: string; temp: string; sugar: string })
       temperature: options.temp as any,
       sugar: options.sugar,
     };
-    // The student stays where they are: the sheet shows "Added", closes, and
-    // the cart bar (on Home and Order) takes the item (handleCloseProduct).
-    pendingAdd.value = newItem;
+    // The student stays where they are: the sheet shows "Added", then flies
+    // into the cart bar (on Home and Order), which takes the item as it lands.
+    if (cart.value.length === 0) cart.value = [newItem];
+    else pendingAdd.value = newItem;
   }
 };
 
@@ -284,12 +306,6 @@ const handleUpdateProfile = async (p: UserProfile) => {
 const cartTotalCents = computed(() => sumCents(cart.value));
 const cartCount = computed(() => cart.value.reduce((sum, item) => sum + item.quantity, 0));
 const formatTotal = (cents: number) => `¥${formatCents(Math.round(cents))}`;
-const cartBump = ref(false);
-const bumpCart = () => {
-  // Swell briefly, then spring back (the bar's ease-spring transition).
-  cartBump.value = true;
-  window.setTimeout(() => { cartBump.value = false; }, 180);
-};
 </script>
 
 <template>
@@ -321,12 +337,11 @@ const bumpCart = () => {
            type="button"
            @click="isCheckoutOpen = true"
            data-testid="checkout-bar"
-           class="group pointer-events-auto w-full max-w-md h-14 rounded-full bg-primary text-white shadow-float flex items-center gap-4 pl-5 pr-6 transition-transform duration-spring ease-spring active:duration-press active:scale-[0.98]"
-           :class="{ 'scale-[1.03]': cartBump }"
+           class="group pointer-events-auto w-full max-w-md h-14 rounded-full bg-primary text-white shadow-float flex items-center gap-4 pl-5 pr-6"
          >
-            <span class="relative flex items-center">
+            <span ref="cartBagEl" class="relative flex items-center">
                <AppIcon name="bag" weight="light" class="text-[24px]" />
-               <span class="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-primary text-[11px] font-semibold flex items-center justify-center leading-none">
+               <span ref="cartBadgeEl" class="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-primary text-[11px] font-semibold flex items-center justify-center leading-none">
                   <RollingNumber :value="cartCount" />
                </span>
             </span>

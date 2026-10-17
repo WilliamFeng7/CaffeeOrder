@@ -90,9 +90,10 @@ const openCard = (p: Product, event: MouseEvent) => {
       <!-- Wordmark & status -->
       <header class="shrink-0 flex items-center justify-between h-10 animate-fade-in">
         <span class="font-serif text-[19px] font-semibold tracking-tight text-text-main">{{ t.downtownCafe }}</span>
-        <span class="chip h-7 px-3 text-[12px]" :class="isOpen ? 'chip-accent' : 'chip-quiet'">
+        <!-- Open is the normal state and needs no badge; only a closed shop says so -->
+        <span v-if="!isOpen" class="chip chip-quiet h-7 px-3 text-[12px]">
           <span class="dot" aria-hidden="true"></span>
-          {{ isOpen ? t.open : t.closed }}
+          {{ t.closed }}
         </span>
       </header>
 

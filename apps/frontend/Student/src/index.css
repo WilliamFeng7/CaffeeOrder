@@ -453,6 +453,20 @@ button[role="tab"]:active:not(:disabled) {
     }
 }
 
+/* The photo settles from a slight zoom while the card arrives (secondary
+   motion, inside the card's own movement; runs once per opening). */
+.sheet-photo-media {
+    animation: photoSettle 700ms var(--ease-out) backwards;
+}
+
+@keyframes photoSettle {
+    from { transform: scale(1.06); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sheet-photo-media { animation: none; }
+}
+
 /* --- Sheets ------------------------------------------------------------------ */
 /* Full-screen sheets (checkout) slide in from the bottom on the drawer curve
    and leave the same way, a little faster. */
