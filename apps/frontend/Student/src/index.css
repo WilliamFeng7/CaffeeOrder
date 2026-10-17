@@ -462,19 +462,21 @@ button[role="tab"]:active:not(:disabled) {
     }
 }
 
-/* The genie's copies of the card (composables/genie.ts) are still pictures:
-   nothing inside them animates while they bend into the cart, and their
-   scroll areas stop being scroll areas - a scroller is a layer of its own,
-   and each strip's edge clipped it with a soft, see-through seam. */
-.genie-copy,
-.genie-copy * {
-    animation: none !important;
-    transition: none !important;
-}
-
-.genie-copy .overflow-y-auto,
-.genie-copy .overflow-auto {
-    overflow: hidden !important;
+/* The add-to-cart dot (composables/cartDot.ts): brand green with a white
+   ring, so it reads over the page and as it drops into the green cart bar. */
+.cart-dot {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 130;
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border-radius: 9999px;
+    background: theme('colors.primary');
+    box-shadow: 0 0 0 2px #fff, 0 4px 10px rgba(23, 28, 25, 0.18);
+    pointer-events: none;
+    will-change: transform;
 }
 
 /* The photo settles from a slight zoom while the card arrives (secondary

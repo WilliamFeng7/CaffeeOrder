@@ -13,12 +13,11 @@
  * - The photo settles from a slight zoom as the card arrives.
  * - It leaves the way it came, faster (~200ms).
  * - Swipe the photo down to dismiss (useSheetDrag).
- * - "Add" rolls over to "Added" with a check, then the card minimises into
- *   the cart like a macOS window into the Dock: it bends into a funnel and
- *   pours into the bag icon of the cart bar (`flyTo`, composables/genie.ts).
- * The parent unmounts it after `leave()` / `flyTo()` (or at once after a
- * drag-dismiss, when it is already off-screen); this component says why it
- * wants to close.
+ * - "Add" rolls over to "Added" with a check; then the sheet leaves as usual
+ *   while a small dot hops from the button into the cart (StudentLayout,
+ *   composables/cartDot.ts).
+ * The parent unmounts it after `leave()` (or at once after a drag-dismiss,
+ * when it is already off-screen); this component says why it wants to close.
  *
  * Photo: the card's small photo (already loaded) sits underneath while the
  * full-size one loads and fades in on top, so there is never an empty frame.
@@ -31,8 +30,7 @@ import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Product, Language, SheetCloseReason } from '../types';
 import { useSheetDrag } from '../composables/useSheetDrag';
 import { vImgFade } from '../directives/imgFade';
-import { motionMs, prefersReducedMotion } from '@shared/motion';
-import { genie } from '../composables/genie';
+import { motionMs } from '@shared/motion';
 
 type Sugar = '0%' | '50%' | 'Regular' | '120%';
 
@@ -87,30 +85,11 @@ const leave = () => new Promise<void>((resolve) => {
   window.setTimeout(resolve, phone ? motionMs('--dur-sheet-out', 280) : motionMs('--dur-modal-out', 200));
 });
 
-// 缩进购物车 (Into the cart), like a window minimising into the macOS Dock:
-// the card bends into a funnel and pours into the bag icon of the cart bar
-// (composables/genie.ts), while the backdrop clears.
-const GENIE_MS = 680;
+// Where the add-to-cart dot sets off from (the parent sends it to the cart).
+const addButton = ref<HTMLElement | null>(null);
+const addOrigin = () => addButton.value?.getBoundingClientRect() ?? null;
 
-const flyTo = (target: HTMLElement | null | undefined) => new Promise<void>((resolve) => {
-  const sheet = sheetEl.value;
-  const to = target?.getBoundingClientRect();
-  if (!sheet || !to || !to.width || prefersReducedMotion()) {
-    void leave().then(resolve);
-    return;
-  }
-  backdropEl.value?.animate([{ opacity: 1 }, { opacity: 0 }], {
-    duration: GENIE_MS * 0.85,
-    easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
-    fill: 'forwards',
-  });
-  void genie(sheet, { x: to.left + to.width / 2, y: to.top + to.height / 2 }, {
-    duration: GENIE_MS,
-    neck: Math.max(6, to.width * 0.35),
-  }).then(resolve);
-});
-
-defineExpose({ photo, leave, flyTo });
+defineExpose({ photo, leave, addOrigin });
 
 onMounted(() => {
   void sheetEl.value?.offsetHeight; // commit the "from" state
@@ -123,7 +102,8 @@ onMounted(() => {
 const handleAdd = () => {
   if (isSuccess.value || closeRequested) return;
   emit('add-to-cart', { size: 'Regular', temp: temp.value, sugar: sugar.value });
-  // "Added" stays long enough to be read, then the photo leaves for the cart.
+  // "Added" stays long enough to be read, then the sheet closes and a small
+  // dot drops into the cart (StudentLayout).
   isSuccess.value = true;
   window.setTimeout(() => requestClose('added'), motionMs('--dur-fade', 260) + 120);
 };
@@ -212,6 +192,7 @@ const handleAdd = () => {
            </div>
 
            <button
+              ref="addButton"
               data-testid="add-to-cart-btn"
               type="button"
               @click="handleAdd"

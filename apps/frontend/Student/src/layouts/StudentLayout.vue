@@ -23,6 +23,7 @@ import { auth } from '@shared/auth';
 import type { IconName } from '@/icons';
 import { motionMs, prefersReducedMotion } from '@shared/motion';
 import { useKeyboardInset } from '../composables/useKeyboardInset';
+import { dropDot } from '../composables/cartDot';
 
 const router = useRouter();
 const appKeyboardInset = useKeyboardInset(ref(true));
@@ -124,37 +125,32 @@ const addToast = (message: string, type: 'success' | 'info' | 'error' | 'warning
 
 // --- Product sheet ---------------------------------------------------------
 // The sheet animates itself in and out (components/ProductModal.vue). After
-// "Add" the card minimises into the bag icon of the cart bar like a macOS
-// window into the Dock (ProductModal.flyTo, composables/genie.ts); the cart
-// bar is lifted above the sheet meanwhile, so the card pours in under it,
-// and the bag catches it.
+// "Add" it leaves as usual while one small dot is tossed from the Add button
+// into the bag icon of the cart bar (composables/cartDot.ts), and the bag
+// gives a small nod as the dot lands. The sheet is gone well before then.
 const productSheet = ref<InstanceType<typeof ProductModal> | null>(null);
 const cartBagEl = ref<HTMLElement | null>(null);
 const cartBadgeEl = ref<HTMLElement | null>(null);
-const cartOnTop = ref(false);
 let productClosing = false;
-// The item counts once the card has landed in the bag, so the number rolls
+// The item counts once the dot has landed in the bag, so the number rolls
 // over as it lands. (Held here so a drag-dismiss during "Added" still adds
 // it.) The first item goes in at once instead: the cart bar has to rise in
-// first, as the place the card flies to.
+// first, as the place the dot drops into.
 const pendingAdd = ref<CartItem | null>(null);
 
-// The bag takes the card: pressed down a touch by the impact, then up past
-// its size and back, like catching something. Its badge pops with the count.
+// The bag gives a small nod as the dot lands; its badge pops with the count.
 const catchInBag = () => {
   if (prefersReducedMotion()) return;
   cartBagEl.value?.animate([
-    { transform: 'scale(1)', easing: 'cubic-bezier(0.3, 0, 0.6, 1)' },
-    { transform: 'scale(0.86)', offset: 0.16, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
-    { transform: 'scale(1.18)', offset: 0.46, easing: 'cubic-bezier(0.45, 0, 0.25, 1)' },
-    { transform: 'scale(0.97)', offset: 0.74, easing: 'cubic-bezier(0.45, 0, 0.25, 1)' },
+    { transform: 'scale(1)', easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+    { transform: 'scale(1.14)', offset: 0.4, easing: 'cubic-bezier(0.45, 0, 0.25, 1)' },
     { transform: 'scale(1)' },
-  ], { duration: 560 });
+  ], { duration: 380 });
   cartBadgeEl.value?.animate([
     { transform: 'scale(1)' },
-    { transform: 'scale(1.32)', offset: 0.35 },
+    { transform: 'scale(1.25)', offset: 0.4 },
     { transform: 'scale(1)' },
-  ], { duration: 420, delay: 60, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
+  ], { duration: 360, delay: 40, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
 };
 
 const handleSelectProduct = (product: Product) => {
@@ -168,9 +164,9 @@ const handleCloseProduct = async (reason: SheetCloseReason) => {
   if (!sheet || productClosing) return;
   productClosing = true;
   if (reason === 'added') {
-    cartOnTop.value = true;
-    await sheet.flyTo(cartBagEl.value);
-    cartOnTop.value = false;
+    const from = sheet.addOrigin();
+    const to = cartBagEl.value?.getBoundingClientRect();
+    await Promise.all([sheet.leave(), from && to?.width ? dropDot(from, to) : undefined]);
   } else if (reason !== 'dragged') {
     await sheet.leave(); // dragged: already off-screen
   }
@@ -232,8 +228,9 @@ const handleAddToCart = (options: { size: string; temp: string; sugar: string })
       temperature: options.temp as any,
       sugar: options.sugar,
     };
-    // The student stays where they are: the sheet shows "Added", then flies
-    // into the cart bar (on Home and Order), which takes the item as it lands.
+    // The student stays where they are: the sheet shows "Added" and closes as
+    // a dot drops into the cart bar (on Home and Order), which takes the item
+    // as it lands.
     if (cart.value.length === 0) cart.value = [newItem];
     else pendingAdd.value = newItem;
   }
@@ -365,7 +362,7 @@ const formatTotal = (cents: number) => `¥${formatCents(Math.round(cents))}`;
 
     <!-- Cart bar: floats above the tab bar on Home and the menu -->
     <Transition name="cartbar">
-      <div v-if="cartCount > 0 && (currentTab === 'order' || currentTab === 'home')" class="student-cart absolute inset-x-0 flex justify-center px-4 pointer-events-none" :class="cartOnTop ? 'z-[120]' : 'z-40'">
+      <div v-if="cartCount > 0 && (currentTab === 'order' || currentTab === 'home')" class="student-cart absolute inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
          <button
            type="button"
            @click="isCheckoutOpen = true"
