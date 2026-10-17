@@ -13,10 +13,9 @@
  * - The photo settles from a slight zoom as the card arrives.
  * - It leaves the way it came, faster (~200ms).
  * - Swipe the photo down to dismiss (useSheetDrag).
- * - "Add" rolls over to "Added" with a check, then the whole card shrinks
- *   into the cart: it lifts a little, arcs down into the bag icon of the cart
- *   bar while it shrinks, and fades out at the very end (`flyTo`, one WAAPI
- *   animation of transform and opacity on the card itself).
+ * - "Add" rolls over to "Added" with a check, then the card minimises into
+ *   the cart like a macOS window into the Dock: it bends into a funnel and
+ *   pours into the bag icon of the cart bar (`flyTo`, composables/genie.ts).
  * The parent unmounts it after `leave()` / `flyTo()` (or at once after a
  * drag-dismiss, when it is already off-screen); this component says why it
  * wants to close.
@@ -32,7 +31,8 @@ import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
 import type { Product, Language, SheetCloseReason } from '../types';
 import { useSheetDrag } from '../composables/useSheetDrag';
 import { vImgFade } from '../directives/imgFade';
-import { motionMs, cubicBezier, prefersReducedMotion } from '@shared/motion';
+import { motionMs, prefersReducedMotion } from '@shared/motion';
+import { genie } from '../composables/genie';
 
 type Sugar = '0%' | '50%' | 'Regular' | '120%';
 
@@ -87,14 +87,10 @@ const leave = () => new Promise<void>((resolve) => {
   window.setTimeout(resolve, phone ? motionMs('--dur-sheet-out', 280) : motionMs('--dur-modal-out', 200));
 });
 
-// 飞进购物车 (Into the cart). The card travels a curved path - a quadratic
-// curve through a point above where it starts, so it lifts a touch and then
-// drops into the bag - eased off the spot and gliding in, while its size
-// holds and then goes quickly. Sampled into keyframes so position and size
-// can have their own curves in one compositor-only animation.
-const FLIGHT_MS = 640;
-const along = cubicBezier(0.45, 0, 0.2, 1);
-const shrink = cubicBezier(0.55, 0, 0.75, 0.4);
+// 缩进购物车 (Into the cart), like a window minimising into the macOS Dock:
+// the card bends into a funnel and pours into the bag icon of the cart bar
+// (composables/genie.ts), while the backdrop clears.
+const GENIE_MS = 680;
 
 const flyTo = (target: HTMLElement | null | undefined) => new Promise<void>((resolve) => {
   const sheet = sheetEl.value;
@@ -103,34 +99,15 @@ const flyTo = (target: HTMLElement | null | undefined) => new Promise<void>((res
     void leave().then(resolve);
     return;
   }
-  const from = sheet.getBoundingClientRect();
-  const dx = to.left + to.width / 2 - (from.left + from.width / 2);
-  const dy = to.top + to.height / 2 - (from.top + from.height / 2);
-  const end = Math.max(0.04, (to.width * 1.4) / from.width);
-  const cx = dx * 0.25;
-  const cy = -Math.min(72, Math.max(24, Math.abs(dy) * 0.2));
-  const frames: Keyframe[] = [];
-  for (let i = 0; i <= 20; i++) {
-    const u = i / 20;
-    const t = along(u);
-    const x = 2 * (1 - t) * t * cx + t * t * dx;
-    const y = 2 * (1 - t) * t * cy + t * t * dy;
-    const s = 1 - (1 - end) * shrink(u);
-    frames.push({
-      offset: u,
-      transform: `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0) scale(${s.toFixed(4)})`,
-      opacity: u < 0.7 ? 1 : Number((1 - (u - 0.7) / 0.3).toFixed(3)),
-    });
-  }
-  sheet.style.transformOrigin = '50% 50%';
-  const flight = sheet.animate(frames, { duration: FLIGHT_MS, easing: 'linear', fill: 'forwards' });
   backdropEl.value?.animate([{ opacity: 1 }, { opacity: 0 }], {
-    duration: FLIGHT_MS * 0.8,
+    duration: GENIE_MS * 0.85,
     easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
     fill: 'forwards',
   });
-  flight.onfinish = () => resolve();
-  flight.oncancel = () => resolve();
+  void genie(sheet, { x: to.left + to.width / 2, y: to.top + to.height / 2 }, {
+    duration: GENIE_MS,
+    neck: Math.max(6, to.width * 0.35),
+  }).then(resolve);
 });
 
 defineExpose({ photo, leave, flyTo });

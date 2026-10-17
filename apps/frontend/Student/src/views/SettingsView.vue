@@ -35,7 +35,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update-profile', profile: UserProfile): void; // 更新资料事件
-  (e: 'toggle-lang'): void;                          // 切换语言事件
+  (e: 'set-lang', lang: Language): void;             // 切换语言事件
 }>();
 
 // --- 状态变量 (State Variables) ---
@@ -75,8 +75,13 @@ const langOptions = [
   { value: 'en' as const, label: 'EN' },
   { value: 'cn' as const, label: '中文' },
 ];
+// The thumb answers the tap at once; the words follow a beat later (the
+// layout dips the page while they change).
+const langChoice = ref<Language>(props.lang);
+watch(() => props.lang, (value) => { langChoice.value = value; });
 const setLang = (value: Language) => {
-  if (value !== props.lang) emit('toggle-lang');
+  langChoice.value = value;
+  emit('set-lang', value);
 };
 
 /**
@@ -183,7 +188,7 @@ const handleLogout = () => {
 
              <div class="w-full min-h-[72px] py-3 flex items-center gap-4">
                 <span class="flex-1 min-w-0 text-[16px] text-text-main">{{ t.language }}</span>
-                <SlidingTabs :model-value="lang" @update:model-value="setLang" :options="langOptions" variant="segment" size="lg" stretch :label="t.language" class="w-[172px]" />
+                <SlidingTabs :model-value="langChoice" @update:model-value="setLang" :options="langOptions" variant="segment" size="lg" stretch :label="t.language" class="w-[172px]" />
              </div>
 
              <button v-if="!demoMode" type="button" @click="showPasswordModal = true" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4 text-left">

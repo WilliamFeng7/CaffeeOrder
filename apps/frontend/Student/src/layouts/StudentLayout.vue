@@ -124,12 +124,14 @@ const addToast = (message: string, type: 'success' | 'info' | 'error' | 'warning
 
 // --- Product sheet ---------------------------------------------------------
 // The sheet animates itself in and out (components/ProductModal.vue). After
-// "Add" the whole card shrinks along an arc into the bag icon of the cart bar
-// (ProductModal.flyTo: one transform/opacity animation of the card - not a
-// page snapshot), and the bag catches it.
+// "Add" the card minimises into the bag icon of the cart bar like a macOS
+// window into the Dock (ProductModal.flyTo, composables/genie.ts); the cart
+// bar is lifted above the sheet meanwhile, so the card pours in under it,
+// and the bag catches it.
 const productSheet = ref<InstanceType<typeof ProductModal> | null>(null);
 const cartBagEl = ref<HTMLElement | null>(null);
 const cartBadgeEl = ref<HTMLElement | null>(null);
+const cartOnTop = ref(false);
 let productClosing = false;
 // The item counts once the card has landed in the bag, so the number rolls
 // over as it lands. (Held here so a drag-dismiss during "Added" still adds
@@ -165,8 +167,13 @@ const handleCloseProduct = async (reason: SheetCloseReason) => {
   const sheet = productSheet.value;
   if (!sheet || productClosing) return;
   productClosing = true;
-  if (reason === 'added') await sheet.flyTo(cartBagEl.value);
-  else if (reason !== 'dragged') await sheet.leave(); // dragged: already off-screen
+  if (reason === 'added') {
+    cartOnTop.value = true;
+    await sheet.flyTo(cartBagEl.value);
+    cartOnTop.value = false;
+  } else if (reason !== 'dragged') {
+    await sheet.leave(); // dragged: already off-screen
+  }
   selectedProduct.value = null;
   if (pendingAdd.value) {
     cart.value = [...cart.value, pendingAdd.value];
@@ -175,11 +182,37 @@ const handleCloseProduct = async (reason: SheetCloseReason) => {
   if (reason === 'added') catchInBag();
 };
 
-// 切换语言: the words change in place, at once. (A full-page crossfade froze
-// a frame to take its snapshots and dimmed the screen while it played.)
-const handleToggleLang = () => {
-  language.value = language.value === 'en' ? 'cn' : 'en';
+// 切换语言: the page dips (fast down, softer back up) and the words change
+// while it is faint, so the switch reads as one soft change instead of every
+// label jumping at once. Opacity only, on two elements; the language control
+// itself has already moved its thumb on the tap (SettingsView).
+const contentEl = ref<HTMLElement | null>(null);
+const navEl = ref<HTMLElement | null>(null);
+const LANG_DIP_MS = 340;
+let langTimer: number | undefined;
+// The language a dip is on its way to (the latest tap wins).
+let pendingLang: Language | null = null;
+const setLanguage = (target: Language) => {
+  if (target === (pendingLang ?? language.value)) return;
+  if (prefersReducedMotion()) {
+    language.value = target;
+    return;
+  }
+  pendingLang = target;
+  window.clearTimeout(langTimer);
+  for (const el of [contentEl.value, navEl.value]) {
+    el?.animate([
+      { opacity: 1, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
+      { opacity: 0.2, offset: 0.4, easing: 'cubic-bezier(0.25, 0, 0.2, 1)' },
+      { opacity: 1 },
+    ], { duration: LANG_DIP_MS });
+  }
+  langTimer = window.setTimeout(() => {
+    if (pendingLang) language.value = pendingLang;
+    pendingLang = null;
+  }, LANG_DIP_MS * 0.4);
 };
+const handleToggleLang = () => setLanguage((pendingLang ?? language.value) === 'en' ? 'cn' : 'en');
 
 const handleAddToCart = (options: { size: string; temp: string; sugar: string }) => {
   if (selectedProduct.value) {
@@ -313,7 +346,7 @@ const formatTotal = (cents: number) => `¥${formatCents(Math.round(cents))}`;
     <!-- Toasts are rendered once, globally, by <ToastContainer /> in App.vue. -->
 
     <div class="absolute inset-0 flex flex-col bg-background-light">
-    <div class="student-content flex-1 min-h-0 overflow-hidden relative w-full h-full z-0">
+    <div ref="contentEl" class="student-content flex-1 min-h-0 overflow-hidden relative w-full h-full z-0">
       <!-- KeepAlive: switching tabs keeps each tab's scroll position, category
            and sub-view; the Transition slides the new tab in from its side.
            The leaving tab is positioned against the inner box (not the padded
@@ -324,7 +357,7 @@ const formatTotal = (cents: number) => `¥${formatCents(Math.round(cents))}`;
             <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleSelectProduct" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" :orders="orders" :reserve-cart-bar="cartCount > 0 || !!pendingAdd" />
             <MenuView v-else-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" :lang="language" @toggle-lang="handleToggleLang" />
             <PickupView v-else-if="currentTab === 'pickup'" :orders="orders" :lang="language" :refresh="fetchOrders" @browse="currentTab = 'order'" />
-            <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @toggle-lang="handleToggleLang" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" />
+            <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @set-lang="setLanguage" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" />
           </KeepAlive>
         </Transition>
       </div>
@@ -332,7 +365,7 @@ const formatTotal = (cents: number) => `¥${formatCents(Math.round(cents))}`;
 
     <!-- Cart bar: floats above the tab bar on Home and the menu -->
     <Transition name="cartbar">
-      <div v-if="cartCount > 0 && (currentTab === 'order' || currentTab === 'home')" class="student-cart absolute inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
+      <div v-if="cartCount > 0 && (currentTab === 'order' || currentTab === 'home')" class="student-cart absolute inset-x-0 flex justify-center px-4 pointer-events-none" :class="cartOnTop ? 'z-[120]' : 'z-40'">
          <button
            type="button"
            @click="isCheckoutOpen = true"
@@ -352,7 +385,7 @@ const formatTotal = (cents: number) => `¥${formatCents(Math.round(cents))}`;
     </Transition>
 
     <!-- Tab bar: a short line marks the current tab and springs between slots -->
-    <nav class="student-nav absolute bottom-0 inset-x-0 z-30 bg-surface-light border-t border-line" :aria-label="language === 'cn' ? '主导航' : 'Main'">
+    <nav ref="navEl" class="student-nav absolute bottom-0 inset-x-0 z-30 bg-surface-light border-t border-line" :aria-label="language === 'cn' ? '主导航' : 'Main'">
       <div class="student-nav-items relative mx-auto max-w-lg grid grid-cols-4">
         <div
           class="absolute left-0 top-0 w-1/4 transition-transform duration-spring ease-spring pointer-events-none"

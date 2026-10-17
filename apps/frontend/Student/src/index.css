@@ -346,27 +346,36 @@ button[role="tab"]:active:not(:disabled) {
 }
 
 /* --- Tabs ------------------------------------------------------------------ */
-/* Switching tabs slides the new tab in from the side it lives on (Home ->
-   Order moves left, Order -> Home moves right) while the old one drifts a
-   little the other way and fades. Short and small, because it happens all
-   the time. */
+/* Fade through: the old tab is gone within 90ms, then the new one fades in
+   while it settles from 98.5% - only one page is ever in motion, and the
+   line in the tab bar is what travels sideways. Short, because it happens
+   all the time. (Both directions look the same; the class names carry the
+   direction for anyone who wants it back.) */
 .tab-fwd-enter-active,
 .tab-back-enter-active {
-    transition: opacity var(--dur-fade) var(--ease-out), transform var(--dur-scale-in) var(--ease-out);
+    transition:
+        opacity 220ms var(--ease-out) 70ms,
+        transform 300ms var(--ease-out) 70ms;
 }
 
 .tab-fwd-leave-active,
 .tab-back-leave-active {
-    transition: opacity var(--dur-page-out) var(--ease-out), transform var(--dur-page-out) var(--ease-out);
+    transition: opacity 90ms linear;
     position: absolute;
     inset: 0;
     pointer-events: none;
 }
 
-.tab-fwd-enter-from { opacity: 0; transform: translate3d(18px, 0, 0); }
-.tab-fwd-leave-to { opacity: 0; transform: translate3d(-8px, 0, 0); }
-.tab-back-enter-from { opacity: 0; transform: translate3d(-18px, 0, 0); }
-.tab-back-leave-to { opacity: 0; transform: translate3d(8px, 0, 0); }
+.tab-fwd-enter-from,
+.tab-back-enter-from {
+    opacity: 0;
+    transform: scale(0.985);
+}
+
+.tab-fwd-leave-to,
+.tab-back-leave-to {
+    opacity: 0;
+}
 
 /* --- Menu grid --------------------------------------------------------------- */
 /* A new category slides in from the side of its tab (later category: from the
@@ -451,6 +460,21 @@ button[role="tab"]:active:not(:disabled) {
     .psheet.is-closing {
         opacity: 0;
     }
+}
+
+/* The genie's copies of the card (composables/genie.ts) are still pictures:
+   nothing inside them animates while they bend into the cart, and their
+   scroll areas stop being scroll areas - a scroller is a layer of its own,
+   and each strip's edge clipped it with a soft, see-through seam. */
+.genie-copy,
+.genie-copy * {
+    animation: none !important;
+    transition: none !important;
+}
+
+.genie-copy .overflow-y-auto,
+.genie-copy .overflow-auto {
+    overflow: hidden !important;
 }
 
 /* The photo settles from a slight zoom while the card arrives (secondary
