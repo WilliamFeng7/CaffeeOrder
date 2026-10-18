@@ -26,6 +26,8 @@ const props = defineProps<{
   shopStatus: ShopStatus;
   queueCount: number;
   orders: Order[];
+  /** The cart bar sits below the page; reserve its vertical space only when needed. */
+  reserveCartBar?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -85,7 +87,10 @@ const openCard = (p: Product, event: MouseEvent) => {
          whatever height is left; type and spacing follow the screen height
          (clamp + vh), so it fits in Safari and as a home-screen app alike.
          Phones scroll as usual. -->
-    <div class="home-content mx-auto max-w-5xl flex flex-col px-5 md:px-10 pt-4 pb-8 md:h-full md:pt-5 md:pb-6">
+    <div
+      class="home-content mx-auto max-w-5xl flex flex-col px-5 md:px-10 pt-4 md:h-full md:pt-5"
+      :class="reserveCartBar ? 'pb-24 md:pb-[84px]' : 'pb-8 md:pb-6'"
+    >
 
       <!-- Wordmark & status -->
       <header class="shrink-0 flex items-center justify-between h-10 animate-fade-in">

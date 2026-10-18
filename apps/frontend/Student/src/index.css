@@ -40,25 +40,14 @@ body {
     --app-scroll-end: theme('spacing.6');
 }
 
-/* With no cart the Home page uses the full screen. Once the bar appears, the
-   page scales back from the top so the shelf clears it. Transform keeps the
-   layout stable at insertion time; only the compositor moves. */
+.student-shell.has-cart {
+    --app-scroll-end: calc(var(--app-cart-height) + var(--app-cart-gap) + theme('spacing.4'));
+}
+
+/* The Home content keeps its width and type scale. Its bottom space expands
+   with the cart bar, so only the vertical proportions ease into the new fit. */
 .home-content {
-    transform-origin: 50% 0;
-    transition: transform var(--dur-modal) var(--ease-drawer);
-    will-change: transform;
-}
-
-@media (min-width: 768px) {
-    .student-shell.has-cart .home-content {
-        transform: scale(0.92);
-    }
-}
-
-@media (min-width: 768px) and (orientation: portrait) {
-    .student-shell.has-cart .home-content {
-        transform: scale(0.96);
-    }
+    transition: padding-bottom var(--dur-modal) var(--ease-drawer);
 }
 
 .student-content { padding-bottom: var(--app-nav-inset); }
