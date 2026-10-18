@@ -37,10 +37,6 @@ body {
 }
 
 .student-shell {
-    --app-scroll-end: theme('spacing.6');
-}
-
-.student-shell.has-cart {
     --app-scroll-end: calc(var(--app-cart-height) + var(--app-cart-gap) + theme('spacing.4'));
 }
 
@@ -525,19 +521,23 @@ button[role="tab"]:active:not(:disabled) {
     transform: translate3d(0, 100%, 0);
 }
 
-/* The cart bar rises into place when the first item lands and sinks away
-   when the cart empties or checkout opens. */
+/* The cart slot is always reserved, so adding the first item never reflows the
+   page. The bar itself enters with a short rise and settles back on exit. */
 .cartbar-enter-active {
-    transition: transform var(--dur-sheet-in) var(--ease-drawer), opacity var(--dur-fade) var(--ease-out);
+    transition:
+        transform var(--dur-modal) var(--ease-drawer),
+        opacity 180ms var(--ease-out);
 }
 
 .cartbar-leave-active {
-    transition: transform var(--dur-sheet-out) var(--ease-drawer), opacity var(--dur-page-out) var(--ease-out);
+    transition:
+        transform var(--dur-modal-out) var(--ease-out),
+        opacity var(--dur-page-out) var(--ease-out);
 }
 
 .cartbar-enter-from,
 .cartbar-leave-to {
-    transform: translate3d(0, 24px, 0);
+    transform: translate3d(0, 18px, 0) scale(0.985);
     opacity: 0;
 }
 
@@ -616,4 +616,13 @@ button[role="tab"]:active:not(:disabled) {
         transform: none;
     }
 
+    .cartbar-enter-active,
+    .cartbar-leave-active {
+        transition: opacity 120ms linear;
+    }
+
+    .cartbar-enter-from,
+    .cartbar-leave-to {
+        transform: none;
+    }
 }

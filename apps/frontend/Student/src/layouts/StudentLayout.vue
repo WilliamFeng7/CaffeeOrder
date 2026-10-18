@@ -442,7 +442,7 @@ watch(cartCount, (count) => {
 </script>
 
 <template>
-  <div class="student-shell fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans text-text-main select-none z-0" :class="{ 'has-cart': cartCount > 0 || !!pendingAdd, 'keyboard-open': appKeyboardInset > 0 }" :style="{ '--app-keyboard-inset': `${appKeyboardInset}px` }">
+  <div class="student-shell fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans text-text-main select-none z-0" :class="{ 'keyboard-open': appKeyboardInset > 0 }" :style="{ '--app-keyboard-inset': `${appKeyboardInset}px` }">
     <!-- Toasts are rendered once, globally, by <ToastContainer /> in App.vue. -->
 
     <div class="absolute inset-0 flex flex-col bg-background-light">
@@ -454,7 +454,7 @@ watch(cartCount, (count) => {
       <div class="relative h-full">
         <Transition :name="`tab-${tabDir}`">
           <KeepAlive>
-            <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleSelectProduct" :lang="language" :user-name="userProfile.name" :shop-status="shopStatus" :queue-count="queueCount" :orders="orders" :reserve-cart-bar="cartCount > 0 || !!pendingAdd" />
+            <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleSelectProduct" :lang="language" :user-name="userProfile.name" :shop-status="shopStatus" :queue-count="queueCount" :orders="orders" />
             <MenuView v-else-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" :lang="language" @toggle-lang="handleToggleLang" />
             <PickupView v-else-if="currentTab === 'pickup'" :orders="orders" :lang="language" :refresh="fetchOrders" @browse="currentTab = 'order'" />
             <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @set-lang="setLanguage" :user-profile="userProfile" :orders="orders" />
