@@ -284,7 +284,7 @@ textarea {
 /* A pressed card goes in a touch (scale on the card itself, nothing moving
    inside it). Cards live in scrolling lists, so the press starts 75ms late,
    like a UIScrollView: a finger that is starting a scroll never makes the
-   card under it twitch. Pointer devices get a slow photo zoom on hover. */
+   card under it twitch. */
 .press-card {
     transition: transform var(--dur-release) var(--ease-out);
 }
@@ -296,13 +296,7 @@ textarea {
 }
 
 .card-photo {
-    transition: transform var(--dur-release) var(--ease-out), opacity var(--dur-fade) var(--ease-out);
-}
-
-@media (hover: hover) and (pointer: fine) {
-    .group:hover .card-photo {
-        transform: scale(1.03);
-    }
+    transition: opacity var(--dur-fade) var(--ease-out);
 }
 
 /* Segmented controls answer with their sliding thumb; the labels stay put. */

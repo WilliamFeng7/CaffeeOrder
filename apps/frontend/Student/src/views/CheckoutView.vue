@@ -125,7 +125,7 @@ const { handlers: dragHandlers } = useSheetDrag({
                            @click="emit('update-quantity', item.cartId, -1)"
                            :aria-label="lang === 'cn' ? '减少' : 'Decrease'"
                            :disabled="paymentPending"
-                           class="size-11 md:size-12 rounded-full border border-line text-text-main flex items-center justify-center hover:border-text-main active:bg-cream disabled:opacity-40 disabled:cursor-not-allowed"
+                           class="size-11 md:size-12 rounded-full border border-line text-text-main flex items-center justify-center active:bg-cream disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                            <AppIcon name="minus" weight="light" class="text-base" />
                         </button>
@@ -137,7 +137,7 @@ const { handlers: dragHandlers } = useSheetDrag({
                            @click="emit('update-quantity', item.cartId, 1)"
                            :aria-label="lang === 'cn' ? '增加' : 'Increase'"
                            :disabled="paymentPending"
-                           class="size-11 md:size-12 rounded-full border border-line text-text-main flex items-center justify-center hover:border-text-main active:bg-text-main active:border-text-main active:text-white disabled:opacity-40 disabled:cursor-not-allowed"
+                           class="size-11 md:size-12 rounded-full border border-line text-text-main flex items-center justify-center active:bg-text-main active:border-text-main active:text-white disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                            <AppIcon name="plus" weight="light" class="text-base" />
                         </button>
@@ -146,7 +146,7 @@ const { handlers: dragHandlers } = useSheetDrag({
                            @click="emit('remove-item', item.cartId)"
                            :aria-label="t.removeItem"
                            :disabled="paymentPending"
-                           class="size-11 md:size-12 rounded-full text-text-sub flex items-center justify-center hover:text-danger hover:bg-danger-soft active:bg-danger-soft active:text-danger disabled:opacity-40 disabled:cursor-not-allowed"
+                           class="size-11 md:size-12 rounded-full text-text-sub flex items-center justify-center active:bg-danger-soft active:text-danger disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                            <AppIcon name="trash" weight="light" class="text-base" />
                         </button>

@@ -19,7 +19,7 @@ export const colors = {
   'surface-light': '#FFFFFF',     // panels
   cream: '#F2F1EC',               // image placeholders, inputs, segmented tracks
   line: '#E9E7E2',                // hairlines
-  'line-strong': '#D6D3CC',       // input borders, hovered hairlines
+  'line-strong': '#D6D3CC',       // input borders and strong hairlines
   'text-main': '#171C19',         // ink
   'text-sub': '#676C69',          // secondary text
   danger: '#B42318',

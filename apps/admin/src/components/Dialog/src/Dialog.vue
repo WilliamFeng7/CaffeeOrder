@@ -112,16 +112,14 @@ function closedHandler() {
         >
           <Icon
             v-if="fullscreen"
-            class="is-hover mr-10px cursor-pointer"
+            class="mr-2 size-12 flex items-center justify-center cursor-pointer"
             :icon="isFullscreen ? 'radix-icons:exit-full-screen' : 'radix-icons:enter-full-screen'"
             color="var(--el-color-info)"
-            hover-color="var(--el-color-primary)"
             @click="toggleFull"
           />
           <Icon
-            class="is-hover cursor-pointer"
+            class="size-12 flex items-center justify-center cursor-pointer"
             icon="ep:close"
-            hover-color="var(--el-color-primary)"
             color="var(--el-color-info)"
             @click.stop="close"
           />

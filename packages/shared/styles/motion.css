@@ -142,7 +142,7 @@ img {
 /* --- Reveal on scroll ----------------------------------------------------- */
 /* Set by the v-reveal directive (src/reveal.ts): the element rises into place
    the first time it enters the viewport, then the classes are removed so its
-   own transitions (press, hover) are untouched afterwards. */
+   press transition is untouched afterwards. */
 /* `html` in front so the reveal wins over an element's own component
    transition (e.g. .press-row) while it runs. */
 html .reveal {

@@ -17,8 +17,6 @@ import fonts from '../../../packages/shared/tailwind-fonts.mjs';
 import theme from '../../../packages/shared/tailwind-theme.mjs';
 
 export default {
-  // Hover styles only on devices that can hover: taps on iPad/phones no longer leave stuck hover states.
-  future: { hoverOnlyWhenSupported: true },
     // Motion tokens (easing/duration/keyframes/animations) come from the shared
     // preset so Student / Admin / Barista cannot drift apart.
     presets: [motion, fonts, theme],

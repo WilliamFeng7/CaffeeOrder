@@ -274,7 +274,7 @@ const handleSuggestionClick = (p: Product) => {
             data-testid="category-nav"
             :aria-pressed="isActiveCategory(cat.id)"
             class="relative z-10 w-full h-14 px-4 flex items-center gap-3 text-left transition-colors duration-color"
-            :class="isActiveCategory(cat.id) ? 'text-text-main' : 'text-text-sub hover:text-text-main'"
+            :class="isActiveCategory(cat.id) ? 'text-text-main' : 'text-text-sub'"
           >
              <AppIcon
                 :name="cat.icon"
@@ -362,7 +362,7 @@ const handleSuggestionClick = (p: Product) => {
                   :key="p.id"
                   type="button"
                   @click="handleSuggestionClick(p)"
-                  class="suggest-in w-full min-h-[52px] flex items-center gap-3 p-2 rounded-tile text-left hover:bg-cream active:bg-cream"
+                  class="suggest-in w-full min-h-[52px] flex items-center gap-3 p-2 rounded-tile text-left active:bg-cream"
                   :style="{ animationDelay: `${i * 25}ms` }"
                 >
                    <img v-img-fade :src="p.thumb" :data-full="p.image" class="size-10 rounded-[10px] object-cover bg-cream shrink-0" alt="" decoding="async" />
@@ -396,7 +396,7 @@ const handleSuggestionClick = (p: Product) => {
                    @keydown.enter.prevent="pick(product, $event)"
                    @keydown.space.prevent="pick(product, $event)"
                    data-testid="product-card"
-                   class="group press-card relative flex flex-col cursor-pointer"
+                   class="press-card relative flex flex-col cursor-pointer"
                    role="button"
                    tabindex="0"
                    :aria-label="lang === 'cn' ? `查看 ${product.nameCN}` : `View ${product.name}`"

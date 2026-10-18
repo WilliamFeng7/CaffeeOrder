@@ -143,7 +143,7 @@ watch(
         >
           <template #reference>
             <div
-              class="h-32px w-40px flex cursor-pointer items-center justify-center"
+              class="size-12 flex cursor-pointer items-center justify-center"
               @click="visible = !visible"
             >
               <Icon :icon="currentActiveType + icon" />
@@ -205,11 +205,12 @@ watch(
 }
 
 .icon-item {
-  &:hover {
+  min-width: 48px;
+  min-height: 48px;
+  &:active {
     color: var(--el-color-primary);
     border-color: var(--el-color-primary);
-    transform: scaleX(1.05);
-    transition: all 0.4s;
+    transform: scale(.97);
   }
 }
 

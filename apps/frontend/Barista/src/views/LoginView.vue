@@ -68,11 +68,11 @@ async function handleLogin() {
       <p v-if="failure" class="text-[14px] text-danger animate-fade-in" role="alert">{{ failure }}</p>
 
       <div class="pt-3 animate-slide-up-content" style="animation-delay: 280ms">
-        <button type="submit" :disabled="loading" class="btn btn-primary btn-lg w-full group">
+        <button type="submit" :disabled="loading" class="btn btn-primary btn-lg w-full">
           <span v-if="loading" class="size-4 border-[1.5px] border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
           <template v-else>
             登录
-            <AppIcon name="arrow-right" class="text-base nudge" />
+            <AppIcon name="arrow-right" class="text-base" />
           </template>
         </button>
       </div>

@@ -78,12 +78,12 @@ const setLang = (value: Language) => {
 
          <div class="animate-slide-up-content" style="animation-delay: 120ms">
          <div class="mt-10 lg:mt-0 border-y border-line divide-y divide-line">
-             <button type="button" @click.stop="showHistory = true" class="group press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4 text-left">
+             <button type="button" @click.stop="showHistory = true" class="press-row w-[calc(100%+24px)] -mx-3 px-3 rounded-tile min-h-[72px] py-4 flex items-center gap-4 text-left">
                 <span class="flex-1 min-w-0">
                    <span class="block text-[16px] text-text-main">{{ t.orderHistory }}</span>
                    <span class="block mt-0.5 text-[13px] text-text-sub">{{ t.viewDetailedHistory }}</span>
                 </span>
-                <AppIcon name="caret-right" weight="light" class="text-lg text-text-sub nudge" />
+                <AppIcon name="caret-right" weight="light" class="text-lg text-text-sub" />
              </button>
 
              <div class="w-full min-h-[72px] py-3 flex items-center gap-4">

@@ -119,7 +119,7 @@ const openCard = (p: Product, event: MouseEvent) => {
           type="button"
           @click="emit('navigate', 'pickup')"
           data-testid="home-order"
-          class="group mt-5 md:landscape:mt-0 w-full md:landscape:w-[340px] shrink-0 flex items-center gap-5 rounded-card bg-primary text-white pl-5 pr-4 py-3.5 text-left animate-slide-up-content"
+          class="mt-5 md:landscape:mt-0 w-full md:landscape:w-[340px] shrink-0 flex items-center gap-5 rounded-card bg-primary text-white pl-5 pr-4 py-3.5 text-left animate-slide-up-content"
           style="animation-delay: 80ms"
         >
           <span class="shrink-0">
@@ -140,7 +140,7 @@ const openCard = (p: Product, event: MouseEvent) => {
             </span>
           </span>
           <span class="size-11 -my-1 rounded-full flex items-center justify-center shrink-0" aria-hidden="true">
-            <AppIcon name="caret-right" class="text-lg nudge" />
+            <AppIcon name="caret-right" class="text-lg" />
           </span>
         </button>
       </div>
@@ -149,7 +149,7 @@ const openCard = (p: Product, event: MouseEvent) => {
            landscape) and melts into the card - towards the copy beside it in
            landscape, down into the copy below it in portrait and on phones. -->
       <article
-        class="home-featured group press-card relative mt-6 md:mt-[clamp(14px,2.4vh,28px)] md:flex-1 md:min-h-[200px] flex flex-col md:landscape:flex-row rounded-[28px] overflow-hidden bg-surface-light border border-line cursor-pointer animate-slide-up-content"
+        class="home-featured press-card relative mt-6 md:mt-[clamp(14px,2.4vh,28px)] md:flex-1 md:min-h-[200px] flex flex-col md:landscape:flex-row rounded-[28px] overflow-hidden bg-surface-light border border-line cursor-pointer animate-slide-up-content"
         style="animation-delay: 120ms"
         data-testid="featured-card"
         @click="featured && open(featured, featuredImg)"
@@ -207,7 +207,7 @@ const openCard = (p: Product, event: MouseEvent) => {
           >
             <button
               type="button"
-              class="group press-card w-full text-left md:flex md:items-center md:gap-3 md:p-2.5 md:pr-3 md:rounded-[20px] md:bg-surface-light md:border md:border-line"
+              class="press-card w-full text-left md:flex md:items-center md:gap-3 md:p-2.5 md:pr-3 md:rounded-[20px] md:bg-surface-light md:border md:border-line"
               data-testid="product-card"
               @click="openCard(p, $event)"
             >

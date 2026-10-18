@@ -11,7 +11,7 @@
  */
 @layer components {
   :root {
-    --touch-target: 44px;
+    --touch-target: 48px;
   }
 
   /* --- Buttons ---------------------------------------------------------- */
@@ -37,29 +37,29 @@
   }
 
   .btn-primary {
-    @apply bg-primary text-white hover:bg-primary-dark active:bg-primary-dark;
+    @apply bg-primary text-white active:bg-primary-dark;
   }
 
   .btn-outline {
-    @apply border border-line-strong text-text-main hover:border-text-main active:bg-cream;
+    @apply border border-line-strong text-text-main active:bg-cream;
   }
 
   .btn-ghost {
-    @apply text-text-main hover:bg-cream active:bg-cream;
+    @apply text-text-main active:bg-cream;
   }
 
   .btn-danger {
-    @apply bg-danger text-white hover:bg-[#971D14] active:bg-[#971D14];
+    @apply bg-danger text-white active:bg-[#971D14];
   }
 
   .btn-danger-ghost {
-    @apply text-danger hover:bg-danger-soft active:bg-danger-soft;
+    @apply text-danger active:bg-danger-soft;
   }
 
-  /* Icon-only button: no fill until pressed or hovered. Needs an aria-label. */
+  /* Icon-only button: no fill until pressed. Needs an aria-label. */
   .icon-btn {
     @apply relative inline-flex items-center justify-center size-10 rounded-full shrink-0
-      text-text-sub hover:text-text-main hover:bg-cream active:bg-cream active:text-text-main;
+      text-text-sub active:bg-cream active:text-text-main;
   }
 
   .icon-btn::after {
@@ -73,7 +73,7 @@
   .field {
     @apply w-full h-12 px-4 rounded-tile bg-surface-light border border-line
       text-[16px] text-text-main placeholder:text-text-sub/60 outline-none
-      hover:border-line-strong focus:border-text-main;
+      focus:border-text-main;
     transition:
       border-color var(--dur-color) var(--ease-out),
       box-shadow var(--dur-color) var(--ease-out);
@@ -182,8 +182,8 @@
   }
 
   /* --- Links -------------------------------------------------------------- */
-  /* Text link whose underline draws in from the left on hover (pointer
-     devices only; a tap on iPad must not leave it drawn). */
+  /* Text links keep a visible underline so their affordance never depends on
+     a pointer resting over them. */
   .link {
     @apply relative inline-flex items-center gap-1 font-medium;
   }
@@ -196,41 +196,24 @@
     bottom: -2px;
     height: 1px;
     background: currentColor;
-    transform: scaleX(0);
-    transform-origin: right;
-    transition: transform var(--dur-release) var(--ease-out);
+    transform: scaleX(1);
+    transform-origin: left;
   }
 
-  /* An arrow that nudges forward while its group is hovered. */
-  .nudge {
-    transition: transform var(--dur-release) var(--ease-out);
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    /* Hover lands fast and leaves slowly (the leaving state's duration applies
-       when the pointer moves off). Touch screens never get here. */
-    .btn:hover,
-    .icon-btn:hover {
-      transition-duration: 90ms;
-    }
-
-    .link:hover::after {
-      transform: scaleX(1);
-      transform-origin: left;
-    }
-
-    .group:hover .nudge {
-      transform: translate3d(3px, 0, 0);
-    }
-
-    .group:hover .nudge-diag {
-      transform: translate3d(2px, -2px, 0);
-    }
-  }
-
-  /* iPad and other touch-first devices keep a native-sized target even when
-     the visual control is compact on a pointer-driven desktop. */
+  /* iPad controls use a 48px physical target, including compact icon and text
+     buttons whose visual content is smaller than that box. */
   @media (pointer: coarse) {
+    button,
+    [role='button'],
+    a[href] {
+      touch-action: manipulation;
+    }
+
+    button {
+      min-width: var(--touch-target);
+      min-height: var(--touch-target);
+    }
+
     .btn,
     .btn-sm,
     .icon-btn {

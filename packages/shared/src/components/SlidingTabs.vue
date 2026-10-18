@@ -139,7 +139,7 @@ const sizeClass = computed(() => {
       :aria-selected="o.value === modelValue"
       :tabindex="o.value === modelValue ? 0 : -1"
       class="relative z-10 whitespace-nowrap"
-      :class="[sizeClass, o.value === modelValue ? 'text-text-main font-medium' : 'text-text-sub hover:text-text-main']"
+      :class="[sizeClass, o.value === modelValue ? 'text-text-main font-medium' : 'text-text-sub']"
       @click="select(o.value, i)"
     ><span class="pointer-events-none">{{ o.label }}</span></button>
   </div>
@@ -159,7 +159,8 @@ const sizeClass = computed(() => {
 
 @media (pointer: coarse) {
   button {
-    min-block-size: var(--touch-target, 44px);
+    min-block-size: var(--touch-target, 48px);
+    min-inline-size: var(--touch-target, 48px);
   }
 }
 </style>

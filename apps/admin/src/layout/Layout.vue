@@ -91,17 +91,15 @@ watch(() => route.path, () => { mobileMenu.value = false })
 .sidebar :deep(.el-menu-item),
 .sidebar :deep(.el-sub-menu__title) {
   position: relative;
-  height: 42px;
+  height: 48px;
   margin: 2px 0;
   color: var(--otia-sidebar-text);
   border-radius: 7px;
-  line-height: 42px;
+  line-height: 48px;
   transition: color .18s ease, background-color .18s ease;
 }
 .sidebar :deep(.el-sub-menu__title) { color: var(--otia-sidebar-muted); font-size: 13px; font-weight: 600; }
 .sidebar :deep(.el-menu-item) { padding-left: 40px !important; font-size: 14px; }
-.sidebar :deep(.el-menu-item:hover),
-.sidebar :deep(.el-sub-menu__title:hover) { color: var(--otia-text); background: var(--otia-sidebar-hover); }
 .sidebar :deep(.el-menu-item.is-active) {
   color: var(--otia-sidebar-active-text);
   background: var(--otia-sidebar-active);
@@ -144,7 +142,6 @@ watch(() => route.path, () => { mobileMenu.value = false })
 .account-name { color: var(--otia-text-secondary); font-weight: 550; }
 .account-divider { width: 1px; height: 18px; margin: 0 4px; background: var(--otia-border); }
 .account :deep(.el-button) { color: var(--otia-muted); }
-.account :deep(.el-button:hover) { color: var(--otia-accent); background: var(--otia-accent-soft); }
 .main-content { max-width: 1500px; margin: auto; padding: 28px 32px 40px; }
 .nav-toggle, .nav-scrim { display: none; }
 

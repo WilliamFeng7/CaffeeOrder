@@ -572,7 +572,7 @@ watch(cartCount, (count) => {
 
             <div
                ref="cartPillEl"
-               class="cart-pill group h-14 rounded-full bg-primary text-white shadow-float flex items-stretch overflow-hidden"
+               class="cart-pill h-14 rounded-full bg-primary text-white shadow-float flex items-stretch overflow-hidden"
             >
                <button
                   ref="cartToggleEl"

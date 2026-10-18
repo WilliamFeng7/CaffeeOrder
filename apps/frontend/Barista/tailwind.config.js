@@ -5,8 +5,6 @@ import fonts from '../../../packages/shared/tailwind-fonts.mjs';
 import theme from '../../../packages/shared/tailwind-theme.mjs';
 
 export default {
-    // 只在能悬停的设备上启用 hover 样式，iPad 上点一下不会留下悬停态。
-    future: { hoverOnlyWhenSupported: true },
     presets: [motion, fonts, theme],
     content: [
         './index.html',
