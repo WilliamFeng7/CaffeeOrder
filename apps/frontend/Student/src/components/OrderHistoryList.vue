@@ -9,8 +9,9 @@
 import AppIcon from '@/components/AppIcon.vue';
 import type { Order, Language } from '../types';
 import { computed } from 'vue';
-import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
+import { TRANSLATIONS } from '../data';
 import { vImgFade } from '../directives/imgFade';
+import { optionsText } from '../utils/options';
 
 const props = defineProps<{
   orders: Order[];
@@ -54,12 +55,7 @@ const formatDate = (dateStr: string) => {
   }
 };
 
-const specLine = (item: Order['items'][number]) => {
-  const temp = item.temperature ? (item.temperature === 'Hot' ? t.value.hot : t.value.iced) : '';
-  const sugarLabels = OPTION_TRANSLATIONS.sugar as Record<string, { en: string; cn: string }>;
-  const sugar = item.sugar ? (sugarLabels[item.sugar]?.[props.lang] ?? item.sugar) : '';
-  return [temp, sugar].filter(Boolean).join(' · ');
-};
+const specLine = (item: Order['items'][number]) => optionsText(item.selectedOptions, props.lang);
 </script>
 
 <template>
@@ -93,7 +89,7 @@ const specLine = (item: Order['items'][number]) => {
           <li v-for="order in historyOrders" :key="order.id" class="py-5">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                  <p class="font-serif text-[24px] font-normal text-text-main tabular-nums leading-none">{{ order.dailyNumber }}</p>
+                  <p class="font-serif text-[24px] font-normal text-text-main tabular-nums leading-none">{{ order.posOrderNo || t.waitingEntry }}</p>
                   <p class="mt-2 text-[13px] text-text-sub tabular-nums">{{ formatDate(order.date) }}</p>
                 </div>
                 <div class="text-right shrink-0">
@@ -115,7 +111,7 @@ const specLine = (item: Order['items'][number]) => {
                     <span class="text-[14px] text-text-sub tabular-nums">×{{ item.quantity }}</span>
                 </div>
             </div>
-            <p class="mt-3 text-[11px] tabular-nums tracking-wide text-text-sub/80 truncate">{{ order.order_no }}</p>
+            <p class="mt-3 text-[11px] tabular-nums tracking-wide text-text-sub/80 truncate">{{ order.orderNo }}</p>
           </li>
         </ul>
         </div>

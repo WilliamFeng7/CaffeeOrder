@@ -1,0 +1,30 @@
+{
+  "name": "otia-cafe-promo",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "OTIA Café 学生端宣传页与宣传片（Vite + React + Remotion）",
+  "scripts": {
+    "dev": "vite --port 5180",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 5181",
+    "studio": "remotion studio src/remotion/index.ts",
+    "render": "remotion render src/remotion/index.ts Promo out/otia-cafe-promo.mp4",
+    "still": "remotion still src/remotion/index.ts Promo out/poster.png --frame=1050",
+    "bgm": "python3 scripts/make_bgm.py && ffmpeg -y -i src/assets/audio/otia-bgm.wav -af loudnorm=I=-18:TP=-1.5:LRA=9 -ar 48000 -ac 2 -codec:a libmp3lame -b:a 192k src/assets/audio/otia-bgm.mp3"
+  },
+  "dependencies": {
+    "@remotion/player": "4.0.536",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "remotion": "4.0.536"
+  },
+  "devDependencies": {
+    "@remotion/cli": "4.0.536",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0"
+  }
+}

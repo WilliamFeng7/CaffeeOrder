@@ -1,64 +1,33 @@
-
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// 后端不在 48080 时，用 VITE_PROXY_TARGET 指过去（和管理端同一个变量）。
+const backend = process.env.VITE_PROXY_TARGET || 'http://127.0.0.1:48080';
 
-export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, process.cwd(), '');
-
-    return {
-        server: {
-            port: 8081,
-            proxy: {
-                '/api/v1': {
-                    target: 'http://127.0.0.1:8000',
-                    changeOrigin: true,
-                },
-                '/static': {
-                    target: 'http://127.0.0.1:8000',
-                    changeOrigin: true,
-                },
-            },
-            fs: {
-                allow: [
-                    '.',
-                    '../../../packages/shared'
-                ]
-            }
+export default defineConfig({
+    plugins: [vue()],
+    resolve: {
+        alias: {
+            '@': fileURLToPath(new URL('./src', import.meta.url)),
+            '@shared': fileURLToPath(new URL('../../../packages/shared/src', import.meta.url)),
         },
-        base: mode === 'production' ? '/' : '/',
-        build: {
-            outDir: '../../backend/static/barista',
-            emptyOutDir: true,
-            // Code splitting configuration
-            rollupOptions: {
-                output: {
-                    manualChunks: {
-                        'vendor': ['vue', 'vue-router', 'pinia'],
-                    }
-                }
-            },
-            // Minification
-            minify: 'esbuild',
-            // Source maps only in dev
-            sourcemap: mode !== 'production',
+    },
+    server: {
+        port: 8081,
+        strictPort: true,
+        proxy: {
+            '/admin-api': { target: backend, changeOrigin: true },
         },
-        plugins: [
-            vue(),
-        ],
-        resolve: {
-            alias: {
-                '@': fileURLToPath(new URL('./src', import.meta.url)),
-                '@shared': fileURLToPath(new URL('../../../packages/shared/src', import.meta.url)),
-            },
+        fs: {
+            allow: ['.', '../../../packages/shared'],
         },
-        // Optimize deps
-        optimizeDeps: {
-            include: ['vue', 'vue-router', 'pinia'],
+    },
+    preview: {
+        port: 8081,
+        strictPort: true,
+        proxy: {
+            '/admin-api': { target: backend, changeOrigin: true },
         },
-    };
+    },
 });

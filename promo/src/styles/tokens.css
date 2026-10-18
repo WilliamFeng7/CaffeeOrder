@@ -1,0 +1,206 @@
+/* ============================================================
+   OTIA Café promo — design tokens
+   Warm paper, forest green, one gold accent, New York / Songti
+   display type. Same contract as the Student app.
+   ============================================================ */
+
+:root {
+  --paper: #fafaf7;
+  --paper-warm: #f4f0e7;
+  --paper-deep: #efeade;
+  --ink: #171c19;
+  --ink-soft: #2b332e;
+  --sub: #676c69;
+  --sub-light: #8a8f8b;
+  --line: #e7e3da;
+  --line-strong: #d6d3cc;
+  --green: #1b5e47;
+  --green-dark: #154a38;
+  --green-deep: #0c1f1a;
+  --green-soft: #eaf1ed;
+  --green-mist: #dfeae4;
+  --gold: #c8963e;
+  --gold-soft: #f7efe0;
+  --gold-ink: #7a5213;
+  --cream: #f2f1ec;
+  --white: #ffffff;
+  --danger: #b42318;
+
+  --serif: "New York", "Songti SC", "Iowan Old Style", "Times New Roman", Georgia, serif;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in: cubic-bezier(0.3, 0, 0.8, 0.15);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-back: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+  --shadow-phone: 0 48px 90px -40px rgba(12, 31, 26, 0.55), 0 18px 38px -24px rgba(12, 31, 26, 0.35);
+  --shadow-float: 0 24px 60px -20px rgba(23, 28, 25, 0.28);
+  --shadow-card: 0 1px 2px rgba(23, 28, 25, 0.04);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+::selection {
+  background: var(--green);
+  color: #fff;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+.serif {
+  font-family: var(--serif);
+  font-weight: 400;
+}
+
+.wrap {
+  width: min(1240px, calc(100% - 96px));
+  margin-inline: auto;
+}
+
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--sub);
+  text-transform: uppercase;
+}
+
+.kicker b {
+  font-weight: 600;
+  color: var(--green);
+}
+
+.kicker-line {
+  width: 26px;
+  height: 1px;
+  background: var(--green);
+  flex: none;
+}
+
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 26px, 0);
+  transition:
+    opacity 900ms var(--ease),
+    transform 900ms var(--ease);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Page-level scroll reveal for lists: parent gets .is-in, children stagger. */
+.reveal-group > * {
+  opacity: 0;
+  transform: translate3d(0, 24px, 0);
+  transition:
+    opacity 800ms var(--ease),
+    transform 800ms var(--ease);
+}
+
+.reveal-group.is-in > * {
+  opacity: 1;
+  transform: none;
+}
+
+.reveal-group.is-in > *:nth-child(1) { transition-delay: 0ms; }
+.reveal-group.is-in > *:nth-child(2) { transition-delay: 80ms; }
+.reveal-group.is-in > *:nth-child(3) { transition-delay: 160ms; }
+.reveal-group.is-in > *:nth-child(4) { transition-delay: 240ms; }
+.reveal-group.is-in > *:nth-child(5) { transition-delay: 320ms; }
+.reveal-group.is-in > *:nth-child(6) { transition-delay: 400ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal,
+  .reveal-group > * {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

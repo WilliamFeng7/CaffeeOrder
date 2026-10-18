@@ -1,196 +1,251 @@
-import apiClient from '@shared/api-client';
-import type { Product, UserProfile, CartItem } from '../types';
+import * as dd from 'dingtalk-jsapi';
+import { createYudaoClient, type YudaoTokens } from '@shared/yudao-client';
+import type { IconName } from '@/icons';
+import type {
+  AuthSession,
+  CartItem,
+  Category,
+  MenuData,
+  Order,
+  OrderItem,
+  Product,
+  SelectedOption,
+  ShopStatus,
+  UserProfile,
+} from '../types';
 import { photoUrl, thumbUrl } from '../utils/photo';
 
-export const api = {
-    /**
-     * 用户登录 (User Login)
-     */
-    async login(username: string, password: string): Promise<any> {
-        const formData = new URLSearchParams();
-        formData.append('username', username);
-        formData.append('password', password);
+interface BackendOption {
+  id: number;
+  name: string;
+  nameEn: string | null;
+  priceDelta: number;
+  isDefault: boolean;
+}
 
-        const response = await apiClient.post('/login/access-token', formData, {
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-        });
-        return response.data;
-    },
+interface BackendGroup {
+  id: number;
+  name: string;
+  nameEn: string | null;
+  options: BackendOption[];
+}
 
-    /**
-     * 获取菜单列表 (Get Menu)
-     */
-    async getMenu(): Promise<Product[]> {
-        try {
-            const response = await apiClient.get('/menu/');
-            const items = response.data;
-            return items.map((item: any) => ({
-                id: item.id.toString(),
-                name: item.name,
-                nameCN: item.name_cn || item.name,
-                description: item.description || `Freshly prepared ${item.name}`,
-                descriptionCN: item.description || `新鲜制作的 ${item.name}`,
-                price: item.price / 100,
-                category: item.category.toLowerCase(),
-                image: photoUrl(item.image_path),
-                thumb: thumbUrl(item.image_path),
-                tags: item.is_recommend ? ['Best Seller'] : [],
-                isPopular: item.is_recommend || false,
-                inventoryCount: item.inventory_count,
-            }));
-        } catch (error) {
-            console.error('Failed to fetch menu:', error);
-            return [];
-        }
-    },
+interface BackendMenuItem {
+  id: number;
+  name: string;
+  nameEn: string | null;
+  description: string | null;
+  descriptionEn: string | null;
+  price: number;
+  categoryCode: string;
+  imageUrl: string | null;
+  recommended: boolean;
+  soldOut: boolean;
+  optionGroups: BackendGroup[];
+}
 
-    /**
-     * 获取个人资料 (Get User Profile)
-     */
-    async getProfile(): Promise<UserProfile & { balance: number; username: string }> {
-        const response = await apiClient.get('/users/me');
-        const data = response.data;
-        return {
-            name: data.name || data.username,
-            phone: data.phone || '',
-            email: data.email || '',
-            balance: data.balance / 100, // Cents to Yuan
-            username: data.username,
-            uuid: data.uuid || 'N/A'
-        };
-    },
+interface BackendMenu {
+  categories: { id: number; code: string; name: string; nameEn: string | null }[];
+  items: BackendMenuItem[];
+}
 
-    /**
-     * 修改密码 (Update Password)
-     */
-    async updatePassword(oldPassword: string, newPassword: string): Promise<void> {
-        try {
-            await apiClient.put('/users/me/password', {
-                old_password: oldPassword,
-                new_password: newPassword
-            });
-        } catch (error: any) {
-            const err = error.response?.data;
-            let msg = err?.detail || 'Password update failed';
-            if (typeof msg !== 'string' && Array.isArray(msg) && msg[0]?.msg) {
-                msg = msg[0].msg.replace('Value error, ', '');
-            } else if (typeof msg !== 'string') {
-                msg = JSON.stringify(msg);
-            }
-            throw new Error(msg);
-        }
-    },
+interface BackendOrderItem {
+  itemId: number;
+  name: string;
+  nameEn: string | null;
+  imageUrl: string | null;
+  unitPrice: number;
+  quantity: number;
+  optionsText: string | null;
+  options: SelectedOption[];
+}
 
-    /**
-     * 更新个人资料 (Update User Profile)
-     */
-    async updateProfile(profile: UserProfile): Promise<UserProfile> {
-        const response = await apiClient.put('/users/me', {
-            name: profile.name,
-            phone: profile.phone,
-            email: profile.email
-        });
-        const data = response.data;
-        return {
-            name: data.name || data.username,
-            phone: data.phone || '',
-            email: data.email || '',
-            uuid: data.uuid || 'N/A',
-            avatar: profile.avatar,
-            balance: data.balance / 100, // Cents to Yuan
-            username: data.username
-        };
-    },
+interface BackendOrder {
+  id: number;
+  orderNo: string;
+  status: number;
+  posOrderNo: string | null;
+  aheadCount: number | null;
+  totalPrice: number;
+  createTime: number;
+  items: BackendOrderItem[];
+}
 
-    /**
-     * 创建订单 (Create Order)
-     *
-     * Sends one line per cart entry with an explicit `quantity` instead of
-     * exploding a quantity of 3 into three identical rows. The order service
-     * reserves `quantity` units in a single atomic statement and stores one
-     * order line, so the KDS shows "3× Flat White" rather than three cards rows.
-     */
-    async createOrder(items: CartItem[]) {
-        const backendItems = items.map((item) => ({
-            menu_item_id: parseInt(item.id),
-            quantity: item.quantity,
-            spec: {
-                size: item.size || 'Regular',
-                sugar: item.sugar || 'Regular',
-                temp: item.temperature || 'Hot',
-            }
-        }));
+export interface StudentAuthConfig {
+  corpId: string;
+  passwordLoginEnabled: boolean;
+}
 
-        const response = await apiClient.post('/orders/', { items: backendItems });
-        return response.data;
-    },
-
-    /**
-     * 获取我的历史订单 (Get My Orders)
-     */
-    async getMyOrders() {
-        // A failed request throws (the caller keeps the orders it has) instead of
-        // returning [], which used to blank the Pickup page on one bad poll.
-        const response = await apiClient.get('/orders/me');
-        const orders = response.data;
-        return orders.map((o: any) => {
-            const itemMap = new Map<string, any>();
-
-            o.items.forEach((backendItem: any) => {
-                const specKey = JSON.stringify(backendItem.spec);
-                const key = `${backendItem.item_name}-${specKey}`;
-
-                // Each line carries its own quantity; counting lines as 1 showed
-                // "1x" for a line ordered three times.
-                const quantity = Number(backendItem.quantity) || 1;
-                if (itemMap.has(key)) {
-                    itemMap.get(key).quantity += quantity;
-                } else {
-                    itemMap.set(key, {
-                        id: 'backend-item',
-                        name: backendItem.item_name,
-                        nameCN: backendItem.item_name,
-                        price: backendItem.price_snap / 100,
-                        image: photoUrl(backendItem.image_url),
-                        thumb: thumbUrl(backendItem.image_url),
-                        quantity,
-                        size: backendItem.spec.size,
-                        temperature: backendItem.spec.temp,
-                        sugar: backendItem.spec.sugar
-                    });
-                }
-            });
-
-            return {
-                id: o.id.toString(),
-                uuid: o.order_no, // Backend uses order_no as unique public id
-                order_no: o.order_no,
-                date: o.created_at,
-                items: Array.from(itemMap.values()),
-                total: o.total_amount / 100,
-                type: 'dine-in',
-                pickupNumber: o.pickup_number,
-                dailyNumber: o.pickup_number,
-                status: ['completed', 'refunded'].includes(o.status) ? 'completed' : 'active',
-                stage: o.status,
-                isCompleted: o.is_completed,
-                pointsEarned: 0
-            };
-        });
-    },
-
-    /**
-     * Get Shop Status
-     */
-    async getShopStatus() {
-        try {
-            const response = await apiClient.get('/shop/status');
-            return response.data;
-        } catch {
-            return { is_open: true };
-        }
-    }
+const CATEGORY_ICONS: Record<string, IconName> = {
+  seasonal: 'leaf',
+  coffee: 'coffee',
+  fruit: 'cup-straw',
+  bakery: 'bread',
 };
 
+let unauthorizedHandler: () => void = () => undefined;
+export const setUnauthorizedHandler = (handler: () => void) => {
+  unauthorizedHandler = handler;
+};
+
+const client = createYudaoClient({
+  baseUrl: '/app-api/cafe',
+  tokenKey: 'otia.student.accessToken',
+  storage: 'sessionStorage',
+  onUnauthorized: () => unauthorizedHandler(),
+  reauthenticate: async () => {
+    try {
+      return await loginWithDingTalk();
+    } catch {
+      return null;
+    }
+  },
+});
+
+const saveSession = (session: AuthSession): YudaoTokens => {
+  client.setTokens(session);
+  return session;
+};
+
+export const isDingTalk = () => dd.env.platform !== 'notInDingTalk';
+
+async function getAuthConfig(): Promise<StudentAuthConfig> {
+  return client.get<StudentAuthConfig>('/auth/dingtalk-config', { auth: false });
+}
+
+async function loginWithDingTalk(corpId?: string): Promise<AuthSession> {
+  if (!isDingTalk()) throw new Error('请在钉钉中打开 OTIA Café');
+  const resolvedCorpId = corpId || (await getAuthConfig()).corpId;
+  if (!resolvedCorpId) throw new Error('钉钉登录尚未配置，请使用账号密码登录');
+
+  let authCode: string;
+  if (typeof dd.getAuthCode === 'function') {
+    const result = await dd.getAuthCode({ corpId: resolvedCorpId });
+    authCode = result.authCode;
+  } else {
+    const result = await dd.runtime.permission.requestAuthCode({ corpId: resolvedCorpId });
+    authCode = result.code;
+  }
+  const session = await client.post<AuthSession>('/auth/dingtalk-login', { authCode }, { auth: false });
+  saveSession(session);
+  return session;
+}
+
+const toIso = (timestamp: number) => new Date(timestamp).toISOString();
+const toYuan = (cents: number) => cents / 100;
+
+const mapOrderItem = (item: BackendOrderItem): OrderItem => ({
+  id: String(item.itemId),
+  name: item.nameEn || item.name,
+  nameCN: item.name,
+  price: toYuan(item.unitPrice),
+  image: photoUrl(item.imageUrl),
+  thumb: thumbUrl(item.imageUrl),
+  quantity: item.quantity,
+  selectedOptions: item.options ?? [],
+});
+
+const mapOrder = (order: BackendOrder): Order => {
+  const stage = order.status === 30 ? 'ready' : order.status === 20 ? 'processing' : 'created';
+  const completed = order.status === 30;
+  return {
+    id: String(order.id),
+    orderNo: order.orderNo,
+    date: toIso(order.createTime),
+    items: order.items.map(mapOrderItem),
+    total: toYuan(order.totalPrice),
+    posOrderNo: order.posOrderNo,
+    aheadCount: order.aheadCount,
+    isCompleted: completed,
+    status: completed ? 'completed' : 'active',
+    stage,
+  };
+};
+
+export const api = {
+  hasToken: () => client.getToken() !== null,
+  isDingTalk,
+  getAuthConfig,
+  loginWithDingTalk,
+
+  async loginWithPassword(studentNo: string, password: string): Promise<AuthSession> {
+    const session = await client.post<AuthSession>(
+      '/auth/password-login',
+      { studentNo, password },
+      { auth: false },
+    );
+    saveSession(session);
+    return session;
+  },
+
+  async getMenu(): Promise<MenuData> {
+    const menu = await client.get<BackendMenu>('/menu', { auth: false });
+    const categories: Category[] = [
+      { id: 'top', name: 'Top picks', nameCN: '店长推荐', icon: 'star' },
+      ...menu.categories.map((category) => ({
+        id: category.code,
+        name: category.nameEn || category.name,
+        nameCN: category.name,
+        icon: CATEGORY_ICONS[category.code] ?? 'grid',
+      })),
+      { id: 'all', name: 'All', nameCN: '全部', icon: 'grid' },
+    ];
+    const products: Product[] = menu.items.map((item) => ({
+      id: String(item.id),
+      name: item.nameEn || item.name,
+      nameCN: item.name,
+      description: item.descriptionEn || '',
+      descriptionCN: item.description || '',
+      price: toYuan(item.price),
+      category: item.categoryCode,
+      image: photoUrl(item.imageUrl),
+      thumb: thumbUrl(item.imageUrl),
+      tags: item.recommended ? ['Best Seller'] : [],
+      isPopular: item.recommended,
+      soldOut: item.soldOut,
+      optionGroups: item.optionGroups.map((group) => ({
+        id: group.id,
+        name: group.name,
+        nameEn: group.nameEn || group.name,
+        options: group.options.map((option) => ({
+          id: option.id,
+          name: option.name,
+          nameEn: option.nameEn || option.name,
+          priceDelta: toYuan(option.priceDelta),
+          isDefault: option.isDefault,
+        })),
+      })),
+    }));
+    return { products, categories };
+  },
+
+  async getProfile(): Promise<UserProfile> {
+    const profile = await client.get<{ studentNo: string; name: string; balance: number }>('/student/me');
+    return { ...profile, balance: toYuan(profile.balance) };
+  },
+
+  async createOrder(items: CartItem[], idempotencyKey: string): Promise<Order> {
+    const order = await client.post<BackendOrder>('/order/create', {
+      items: items.map((item) => ({
+        itemId: Number(item.id),
+        quantity: item.quantity,
+        optionIds: item.optionIds,
+      })),
+    }, { headers: { 'Idempotency-Key': idempotencyKey } });
+    return mapOrder(order);
+  },
+
+  async getMyOrders(): Promise<Order[]> {
+    const page = await client.get<{ list: BackendOrder[]; total: number }>('/order/page', {
+      params: { pageNo: 1, pageSize: 100 },
+    });
+    return page.list.map(mapOrder);
+  },
+
+  async getQueue(): Promise<number> {
+    const result = await client.get<{ waitingCount: number }>('/order/queue');
+    return result.waitingCount;
+  },
+
+  getShopStatus: () => client.get<ShopStatus>('/shop/status', { auth: false }),
+};

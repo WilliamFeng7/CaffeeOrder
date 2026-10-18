@@ -93,7 +93,7 @@ const countUnit = computed(() => {
   return props.lang === 'cn' ? '款' : (n === 1 ? 'item' : 'items');
 });
 
-const isSoldOut = (p: Product) => p.inventoryCount === 0;
+const isSoldOut = (p: Product) => p.soldOut;
 
 // 侧栏当前分类 (searching selects none of them)
 const isActiveCategory = (id: string) => activeCategory.value === id && !searchTerm.value;
@@ -224,7 +224,7 @@ const categoryModel = computed({
 });
 
 /** 打开商品: 把卡片图片一起交出去，详情面板从它长出来 */
-const pick = (product: Product, event: MouseEvent) => {
+const pick = (product: Product, event: Event) => {
   if (isSoldOut(product)) {
     // A tap that does nothing feels like a miss: say why, and shake the card.
     shakingId.value = null;
@@ -393,8 +393,13 @@ const handleSuggestionClick = (p: Product) => {
                    v-for="(product, i) in filteredProducts"
                    :key="product.id"
                    @click="pick(product, $event)"
+                   @keydown.enter.prevent="pick(product, $event)"
+                   @keydown.space.prevent="pick(product, $event)"
                    data-testid="product-card"
                    class="group press-card relative flex flex-col cursor-pointer"
+                   role="button"
+                   tabindex="0"
+                   :aria-label="lang === 'cn' ? `查看 ${product.nameCN}` : `View ${product.name}`"
                    :aria-disabled="isSoldOut(product) || undefined"
                 >
                    <div class="flex flex-col" :class="{ shake: shakingId === product.id }" @animationend.self="shakingId = null">
@@ -419,6 +424,7 @@ const handleSuggestionClick = (p: Product) => {
                          v-if="cartCounts.get(product.id)"
                          class="absolute top-3 right-3 min-w-6 h-6 px-1.5 rounded-full bg-text-main text-white text-xs font-semibold flex items-center justify-center leading-none pop-in"
                       ><RollingNumber :value="cartCounts.get(product.id) ?? 0" /></span>
+
                    </div>
 
                    <div class="pt-3 min-w-0">

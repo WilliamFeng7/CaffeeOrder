@@ -17,12 +17,13 @@
 
 import AppIcon from '@/components/AppIcon.vue';
 import { ref, computed, onMounted, onBeforeUnmount, onActivated } from 'vue';
-import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
+import { TRANSLATIONS } from '../data';
 import type { Order, Language } from '../types';
 import { useKeepScroll } from '../composables/useKeepScroll';
 import { usePullToRefresh } from '../composables/usePullToRefresh';
 import { spring, project, rubberband, VelocityTracker, type SpringHandle } from '../composables/spring';
 import { orderStage } from '../utils/orderStage';
+import { optionsText } from '../utils/options';
 
 // --- Props & Events ---
 const props = defineProps<{
@@ -175,12 +176,7 @@ const itemCount = (order: Order) => {
   return `${n} ${n === 1 ? 'item' : 'items'}`;
 };
 
-const specLine = (item: Order['items'][number]) => {
-  const temp = item.temperature ? (item.temperature === 'Hot' ? t.value.hot : t.value.iced) : '';
-  const sugarLabels = OPTION_TRANSLATIONS.sugar as Record<string, { en: string; cn: string }>;
-  const sugar = item.sugar ? (sugarLabels[item.sugar]?.[props.lang] ?? item.sugar) : '';
-  return [temp, sugar].filter(Boolean).join(' · ');
-};
+const specLine = (item: Order['items'][number]) => optionsText(item.selectedOptions, props.lang);
 
 </script>
 
@@ -237,13 +233,14 @@ const specLine = (item: Order['items'][number]) => {
                  :style="{ animationDelay: `${Math.min(idx, 6) * 60}ms` }"
               >
                  <div class="flex items-start justify-between gap-3">
-                    <div>
+                    <div class="min-w-0 flex-1">
                        <p class="eyebrow">{{ t.pickupNum }}</p>
-                       <p class="mt-2 font-serif text-[60px] md:text-[72px] font-normal leading-[0.9] tabular-nums transition-colors duration-fade" :class="order.stage === 'ready' ? 'text-primary' : 'text-text-main'">{{ order.dailyNumber }}</p>
+                       <p v-if="order.posOrderNo" class="mt-2 font-serif text-[36px] md:text-[48px] break-all font-normal leading-[0.9] tabular-nums transition-colors duration-fade" :class="order.stage === 'ready' ? 'text-primary' : 'text-text-main'">{{ order.posOrderNo }}</p>
+                       <p v-else class="mt-2 whitespace-nowrap font-serif text-[22px] md:text-[26px] font-normal leading-tight tracking-[-0.015em] text-text-main transition-colors duration-fade" :class="{ 'text-primary': order.stage === 'ready' }">{{ t.waitingEntry }}</p>
                     </div>
                     <!-- Stage: a dot that pings once when the order moves on (no
                          looping halo or pulse: the screen stays still while it waits) -->
-                    <span class="flex items-center gap-2 text-[13px] font-medium pt-1" :class="order.stage === 'ready' ? 'text-primary' : 'text-text-main'">
+                    <span class="flex shrink-0 items-center gap-2 pt-1 max-w-[8rem] text-right text-[13px] font-medium leading-snug" :class="order.stage === 'ready' ? 'text-primary' : 'text-text-main'">
                        <span class="relative flex size-2">
                           <span :key="order.stage" class="absolute inset-0 rounded-full ping" :class="order.stage === 'ready' ? 'bg-primary' : 'bg-text-sub'" aria-hidden="true"></span>
                           <span
@@ -259,6 +256,8 @@ const specLine = (item: Order['items'][number]) => {
                        </span>
                     </span>
                  </div>
+
+                 <p v-if="order.aheadCount !== null" class="mt-3 text-[13px] text-text-sub tabular-nums">{{ t.ahead(order.aheadCount ?? 0) }}</p>
 
                  <!-- Three-step progress: the bar grows as the order moves on -->
                  <div class="mt-7" role="progressbar" aria-valuemin="1" aria-valuemax="3" :aria-valuenow="stageInfo(order).step + 1" :aria-valuetext="stageInfo(order).label">
@@ -292,7 +291,7 @@ const specLine = (item: Order['items'][number]) => {
                  <div class="flex items-end justify-between gap-4 mt-5 text-[12px] text-text-sub">
                     <span class="tabular-nums leading-relaxed">
                        {{ formatTime(order.date) }} · {{ itemCount(order) }}
-                       <span class="block text-[11px] tabular-nums tracking-wide text-text-sub/80">{{ order.order_no }}</span>
+                       <span class="block text-[11px] tabular-nums tracking-wide text-text-sub/80">{{ order.orderNo }}</span>
                     </span>
                     <span class="font-serif text-[20px] font-normal text-text-main tabular-nums">¥{{ order.total.toFixed(2) }}</span>
                  </div>
@@ -321,15 +320,15 @@ const specLine = (item: Order['items'][number]) => {
               >
                  <div class="flex items-center justify-between gap-3">
                      <div class="flex items-center gap-4 min-w-0">
-                        <span class="w-12 font-serif text-[26px] font-normal text-text-main tabular-nums leading-none">{{ order.dailyNumber }}</span>
+                        <span class="min-w-12 max-w-[190px] break-all font-serif text-[20px] font-normal text-text-main tabular-nums leading-tight">{{ order.posOrderNo || t.waitingEntry }}</span>
                         <div class="min-w-0">
                            <p class="text-[15px] text-text-main tabular-nums">{{ formatTime(order.date) }}</p>
                            <p class="text-[13px] text-text-sub tabular-nums">{{ itemCount(order) }} · ¥{{ order.total.toFixed(2) }}</p>
                         </div>
                      </div>
-                     <span class="flex items-center gap-1.5 text-[12px] font-medium shrink-0" :class="order.stage === 'refunded' ? 'text-text-sub' : 'text-primary'">
+                     <span class="flex items-center gap-1.5 text-[12px] font-medium shrink-0 text-primary">
                         <span class="dot" aria-hidden="true"></span>
-                        {{ order.stage === 'refunded' ? (lang === 'cn' ? '已退款' : 'Refunded') : t.completed }}
+                        {{ t.completed }}
                      </span>
                  </div>
                  <p class="pl-16 text-[13px] text-text-sub line-clamp-1">

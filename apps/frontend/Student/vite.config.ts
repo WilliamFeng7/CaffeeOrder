@@ -3,7 +3,7 @@
  *
  * Vite 构建配置文件 (Vite Configuration).
  *
- * 1. 代理 (Proxy): `/api/v1` 和 `/static` 转发到本地 Go 后端 (127.0.0.1:8000)；
+ * 1. 代理 (Proxy): `/app-api` 和 `/static` 转发到本地 yudao 后端 (默认 127.0.0.1:48080)；
  *    `vite preview` 沿用同一套代理。
  * 2. 构建输出 (Build): `dist/` (Docker 镜像与演示部署都从这里取)。
  * 3. 路径别名 (Alias): `@` 指向 src，`@shared` 指向 packages/shared/src。
@@ -19,17 +19,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const studentRequire = createRequire(resolve(__dirname, 'package.json'));
 const piniaEntry = resolve(dirname(studentRequire.resolve('pinia/package.json')), 'dist/pinia.mjs');
+const proxyTarget = process.env.VITE_PROXY_TARGET ?? 'http://127.0.0.1:48080';
 
 export default defineConfig(({ mode }) => {
   return {
     server: {
       proxy: {
-        '/api/v1': {
-          target: 'http://127.0.0.1:8000',
+        '/app-api': {
+          target: proxyTarget,
           changeOrigin: true,
         },
         '/static': {
-          target: 'http://127.0.0.1:8000',
+          target: proxyTarget,
           changeOrigin: true,
         },
       },
@@ -53,7 +54,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'vendor': ['vue', 'vue-router', 'pinia', 'axios'],
+            'vendor': ['vue', 'vue-router', 'pinia'],
           }
         }
       },
@@ -74,7 +75,7 @@ export default defineConfig(({ mode }) => {
       dedupe: ['vue'],
     },
     optimizeDeps: {
-      include: ['vue', 'vue-router', 'pinia', 'axios'],
+      include: ['vue', 'vue-router', 'pinia', 'dingtalk-jsapi'],
     },
   };
 });

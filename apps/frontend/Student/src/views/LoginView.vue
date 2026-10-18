@@ -1,279 +1,122 @@
 <script setup lang="ts">
-/**
- * LoginView.vue
- * 
- * 登录页面视图组件 (Login View Component).
- * 
- * 核心功能 (Core Features):
- * 1. 用户认证 (User Authentication): 调用 API 获取 JWT Token。
- * 2. 输入验证 (Input Logic): 校验手机号格式 (11位数字) 或用户名。
- * 3. 错误处理 (Error Handling): 显示锁定、限流或凭证错误信息。
- * 4. 界面交互: 加载状态动画，平滑过渡效果。
- */
-
-import AppIcon from '@/components/AppIcon.vue';
-import { ref, watch, onMounted } from 'vue';
+/** 钉钉自动免登；不可用时自动切换为学号密码登录。 */
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { api } from '../api';
 import { useToastStore } from '../stores/toast';
 import type { Language } from '../types';
-import { auth } from '@shared/auth';
+import PasswordLoginForm from '../components/PasswordLoginForm.vue';
 
+const props = withDefaults(defineProps<{ lang?: Language }>(), { lang: 'en' });
+const emit = defineEmits<{ (e: 'login-success'): void }>();
 const router = useRouter();
-
-onMounted(() => {
-    // 每次进入登录页，清除 Token
-    auth.clearToken();
-});
-
-// 定义 Props (Props Definition)
-// lang 可选: 路由不传递 props 时默认为英文 (route doesn't pass props)
-const props = withDefaults(defineProps<{
-  lang?: Language; // 当前语言环境
-}>(), {
-  lang: 'en'
-});
-
-// 定义 Events (Events Definition)
-const emit = defineEmits<{
-  (e: 'login-success'): void; // 登录成功回调
-}>();
-
-
-
-// --- 状态定义 (State Definitions) ---
-
-// 用户名/手机号输入框
 const toast = useToastStore();
-const username = ref('');
+const inDingTalk = api.isDingTalk();
+const insecureHttp = window.location.protocol === 'http:'
+  && !['localhost', '127.0.0.1'].includes(window.location.hostname);
+const isLoading = ref(inDingTalk);
+const showPassword = ref(!inDingTalk);
+const passwordLoginEnabled = ref(true);
+const dingtalkError = ref('');
 
-// 密码输入框
-const password = ref('');
-const showPassword = ref(false);
-
-// 登录请求加载状态
-const isLoading = ref(false);
-
-// API 返回的错误消息 (如: 账号锁定)
-// const errorMsg = ref(''); // Removed in favor of Toast
-
-// 输入框本身的格式错误提示 (如: 手机号位数不对)
-const inputError = ref('');
-
-// 登录失败时表单左右晃一下，输入线变红一会儿 (shake once; the lines turn red
-// until the student starts typing again)
-const rejected = ref(false);
-const invalid = ref(false);
-watch([username, password], () => { invalid.value = false; });
-
-/**
- * 实时监听用户名输入 (Real-time Validation)
- * 校验规则:
- * 1. 如果包含空格 -> 报错
- * 2. 如果纯数字但长度超过11位 -> 报错 (手机号最大11位)
- */
-watch(username, (newVal) => {
-   if (!newVal) {
-     inputError.value = '';
-     return;
-   }
-   
-   // 检查空格
-   if (/\s/.test(newVal)) {
-      inputError.value = props.lang === 'cn' ? '不能包含空格' : 'No spaces allowed';
-      return;
-   }
-   
-   // 检查纯数字长度
-   if (/^\d+$/.test(newVal)) {
-      if (newVal.length > 11) {
-          inputError.value = props.lang === 'cn' ? '手机号不能超过11位' : 'Phone number cannot exceed 11 digits';
-      } else {
-          inputError.value = '';
-      }
-   }
-});
-
-/**
- * 处理登录提交 (Handle Login Submit)
- */
-// 倒计时引用
-const countdownTimer = ref<number | null>(null);
-
-// 清理定时器
-const clearCountdown = () => {
-    if (countdownTimer.value) {
-        clearInterval(countdownTimer.value);
-        countdownTimer.value = null;
-    }
+const succeed = async () => {
+  await router.replace('/');
+  emit('login-success');
 };
 
-/**
- * 处理登录提交 (Handle Login Submit)
- */
-const handleLogin = async () => {
-  if (!username.value || !password.value) return;
-  
-  // 提交前的最终校验
-  if (/^\d+$/.test(username.value) && username.value.length !== 11) {
-      inputError.value = props.lang === 'cn' ? '请输入11位手机号' : 'Please enter an 11-digit phone number';
-      return;
-  }
-  
+const usePasswordLogin = () => {
+  dingtalkError.value = '';
+  showPassword.value = true;
+};
+
+const handleDingTalkLogin = async (corpId?: string) => {
+  dingtalkError.value = '';
   isLoading.value = true;
-  inputError.value = '';
-  clearCountdown();
-  
   try {
-    // 调用 API 获取 Token 和用户信息
-    const data = await api.login(username.value, password.value);
-
-    // 检查角色 (Check Role) - BEFORE storing anything.
-    // The token used to be written to sessionStorage first and only then
-    // rejected, which left a live admin session sitting in the student app's
-    // storage; barista accounts were not checked at all.
-    const role = String(data.role || '').toLowerCase();
-    if (role !== 'student') {
-      throw new Error(
-        role === 'admin'
-          ? '403 Admin account cannot login to Student App'
-          : '403 Staff account cannot login to Student App'
-      );
-    }
-
-    // 存储 Token 到本地
-    auth.setSession(data.access_token, data.role);
-
-    // replace, not push: with /login left in the history, an iPad edge-swipe
-    // "back" landed on the sign-in page, which signs the student out.
-    router.replace('/');
-    emit('login-success'); // 兼容旧逻辑，但在路由模式下可能不需要
-    
-  } catch (e: any) {
-    // 错误处理逻辑 (Error Handling)
-    const status = e.response?.status;
-    const detail = e.response?.data?.detail;
-
-    if (detail && typeof detail === 'object') {
-        // 处理结构化错误 (Structured Error)
-        if (detail.code === 'locked') {
-           // 账户已锁定
-           const unlockAt = new Date(detail.unlock_at);
-           const now = new Date();
-           const diffSeconds = Math.ceil((unlockAt.getTime() - now.getTime()) / 1000);
-           
-           if (diffSeconds > 0) {
-               const msg = props.lang === 'cn' 
-                   ? `账号已锁定，请等待 ${diffSeconds} 秒` 
-                   : `Account locked. Please wait ${diffSeconds}s`;
-               toast.error(msg);
-           } else {
-                 toast.error(detail.message);
-           }
-
-        } else if (detail.code === 'failed') {
-            // 登录失败，显示剩余次数
-            const attemptsLeft = detail.attempts_left;
-            if (attemptsLeft !== null && attemptsLeft !== undefined) {
-                const msg = props.lang === 'cn' 
-                   ? `账号或密码错误 (剩余 ${attemptsLeft} 次机会)`
-                   : `Invalid credentials (${attemptsLeft} attempts left)`;
-                toast.error(msg);
-            } else {
-                toast.error(props.lang === 'cn' ? '账号或密码错误' : 'Invalid username or password');
-            }
-        } else {
-            // 其他未知结构化错误
-            toast.error(detail.message || (props.lang === 'cn' ? '登录失败' : 'Login failed'));
-        }
-    
+    await api.loginWithDingTalk(corpId);
+    await succeed();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '钉钉登录失败，请稍后重试';
+    dingtalkError.value = message;
+    if (passwordLoginEnabled.value) {
+      showPassword.value = true;
     } else {
-        // 传统字符串错误处理 (Legacy String Error Handling)
-        if (status === 403 || (e.message && e.message.includes('403'))) {
-            toast.error(detail || (props.lang === 'cn' ? '账号已锁定，请稍后重试' : 'Account locked. Please try again later.'));
-        } else if (status === 429) {
-            toast.error(props.lang === 'cn' ? '请求过于频繁，请稍后' : 'Too many attempts. Please wait.'); 
-        } else {
-            toast.error(props.lang === 'cn' ? '账号或密码错误' : 'Invalid username or password');
-        }
+      toast.error(message);
     }
-
-    // The form shakes once, like a head saying no.
-    rejected.value = false;
-    requestAnimationFrame(() => { rejected.value = true; });
-    invalid.value = true;
   } finally {
     isLoading.value = false;
   }
 };
 
+onMounted(async () => {
+  try {
+    const config = await api.getAuthConfig();
+    passwordLoginEnabled.value = config.passwordLoginEnabled;
+    if (inDingTalk) {
+      void handleDingTalkLogin(config.corpId);
+    } else {
+      showPassword.value = config.passwordLoginEnabled;
+    }
+  } catch (error) {
+    if (inDingTalk) {
+      dingtalkError.value = error instanceof Error ? error.message : '无法读取登录配置';
+      showPassword.value = passwordLoginEnabled.value;
+    }
+    isLoading.value = false;
+  }
+});
 </script>
 
 <template>
   <div class="fixed inset-0 z-[200] bg-background-light flex items-center justify-center p-6 overflow-y-auto">
     <div class="w-full max-w-[380px]">
-
-      <!-- Brand -->
       <div class="mb-14">
         <p class="eyebrow animate-slide-up-content">{{ lang === 'cn' ? '欢迎回来' : 'Welcome back' }}</p>
         <h1 class="mt-3 font-serif text-[46px] font-normal leading-none tracking-[-0.02em] text-text-main animate-text-reveal" style="animation-delay: 60ms">OTIA Café</h1>
         <p class="mt-4 text-[15px] text-text-sub animate-slide-up-content" style="animation-delay: 120ms">{{ lang === 'cn' ? '登录后开始点单' : 'Sign in to start your order' }}</p>
+        <p v-if="insecureHttp" class="mt-4 rounded-tile bg-danger-soft px-4 py-3 text-[13px] leading-relaxed text-danger" role="note">
+          {{ lang === 'cn' ? '当前测试地址未启用 HTTPS，请勿输入真实密码。' : 'This test address is not using HTTPS. Do not enter a real password.' }}
+        </p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="space-y-7" :class="{ shake: rejected }" @animationend="rejected = false">
-        <div class="animate-slide-up-content" style="animation-delay: 180ms">
-          <label for="username" class="eyebrow">{{ lang === 'cn' ? '账号' : 'Account' }}</label>
-          <div class="line-field mt-1" :class="{ 'is-invalid': invalid || inputError }">
-            <input
-              id="username"
-              name="username"
-              v-model="username"
-              type="text"
-              autocomplete="username"
-              autocapitalize="off"
-              spellcheck="false"
-              enterkeyhint="next"
-              :placeholder="lang === 'cn' ? '用户名 / 手机号 / 邮箱' : 'Username, phone or email'"
-            />
-          </div>
-          <Transition name="page">
-            <p v-if="inputError" class="mt-2 text-[13px] text-danger" role="alert">{{ inputError }}</p>
-          </Transition>
-        </div>
+      <PasswordLoginForm
+        v-if="showPassword && passwordLoginEnabled"
+        :lang="props.lang"
+        @success="succeed"
+      />
 
-        <div class="animate-slide-up-content" style="animation-delay: 230ms">
-          <label for="password" class="eyebrow">{{ lang === 'cn' ? '密码' : 'Password' }}</label>
-          <div class="line-field mt-1" :class="{ 'is-invalid': invalid }">
-            <input
-              id="password"
-              name="password"
-              v-model="password"
-              :type="showPassword ? 'text' : 'password'"
-              autocomplete="current-password"
-              enterkeyhint="go"
-              class="!pr-12"
-              :placeholder="lang === 'cn' ? '输入密码' : 'Enter your password'"
-            />
-            <span class="absolute right-0 inset-y-0 flex items-center">
-              <button
-                type="button"
-                @click="showPassword = !showPassword"
-                class="icon-btn"
-                :aria-label="showPassword ? (lang === 'cn' ? '隐藏密码' : 'Hide password') : (lang === 'cn' ? '显示密码' : 'Show password')"
-              >
-                <AppIcon :name="showPassword ? 'eye-slash' : 'eye'" weight="light" class="text-xl" />
-              </button>
-            </span>
-          </div>
-        </div>
+      <div v-else-if="inDingTalk" class="animate-slide-up-content">
+        <p class="flex items-center gap-3 text-[15px] text-text-sub">
+          <span v-if="isLoading" class="size-4 border-[1.5px] border-text-sub/30 border-t-text-main rounded-full animate-spin" aria-hidden="true"></span>
+          {{ isLoading ? (lang === 'cn' ? '正在通过钉钉登录…' : 'Signing in with DingTalk…') : (dingtalkError || (lang === 'cn' ? '钉钉登录未完成' : 'DingTalk sign-in was not completed')) }}
+        </p>
+        <button v-if="!isLoading" type="button" class="mt-6 btn btn-primary btn-lg w-full" @click="handleDingTalkLogin()">
+          {{ lang === 'cn' ? '重新登录' : 'Try again' }}
+        </button>
+        <button
+          v-if="passwordLoginEnabled"
+          type="button"
+          class="mt-4 w-full text-[13px] text-text-sub underline underline-offset-4"
+          @click="usePasswordLogin"
+        >
+          {{ lang === 'cn' ? '改用账号密码登录' : 'Use student number and password' }}
+        </button>
+      </div>
 
-        <div class="pt-3 animate-slide-up-content" style="animation-delay: 280ms">
-          <button type="submit" :disabled="isLoading" class="btn btn-primary btn-lg w-full group">
-            <span v-if="isLoading" class="size-4 border-[1.5px] border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true"></span>
-            <template v-else>{{ lang === 'cn' ? '登录' : 'Sign in' }}</template>
-          </button>
-        </div>
-      </form>
+      <div v-else class="animate-slide-up-content">
+        <p class="font-serif text-[26px] text-text-main">请在钉钉中打开 OTIA Café</p>
+        <p class="mt-3 text-[14px] text-text-sub">Please open OTIA Café in DingTalk.</p>
+      </div>
+
+      <button
+        v-if="showPassword && inDingTalk"
+        type="button"
+        class="mt-8 w-full text-[13px] text-text-sub underline underline-offset-4"
+        :disabled="isLoading"
+        @click="handleDingTalkLogin()"
+      >
+        {{ lang === 'cn' ? '重新尝试钉钉登录' : 'Try DingTalk sign-in again' }}
+      </button>
     </div>
   </div>
 </template>

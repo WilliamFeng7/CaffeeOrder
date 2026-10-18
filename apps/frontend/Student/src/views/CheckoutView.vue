@@ -18,17 +18,20 @@ import AppIcon from '@/components/AppIcon.vue';
 import AnimatedNumber from '@shared/components/AnimatedNumber.vue';
 import RollingNumber from '@shared/components/RollingNumber.vue';
 import { computed, ref } from 'vue';
-import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
+import { TRANSLATIONS } from '../data';
 import { formatCents, toCents, sumCents } from '../utils/money';
 import type { CartItem, ViewState, Language } from '../types';
 import { useSheetDrag } from '../composables/useSheetDrag';
 import { vImgFade } from '../directives/imgFade';
+import { optionsText } from '../utils/options';
 
 // --- Props & Events ---
 const props = defineProps<{
   cart: CartItem[]; // 购物车数据源
+  balance: number;  // 学生卡余额（元）
   lang: Language;   // 当前语言
   placing?: boolean; // 下单请求进行中 (按钮禁用，防止重复扣款)
+  paymentPending?: boolean; // The saved request key remains locked until the backend confirms an outcome.
   done?: boolean;    // 已下单: 按钮画出对勾，稍停再收起
 }>();
 
@@ -36,6 +39,7 @@ const emit = defineEmits<{
   (e: 'navigate', view: ViewState): void; // 导航请求
   (e: 'place-order'): void;               // 确认下单请求
   (e: 'update-quantity', cartId: string, delta: number): void; // 更新数量请求 (delta: +1/-1)
+  (e: 'remove-item', cartId: string): void; // 从购物车中完整移除一行
 }>();
 
 // --- 计算属性 (Computed Properties) ---
@@ -59,12 +63,7 @@ const itemCount = computed(() => props.cart.reduce((n, item) => n + item.quantit
 
 const money = (cents: number) => `¥${formatCents(Math.round(cents))}`;
 
-const specLine = (item: CartItem) => {
-  const temp = item.temperature ? (item.temperature === 'Hot' ? t.value.hot : t.value.iced) : '';
-  const sugarLabels = OPTION_TRANSLATIONS.sugar as Record<string, { en: string; cn: string }>;
-  const sugar = item.sugar ? (sugarLabels[item.sugar]?.[props.lang] ?? item.sugar) : '';
-  return [temp, sugar].filter(Boolean).join(' · ');
-};
+const specLine = (item: CartItem) => optionsText(item.selectedOptions, props.lang);
 
 // 按住顶部标题栏往下拖即可返回菜单 (和返回按钮一样)
 const rootEl = ref<HTMLElement | null>(null);
@@ -120,12 +119,13 @@ const { handlers: dragHandlers } = useSheetDrag({
 
                   <div class="checkout-item-controls flex items-center justify-between mt-auto pt-3">
                      <span class="text-[13px] text-text-sub tabular-nums">¥{{ formatCents(toCents(item.price)) }} / {{ lang === 'cn' ? '杯' : 'ea' }}</span>
-                     <div class="checkout-quantity flex items-center gap-1">
+                     <div class="checkout-quantity flex items-center gap-2">
                         <button
                            type="button"
                            @click="emit('update-quantity', item.cartId, -1)"
                            :aria-label="lang === 'cn' ? '减少' : 'Decrease'"
-                           class="size-11 md:size-12 rounded-full border border-line text-text-main flex items-center justify-center hover:border-text-main active:bg-cream"
+                           :disabled="paymentPending"
+                           class="size-11 md:size-12 rounded-full border border-line text-text-main flex items-center justify-center hover:border-text-main active:bg-cream disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                            <AppIcon name="minus" weight="light" class="text-base" />
                         </button>
@@ -136,9 +136,19 @@ const { handlers: dragHandlers } = useSheetDrag({
                            type="button"
                            @click="emit('update-quantity', item.cartId, 1)"
                            :aria-label="lang === 'cn' ? '增加' : 'Increase'"
-                           class="size-11 md:size-12 rounded-full border border-line text-text-main flex items-center justify-center hover:border-text-main active:bg-text-main active:border-text-main active:text-white"
+                           :disabled="paymentPending"
+                           class="size-11 md:size-12 rounded-full border border-line text-text-main flex items-center justify-center hover:border-text-main active:bg-text-main active:border-text-main active:text-white disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                            <AppIcon name="plus" weight="light" class="text-base" />
+                        </button>
+                        <button
+                           type="button"
+                           @click="emit('remove-item', item.cartId)"
+                           :aria-label="t.removeItem"
+                           :disabled="paymentPending"
+                           class="size-11 md:size-12 rounded-full text-text-sub flex items-center justify-center hover:text-danger hover:bg-danger-soft active:bg-danger-soft active:text-danger disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                           <AppIcon name="trash" weight="light" class="text-base" />
                         </button>
                      </div>
                   </div>
@@ -156,9 +166,14 @@ const { handlers: dragHandlers } = useSheetDrag({
       <aside class="lg:w-[360px] shrink-0">
          <div class="lg:sticky lg:top-0 card p-6 md:p-7 flex flex-col gap-4">
             <p class="eyebrow">{{ t.orderSummary }}</p>
+            <p v-if="paymentPending" class="text-sm text-text-sub" role="status">{{ t.paymentPending }}</p>
             <div class="flex justify-between text-[15px] text-text-sub">
                <span>{{ t.subtotal }}</span>
                <AnimatedNumber :value="subtotalCents" :format="money" :from-zero="false" />
+            </div>
+            <div class="flex justify-between text-[15px]" :class="balance < totalCents / 100 ? 'text-danger' : 'text-text-sub'">
+               <span>{{ t.balance }}</span>
+               <span class="tabular-nums">¥{{ formatCents(toCents(balance)) }}</span>
             </div>
             <div class="h-px bg-line"></div>
             <div class="flex items-baseline justify-between text-text-main">

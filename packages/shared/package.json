@@ -12,7 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "axios": "^1.13.2"
+    "axios": "^1.20.0"
   },
   "devDependencies": {
     "@phosphor-icons/vue": "^2.2.1"

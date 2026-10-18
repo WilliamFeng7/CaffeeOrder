@@ -10,6 +10,10 @@
  * Tailwind's components layer, so utilities on the element still win.
  */
 @layer components {
+  :root {
+    --touch-target: 44px;
+  }
+
   /* --- Buttons ---------------------------------------------------------- */
   .btn {
     @apply relative inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full
@@ -221,6 +225,31 @@
 
     .group:hover .nudge-diag {
       transform: translate3d(2px, -2px, 0);
+    }
+  }
+
+  /* iPad and other touch-first devices keep a native-sized target even when
+     the visual control is compact on a pointer-driven desktop. */
+  @media (pointer: coarse) {
+    .btn,
+    .btn-sm,
+    .icon-btn {
+      min-height: var(--touch-target);
+    }
+
+    .btn-sm,
+    .icon-btn {
+      min-width: var(--touch-target);
+    }
+
+    .field,
+    select.field {
+      min-height: var(--touch-target);
+    }
+
+    .btn-sm::after,
+    .icon-btn::after {
+      inset: 0;
     }
   }
 }

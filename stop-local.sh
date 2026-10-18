@@ -1,23 +1,19 @@
 #!/usr/bin/env bash
-# Stop everything started by ./run-local.sh
-set -uo pipefail
-ROOT="$(cd "$(dirname "$0")" && pwd)"
-
-# Vite servers are matched by this repo's own vite binary, so a dev server of
-# another project on the same ports is left alone, and any port works.
-for pattern in "bin/server -addr" "$ROOT/node_modules/.bin/vite"; do
-  if pkill -f "$pattern" 2>/dev/null; then
-    echo "stopped: ${pattern#$ROOT/}"
-  else
-    echo "not running: ${pattern#$ROOT/}"
+# 只停止 run-local.sh 记录且命令仍属于此仓库的进程。
+set -euo pipefail
+OTIA_ROOT="$(cd "$(dirname "$0")" && pwd)"
+for service in backend admin; do
+  pid_file="$OTIA_ROOT/.local-run/$service.pid"
+  [ -f "$pid_file" ] || continue
+  pid="$(cat "$pid_file")"
+  if [[ "$pid" =~ ^[0-9]+$ ]]; then
+    process_command="$(ps -p "$pid" -o command= 2>/dev/null || true)"
+    case "$process_command" in
+      *"$OTIA_ROOT/apps/backend/yudao-server/target/yudao-server.jar"*|*"$OTIA_ROOT/apps/admin/node_modules/vite/bin/vite.js"*)
+        kill "$pid" 2>/dev/null || true
+        echo "已停止 $service。"
+        ;;
+    esac
   fi
+  rm -f "$pid_file"
 done
-
-sleep 1
-still=$(lsof -nP -iTCP:8000 -iTCP:5173 -iTCP:5174 -iTCP:8080 -iTCP:8081 -sTCP:LISTEN 2>/dev/null)
-if [ -n "$still" ]; then
-  echo "still listening (not started by this repo, or still shutting down):"
-  echo "$still"
-else
-  echo "all ports free"
-fi

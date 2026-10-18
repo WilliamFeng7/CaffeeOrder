@@ -1,0 +1,136 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_bin
+      - --default-time-zone=+08:00
+      - --innodb-buffer-pool-size=160M
+      - --max-connections=80
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql-init/01-grant-flyway-variable-metadata.sql:/docker-entrypoint-initdb.d/01-grant-flyway-variable-metadata.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    mem_limit: 512m
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping 2>/dev/null | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 128m
+
+  backend:
+    image: eclipse-temurin:17-jre-jammy
+    restart: unless-stopped
+    init: true
+    user: "10001:10001"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    working_dir: /app
+    command: ["java", "-Xms128m", "-Xmx448m", "-jar", "/app/yudao-server.jar", "--spring.profiles.active=dev", "--server.port=48080"]
+    environment:
+      SERVER_FORWARD_HEADERS_STRATEGY: native
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      CAFE_AUTH_DEV_LOGIN_ENABLED: "true"
+      CAFE_AUTH_DEV_LOGIN_SECRET: ${OTIA_DEV_LOGIN_SECRET:?set OTIA_DEV_LOGIN_SECRET to at least 32 random characters}
+      CAFE_AUTH_PASSWORD_LOGIN_ENABLED: "true"
+      CAFE_CARD_MOCK_ENABLED: "true"
+      CAFE_CARD_DEFAULT_BALANCE: "500000"
+      CAFE_AUTH_BOOTSTRAP_STUDENT_NO: ${OTIA_STUDENT_INITIAL_NO}
+      CAFE_AUTH_BOOTSTRAP_STUDENT_NAME: ${OTIA_STUDENT_INITIAL_NAME:-测试学生}
+      CAFE_AUTH_BOOTSTRAP_STUDENT_PASSWORD: ${OTIA_STUDENT_INITIAL_PASSWORD}
+      OTIA_ADMIN_INITIAL_PASSWORD: ${OTIA_ADMIN_INITIAL_PASSWORD}
+    volumes:
+      - ./app/yudao-server.jar:/app/yudao-server.jar:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "48080"
+    mem_limit: 640m
+
+  student:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDR:-0.0.0.0}:${STUDENT_PORT:-15001}:80"
+    volumes:
+      - ./student:/srv:ro
+      - ./caddy/student.Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    mem_limit: 64m
+
+  barista:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDR:-0.0.0.0}:${BARISTA_PORT:-15002}:80"
+    volumes:
+      - ./barista:/srv:ro
+      - ./caddy/admin.Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    mem_limit: 64m
+
+  admin:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDR:-0.0.0.0}:${ADMIN_PORT:-15003}:80"
+    volumes:
+      - ./admin:/srv:ro
+      - ./caddy/admin.Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/healthz >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    mem_limit: 64m
+
+volumes:
+  mysql_data:
+  redis_data:

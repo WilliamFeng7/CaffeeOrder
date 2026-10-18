@@ -1,6 +1,7 @@
 {
-  "name": "OTIA Kitchen Display",
-  "short_name": "OTIA KDS",
+  "name": "OTIA Café 咖啡师端",
+  "short_name": "咖啡师端",
+  "lang": "zh-CN",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

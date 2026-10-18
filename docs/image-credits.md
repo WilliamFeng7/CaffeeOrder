@@ -1,6 +1,6 @@
 # Menu photo credits
 
-The product photos in `apps/backend/static/menu/` are from [Unsplash](https://unsplash.com)
+The product photos in `apps/backend/yudao-server/src/main/resources/static/static/menu/` are from [Unsplash](https://unsplash.com)
 and used under the [Unsplash License](https://unsplash.com/license) (free for commercial
 use, no attribution required - credited here anyway). Each was cropped to 1200x900 (4:3)
 with the product centred, so cards, the home feature and the product sheet frame them alike.

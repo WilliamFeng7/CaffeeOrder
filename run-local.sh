@@ -1,103 +1,53 @@
 #!/usr/bin/env bash
-# ------------------------------------------------------------------
-# Local development launcher for the CoffeeOrder system.
-#
-#   ./run-local.sh          start backend + 3 frontends (detached)
-#   ./run-local.sh backend   start only the backend
-#   STUDENT_MODE=preview ./run-local.sh
-#                           serve the Student app from a production build
-#                           (what an iPad gets in real use; the dev server
-#                           sends hundreds of unbundled modules and runs Vue
-#                           in dev mode, which is much slower on a tablet)
-#
-# Logs: *.log in the repo root (gitignored). Stop with ./stop-local.sh
-# ------------------------------------------------------------------
+# 本地启动管理端和 Java 后端。数据库先执行 docker compose up -d。
 set -euo pipefail
-cd "$(dirname "$0")"
-ROOT="$PWD"
+OTIA_ROOT="$(cd "$(dirname "$0")" && pwd)"
+OTIA_RUN="$OTIA_ROOT/.local-run"
+mkdir -p "$OTIA_RUN"
 
-BACKEND_PORT=8000
-# Frontend ports can be changed per run when another project already uses
-# one, e.g.  STUDENT_PORT=5174 ./run-local.sh
-STUDENT_PORT=${STUDENT_PORT:-5173}
-ADMIN_PORT=${ADMIN_PORT:-8080}
-BARISTA_PORT=${BARISTA_PORT:-8081}
-STUDENT_MODE=${STUDENT_MODE:-dev}
-
-# --- 1. Backend (Go) --------------------------------------------------------
-if ! command -v go >/dev/null 2>&1; then
-  echo "!!  Go is not installed. Install it with: brew install go"
+if [ -z "${OTIA_ADMIN_INITIAL_PASSWORD:-}" ]; then
+  echo "首次启动前请设置 OTIA_ADMIN_INITIAL_PASSWORD（12–16 个字符）。" >&2
   exit 1
 fi
-echo "==> building the Go backend"
-( cd apps/backend && GOPROXY="${GOPROXY:-https://goproxy.cn,direct}" go build -o bin/server ./cmd/server )
 
-# --- 2. Local database -----------------------------------------------------
-# The server defaults to apps/backend/coffee.db and creates any missing tables.
-if [ ! -f apps/backend/coffee.db ]; then
-  if [ -f data/coffee.db ]; then
-    echo "==> seeding apps/backend/coffee.db from data/coffee.db"
-    cp -p data/coffee.db apps/backend/coffee.db
-  else
-    echo "==> no database yet: the backend will create an empty one"
-    echo "    add the first admin with: (cd apps/backend && go run ./cmd/createuser -username admin -role admin)"
+check_port() {
+  if command -v lsof >/dev/null 2>&1 && lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; then
+    echo "端口 $1 已被占用；请指定 BACKEND_PORT / ADMIN_PORT，或停止对应服务。" >&2
+    exit 1
   fi
-fi
-
-# --- 3. Node dependencies --------------------------------------------------
-if [ ! -d node_modules ]; then
-  echo "==> installing npm workspace dependencies"
-  npm install
-fi
-
+}
 start_backend() {
-  echo "==> backend    http://localhost:$BACKEND_PORT"
-  ( cd apps/backend && nohup ./bin/server -addr "127.0.0.1:$BACKEND_PORT" -dir . \
-      > "$ROOT/backend.log" 2>&1 & )
+  check_port "${BACKEND_PORT:-48080}"
+  command -v java >/dev/null
+  command -v mvn >/dev/null
+  mvn -q -f "$OTIA_ROOT/apps/backend/pom.xml" clean package -DskipTests
+  (
+    trap '' HUP
+    cd "$OTIA_ROOT/apps/backend"
+    exec java -jar "$OTIA_ROOT/apps/backend/yudao-server/target/yudao-server.jar" \
+      --spring.profiles.active="${CAFE_PROFILE:-dev}" --server.port="${BACKEND_PORT:-48080}"
+  ) > "$OTIA_RUN/backend.log" 2>&1 < /dev/null &
+  echo "$!" > "$OTIA_RUN/backend.pid"
+  echo "后端：http://127.0.0.1:${BACKEND_PORT:-48080}（${CAFE_PROFILE:-dev} 配置）"
 }
-
-start_frontend() {
-  local dir="apps/frontend/$1" port="$2" log="$3"
-  echo "==> $1$([ ${#1} -lt 8 ] && printf '%*s' $((8 - ${#1})) '') http://localhost:$port"
-  if [ "$1" = Student ] && [ "$STUDENT_MODE" = preview ]; then
-    # Same proxy as the dev server (vite preview reuses server.proxy).
-    ( cd "$dir" && npx vite build > "$ROOT/$log" 2>&1 \
-        && nohup npx vite preview --port "$port" --strictPort --host 0.0.0.0 \
-        >> "$ROOT/$log" 2>&1 & )
-  else
-    ( cd "$dir" && nohup npx vite --port "$port" --strictPort --host 0.0.0.0 \
-        > "$ROOT/$log" 2>&1 & )
-  fi
+start_admin() {
+  check_port "${ADMIN_PORT:-8080}"
+  command -v pnpm >/dev/null
+  pnpm --dir "$OTIA_ROOT/apps/admin" install --frozen-lockfile
+  (
+    trap '' HUP
+    cd "$OTIA_ROOT/apps/admin"
+    export VITE_PORT="${ADMIN_PORT:-8080}"
+    export VITE_PROXY_TARGET="http://127.0.0.1:${BACKEND_PORT:-48080}"
+    exec node "$OTIA_ROOT/apps/admin/node_modules/vite/bin/vite.js" --mode development
+  ) > "$OTIA_RUN/admin.log" 2>&1 < /dev/null &
+  echo "$!" > "$OTIA_RUN/admin.pid"
+  echo "管理端：http://127.0.0.1:${ADMIN_PORT:-8080}"
 }
-
 case "${1:-all}" in
+  all) start_backend; start_admin ;;
   backend) start_backend ;;
-  frontend)
-    start_frontend Student "$STUDENT_PORT" student.log
-    start_frontend Admin   "$ADMIN_PORT"   admin.log
-    start_frontend Barista "$BARISTA_PORT" barista.log
-    ;;
-  all)
-    start_backend
-    sleep 1
-    start_frontend Student "$STUDENT_PORT" student.log
-    start_frontend Admin   "$ADMIN_PORT"   admin.log
-    start_frontend Barista "$BARISTA_PORT" barista.log
-    ;;
-  *) echo "usage: $0 [all|backend|frontend]"; exit 1 ;;
+  admin) start_admin ;;
+  *) echo "用法：$0 [all|backend|admin]" >&2; exit 1 ;;
 esac
-
-sleep 6
-echo
-echo "Waiting for services to answer..."
-for p in $BACKEND_PORT $STUDENT_PORT $ADMIN_PORT $BARISTA_PORT; do
-  code=$(curl -s -o /dev/null -m 5 -w '%{http_code}' "http://127.0.0.1:$p/" || true)
-  printf '  port %-5s -> %s\n' "$p" "${code:-no response}"
-done
-echo
-echo "Student  http://localhost:$STUDENT_PORT   (OTIA Café)"
-echo "Admin    http://localhost:$ADMIN_PORT   (Coffee Admin)"
-echo "Barista  http://localhost:$BARISTA_PORT   (KDS)"
-echo "API      http://localhost:$BACKEND_PORT/api/v1"
-echo
-echo "Demo logins (all password 89129885): admin / student / barista"
+echo "日志位于 .local-run/，停止请执行 ./stop-local.sh。"

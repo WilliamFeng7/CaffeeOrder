@@ -45,7 +45,9 @@ export const ICONS = {
   'arrow-right': ['M5 12h14', 'M13.5 6.5 19 12l-5.5 5.5'],
   'arrow-left': ['M19 12H5', 'M10.5 6.5 5 12l5.5 5.5'],
   'arrow-up-right': ['M7 17 17 7', 'M9 7h8v8'],
+  'caret-down': ['M6 9.5l6 6 6-6'],
   'caret-right': ['M9.5 6l6 6-6 6'],
+  trash: ['M5.5 7.5h13', 'M9 7.5V5.5h6v2', 'M7.5 7.5l.7 12h7.6l.7-12', 'M10.5 11v5', 'M13.5 11v5'],
 } satisfies Record<string, string[]>;
 
 export type IconName = keyof typeof ICONS;

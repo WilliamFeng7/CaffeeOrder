@@ -1,77 +1,63 @@
-# Node.js
+# Java / Maven
+**/target/
+**/.flattened-pom.xml
+*.class
+*.jar
+*.war
+.m2/
+
+# npm / pnpm / frontend builds
 node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+.npm
 .vite/
 dist/
 build/
-.npm
-*.log
+*.tsbuildinfo
+vite.config.d.ts
+vite.config.js
 
-# Python
+# Local runtime and data
+.local-run/
+*.log
+data/*.db*
+data/*.sqlite*
+*.db-shm
+*.db-wal
+*.db-journal
+*.pid
+
+# Keep generated marketing builds out of source control
+promo/dist/
+promo/out/
+
+# Python document utilities
 .venv/
 __pycache__/
 *.py[cod]
-*$py.class
 .pytest_cache/
 .coverage
-htmlcov/
 .ruff_cache/
 .mypy_cache/
 
-# Database
-backend/data/*.db
-backend/data/*.sqlite3
-backend/coffee.db*
-# local DB copy used when running the backend from apps/backend (current layout)
-apps/backend/coffee.db*
-apps/backend/*.log
-# runtime database in the repo-root data/ dir (never commit live DB)
-data/*.db
-data/*.db-shm
-data/*.db-wal
-
-# Secrets — TLS private keys & certificates. NEVER commit these.
-deploy/nginx/certs/
-nginx/certs/
+# Local settings and secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+!apps/admin/.env
 *.p12
 *.pfx
 *.jks
 *.keystore
 
-# Environment variables
-.env
-.env.local
-
-# OS
+# OS / IDE / temporary files
 .DS_Store
 Thumbs.db
-
-# Logs
-backend.log
-
-# Build artifacts
-frontend/Student/dist/
-frontend/Admin/dist/
-frontend/Barista/dist/
-backend/static/assets/
-apps/backend/static/assets/
-
-# TypeScript build info
-*.tsbuildinfo
-vite.config.d.ts
-vite.config.js
-
-# IDE
 .idea/
 .vscode/
-
-# Temp files
 *.tmp
 *.temp
 *~
 *.swp
-
-# npm
-.npm
-
-# Go backend build output
-apps/backend/bin/

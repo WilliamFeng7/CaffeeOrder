@@ -346,35 +346,50 @@ button[role="tab"]:active:not(:disabled) {
 }
 
 /* --- Tabs ------------------------------------------------------------------ */
-/* Fade through: the old tab is gone within 90ms, then the new one fades in
-   while it settles from 98.5% - only one page is ever in motion, and the
-   line in the tab bar is what travels sideways. Short, because it happens
-   all the time. (Both directions look the same; the class names carry the
-   direction for anyone who wants it back.) */
+/* Tabs fade through in the direction of the bottom-bar order. The old page
+   clears in about 100ms; the new one follows from its own side, so a tap on
+   “Order” feels like moving right even though the two scroll surfaces swap. */
 .tab-fwd-enter-active,
 .tab-back-enter-active {
     transition:
-        opacity 220ms var(--ease-out) 70ms,
-        transform 300ms var(--ease-out) 70ms;
+        opacity 220ms var(--ease-out) 50ms,
+        transform 260ms var(--ease-out) 50ms;
 }
 
 .tab-fwd-leave-active,
 .tab-back-leave-active {
-    transition: opacity 90ms linear;
+    transition:
+        opacity 100ms linear,
+        transform 140ms var(--ease-out);
     position: absolute;
     inset: 0;
     pointer-events: none;
 }
 
-.tab-fwd-enter-from,
+.tab-fwd-enter-from {
+    opacity: 0;
+    transform: translate3d(12px, 0, 0) scale(0.994);
+}
+
 .tab-back-enter-from {
     opacity: 0;
-    transform: scale(0.985);
+    transform: translate3d(-12px, 0, 0) scale(0.994);
 }
 
 .tab-fwd-leave-to,
 .tab-back-leave-to {
     opacity: 0;
+}
+
+.tab-fwd-leave-to { transform: translate3d(-7px, 0, 0); }
+.tab-back-leave-to { transform: translate3d(7px, 0, 0); }
+
+.nav-icon-shell {
+    transition: transform 180ms var(--ease-out);
+}
+
+.nav-icon-shell.is-active {
+    transform: translate3d(0, -1px, 0) scale(1.03);
 }
 
 /* --- Menu grid --------------------------------------------------------------- */
@@ -526,9 +541,74 @@ button[role="tab"]:active:not(:disabled) {
     opacity: 0;
 }
 
+/* The cart capsule stays one fixed surface. Pressing either half darkens that
+   half instead of scaling it away from its neighbour. */
+.cart-pill > button:active:not(:disabled) {
+    transform: none;
+    background: rgb(255 255 255 / 8%);
+}
+
+.cart-chevron {
+    transform-origin: center;
+    transition: transform 200ms var(--ease-out);
+}
+
+.cart-chevron.is-open {
+    transform: rotate(180deg);
+}
+
+/* A cart preview grows out of the capsule and returns into it. The panel is
+   a transition, not a keyframe, so tapping the bag twice mid-motion retargets
+   cleanly. */
+.cart-panel {
+    transform-origin: 50% 100%;
+}
+
+.cart-panel-enter-active {
+    transition:
+        opacity 180ms var(--ease-out),
+        transform 240ms var(--ease-drawer);
+}
+
+.cart-panel-leave-active {
+    transition:
+        opacity 150ms var(--ease-out),
+        transform 180ms var(--ease-out);
+}
+
+.cart-panel-enter-from,
+.cart-panel-leave-to {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.972);
+}
+
+.cart-preview-actions {
+    gap: 8px;
+    margin-left: 8px;
+}
+
+@media (max-width: 479px) {
+    .cart-preview-item {
+        flex-wrap: wrap;
+        row-gap: 2px;
+    }
+
+    .cart-preview-item > .min-w-0 {
+        min-width: calc(100% - 56px);
+    }
+
+    .cart-preview-actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-left: 0;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .suggest-in,
-    .ready-lift {
+    .ready-lift,
+    .cart-panel-enter-from,
+    .cart-panel-leave-to {
         animation: fadeOnly 200ms linear backwards !important;
     }
 

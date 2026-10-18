@@ -25,14 +25,13 @@
 import AppIcon from '@/components/AppIcon.vue';
 import SlidingTabs from '@shared/components/SlidingTabs.vue';
 import PriceTag from './PriceTag.vue';
-import { ref, computed, onMounted } from 'vue';
-import { TRANSLATIONS, OPTION_TRANSLATIONS } from '../data';
-import type { Product, Language, SheetCloseReason } from '../types';
+import { ref, reactive, computed, onMounted } from 'vue';
+import { TRANSLATIONS } from '../data';
+import type { Product, Language, SheetCloseReason, ProductSelection, SelectedOption } from '../types';
 import { useSheetDrag } from '../composables/useSheetDrag';
 import { vImgFade } from '../directives/imgFade';
 import { motionMs } from '@shared/motion';
-
-type Sugar = '0%' | '50%' | 'Regular' | '120%';
+import { menuPrice } from '../utils/money';
 
 const props = defineProps<{
   product: Product;
@@ -41,12 +40,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'close', reason: SheetCloseReason): void;
-  (e: 'add-to-cart', options: { size: string; temp: string; sugar: string }): void;
+  (e: 'add-to-cart', selection: ProductSelection): void;
 }>();
 
-// 温度默认热饮 (no temperature picker on this menu)
-const temp = ref('Hot');
-const sugar = ref<Sugar>('Regular');
+const selected = reactive<Record<number, number>>({});
+for (const group of props.product.optionGroups) {
+  const initial = group.options.find((option) => option.isDefault) ?? group.options[0];
+  if (initial) selected[group.id] = initial.id;
+}
 const isClosing = ref(false);
 // Mounted in its "from" state, then let go on the next style pass, so the
 // entrance is a transition (interruptible: closing mid-entrance just turns
@@ -57,10 +58,31 @@ let closeRequested = false;
 
 const t = computed(() => TRANSLATIONS[props.lang]);
 
-const sugarOptions = computed(() => (['0%', '50%', 'Regular', '120%'] as const).map(s => ({
-  value: s,
-  label: OPTION_TRANSLATIONS.sugar[s][props.lang] || s,
+const optionLabel = (option: Product['optionGroups'][number]['options'][number]) => {
+  const name = props.lang === 'cn' ? option.name : option.nameEn;
+  if (!option.priceDelta) return name;
+  const sign = option.priceDelta > 0 ? '+' : '-';
+  return `${name} (${sign}${menuPrice(Math.abs(option.priceDelta))})`;
+};
+
+const groups = computed(() => props.product.optionGroups.map((group) => ({
+  ...group,
+  choices: group.options.map((option) => ({ value: option.id, label: optionLabel(option) })),
 })));
+
+const chosenOptions = computed<SelectedOption[]>(() => props.product.optionGroups.flatMap((group) => {
+  const option = group.options.find((candidate) => candidate.id === selected[group.id]);
+  return option ? [{
+    id: option.id,
+    groupName: group.name,
+    groupNameEn: group.nameEn,
+    name: option.name,
+    nameEn: option.nameEn,
+    priceDelta: option.priceDelta,
+  }] : [];
+}));
+
+const finalPrice = computed(() => props.product.price + chosenOptions.value.reduce((sum, option) => sum + (option.priceDelta ?? 0), 0));
 
 // 下拉关闭: 按住商品图往下拖 (手机抽屉和 iPad 卡片都支持)
 const sheetEl = ref<HTMLElement | null>(null);
@@ -100,8 +122,12 @@ onMounted(() => {
 });
 
 const handleAdd = () => {
-  if (isSuccess.value || closeRequested) return;
-  emit('add-to-cart', { size: 'Regular', temp: temp.value, sugar: sugar.value });
+  if (props.product.soldOut || isSuccess.value || closeRequested) return;
+  emit('add-to-cart', {
+    optionIds: chosenOptions.value.map((option) => option.id!),
+    selectedOptions: chosenOptions.value,
+    price: finalPrice.value,
+  });
   // "Added" stays long enough to be read, then the sheet closes and a small
   // dot drops into the cart (StudentLayout).
   isSuccess.value = true;
@@ -168,16 +194,16 @@ const handleAdd = () => {
                 {{ lang === 'cn' ? product.descriptionCN : product.description }}
               </p>
 
-              <!-- Sweetness -->
-              <div class="product-options mt-9">
-                <p class="eyebrow">{{ t.sweetness }}</p>
+              <!-- 规格组和选项均来自后端；每组单选。 -->
+              <div v-for="group in groups" :key="group.id" class="product-options mt-9">
+                <p class="eyebrow">{{ lang === 'cn' ? group.name : group.nameEn }}</p>
                 <SlidingTabs
-                  v-model="sugar"
-                  :options="sugarOptions"
+                  v-model="selected[group.id]"
+                  :options="group.choices"
                   variant="segment"
                   size="lg"
                   stretch
-                  :label="t.sweetness"
+                  :label="lang === 'cn' ? group.name : group.nameEn"
                   class="mt-3 w-full"
                 />
               </div>
@@ -188,7 +214,7 @@ const handleAdd = () => {
         <div class="product-actions flex-none px-6 md:px-8 pt-4 pb-[max(env(safe-area-inset-bottom),18px)] md:pb-6 border-t border-line flex items-center gap-6">
            <div class="flex flex-col">
               <span class="eyebrow">{{ t.total }}</span>
-              <PriceTag :value="product.price" class="mt-1 font-serif text-[30px] text-text-main" />
+              <PriceTag :value="finalPrice" class="mt-1 font-serif text-[30px] text-text-main" />
            </div>
 
            <button
@@ -196,14 +222,16 @@ const handleAdd = () => {
               data-testid="add-to-cart-btn"
               type="button"
               @click="handleAdd"
-              :aria-disabled="isSuccess"
+              :disabled="product.soldOut || isSuccess"
+              :aria-disabled="isSuccess || product.soldOut"
               class="btn btn-lg flex-1"
               :class="isSuccess ? 'bg-primary-dark text-white' : 'btn-primary'"
            >
               <!-- The label rolls over to "Added" -->
               <span class="relative inline-grid overflow-hidden" aria-live="polite">
                  <Transition name="roll-up">
-                    <span v-if="isSuccess" key="done" class="col-start-1 row-start-1 flex items-center gap-2">
+                    <span v-if="product.soldOut" key="sold-out" class="col-start-1 row-start-1">{{ lang === 'cn' ? '售罄' : 'Sold out' }}</span>
+                    <span v-else-if="isSuccess" key="done" class="col-start-1 row-start-1 flex items-center gap-2">
                        <!-- the check pops in as the label rolls over -->
                        <AppIcon name="check" weight="fill" class="text-lg pop-in" />
                        {{ lang === 'cn' ? '已加入' : 'Added' }}

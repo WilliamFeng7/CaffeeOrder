@@ -1,0 +1,590 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>cn.iocoder.boot</groupId>
+    <artifactId>yudao-dependencies</artifactId>
+    <version>${revision}</version>
+    <packaging>pom</packaging>
+
+    <name>${project.artifactId}</name>
+    <description>基础 bom 文件，管理整个项目的依赖版本</description>
+    <url>https://github.com/YunaiV/ruoyi-vue-pro</url>
+
+    <properties>
+        <revision>2026.09-SNAPSHOT</revision>
+        <flatten-maven-plugin.version>1.7.2</flatten-maven-plugin.version>
+        
+        <spring.boot.version>3.5.15</spring.boot.version>
+        <jackson.version>2.21.7</jackson.version>
+        <netty.version>4.1.137.Final</netty.version>
+        <log4j2.version>2.25.5</log4j2.version>
+        <!-- Spring Boot 3.5.15 manages 10.1.55, which has the August 2026 Tomcat
+             DIGEST, constraint-ordering and FORM authorization advisories. -->
+        <tomcat.version>10.1.61</tomcat.version>
+        <spring-ai.version>1.1.8</spring-ai.version>
+        
+        <springdoc.version>2.8.17</springdoc.version>
+        <knife4j.version>4.5.0</knife4j.version>
+        
+        <druid.version>1.2.28</druid.version>
+        <mybatis.version>3.5.19</mybatis.version>
+        <mybatis-plus.version>3.5.17</mybatis-plus.version>
+        <mybatis-plus-join.version>1.5.9</mybatis-plus-join.version>
+        <dynamic-datasource.version>4.6.0</dynamic-datasource.version>
+        <easy-trans.version>3.1.8</easy-trans.version>
+        <redisson.version>4.7.0</redisson.version>
+        <dm8.jdbc.version>8.1.3.140</dm8.jdbc.version>
+        <kingbase.jdbc.version>9.0.1.jre7</kingbase.jdbc.version>
+        <opengauss.jdbc.version>7.0.0-RC3-og</opengauss.jdbc.version>
+        <taos.version>3.9.2</taos.version>
+        
+        <rocketmq-spring.version>2.3.6</rocketmq-spring.version>
+        
+        <lock4j.version>2.2.7</lock4j.version>
+        
+        <skywalking.version>9.7.0</skywalking.version>
+        <spring-boot-admin.version>3.5.9</spring-boot-admin.version>
+        <opentelemetry.version>1.66.0</opentelemetry.version>
+        
+        <h2.version>2.3.232</h2.version>
+        <podam.version>8.0.2.RELEASE</podam.version>
+        <jedis-mock.version>1.1.19</jedis-mock.version>
+        <mockito-inline.version>5.2.0</mockito-inline.version>
+        
+        <flowable.version>8.0.0</flowable.version>
+        
+        <anji-plus-captcha.version>1.4.0</anji-plus-captcha.version>
+        <jsoup.version>1.23.2</jsoup.version>
+        <sensitive-word.version>0.29.5</sensitive-word.version>
+        <pinyin4j.version>2.5.1</pinyin4j.version>
+        <lombok.version>1.18.48</lombok.version>
+        <mapstruct.version>1.7.0.Beta2</mapstruct.version>
+        <hutool-5.version>5.8.47</hutool-5.version>
+        <hutool-6.version>6.0.0-M22</hutool-6.version>
+        <fastexcel.version>1.3.0</fastexcel.version>
+        <aviator.version>5.4.4</aviator.version>
+        <velocity.version>2.4.1</velocity.version>
+        <fastjson2.version>2.0.65</fastjson2.version>
+        <guava.version>33.7.1-jre</guava.version>
+        <transmittable-thread-local.version>2.14.5</transmittable-thread-local.version>
+        <commons-net.version>3.13.0</commons-net.version>
+        <commons-lang3.version>3.20.0</commons-lang3.version>
+        <jsch.version>2.28.7</jsch.version>
+        <tika-core.version>3.3.1</tika-core.version>
+        <ip2region.version>2.7.0</ip2region.version>
+        <bizlog-sdk.version>3.0.6</bizlog-sdk.version>
+        <mqtt.version>1.2.5</mqtt.version>
+        <vertx.version>4.5.26</vertx.version>
+        <okhttp.version>4.12.0</okhttp.version>
+        <californium.version>3.14.0</californium.version>
+        <j2mod.version>3.4.0</j2mod.version>
+        
+        <awssdk.version>2.55.5</awssdk.version>
+        <justauth.version>1.16.7</justauth.version>
+        <justauth-starter.version>1.4.0</justauth-starter.version>
+        <jimureport.version>2.5.4</jimureport.version>
+        <jimubi.version>2.5.4</jimubi.version>
+        <weixin-java.version>4.8.6-20260919.232150</weixin-java.version>
+        <bouncycastle.version>1.80</bouncycastle.version>
+        <alipay-sdk-java.version>4.40.1014.ALL</alipay-sdk-java.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Put patched BOMs before Spring Boot's import so they win for
+                 Jackson, Netty and Log4j while retaining Boot 3.5 compatibility. -->
+            <dependency>
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>${netty.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.logging.log4j</groupId>
+                <artifactId>log4j-bom</artifactId>
+                <version>${log4j2.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            
+            
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring.boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Override the imported Spring Boot BOM version. A property alone
+                 does not replace versions already resolved inside an imported BOM. -->
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-core</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-el</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-websocket</artifactId>
+                <version>${tomcat.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+            
+
+            
+            <dependency>
+                <groupId>io.github.mouzt</groupId>
+                <artifactId>bizlog-sdk</artifactId>
+                <version>${bizlog-sdk.version}</version>
+                <exclusions>
+                    <exclusion> 
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-starter</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            
+            <dependency>
+                <groupId>cn.iocoder.boot</groupId>
+                <artifactId>yudao-spring-boot-starter-biz-data-permission</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.iocoder.boot</groupId>
+                <artifactId>yudao-spring-boot-starter-biz-ip</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            
+            <dependency>
+                
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-configuration-processor</artifactId>
+                <version>${spring.boot.version}</version>
+            </dependency>
+
+            
+            <dependency>
+                <groupId>cn.iocoder.boot</groupId>
+                <artifactId>yudao-spring-boot-starter-web</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>cn.iocoder.boot</groupId>
+                <artifactId>yudao-spring-boot-starter-security</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            
+
+            <dependency>
+                <groupId>com.github.xiaoymin</groupId>
+                <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+                <version>${knife4j.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.springdoc</groupId>
+                        <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
+            </dependency>
+
+            
+            <dependency>
+                <groupId>cn.iocoder.boot</groupId>
+                <artifactId>yudao-spring-boot-starter-mybatis</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>druid-spring-boot-3-starter</artifactId>
+                <version>${druid.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-jsqlparser</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>dynamic-datasource-spring-boot3-starter</artifactId> 
+                <version>${dynamic-datasource.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.yulichang</groupId>
+                <artifactId>mybatis-plus-join-boot-starter</artifactId> 
+                <version>${mybatis-plus-join.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.dromara</groupId> 
+                <artifactId>easy-trans-spring-boot-starter</artifactId>
+                <version>${easy-trans.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.springframework</groupId>
+                        <artifactId>spring-context</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.springframework.cloud</groupId>
+                        <artifactId>spring-cloud-commons</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.dromara</groupId>
+                <artifactId>easy-trans-mybatis-plus-extend</artifactId>
+                <version>${easy-trans.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.dromara</groupId>
+                <artifactId>easy-trans-anno</artifactId>
+                <version>${easy-trans.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.alibaba</groupId>
+                        <artifactId>fastjson</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>cn.iocoder.boot</groupId>
+                <artifactId>yudao-spring-boot-starter-redis</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson-spring-boot-starter</artifactId>
+                <version>${redisson.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.springframework.boot</groupId>
+                        <artifactId>spring-boot-starter-actuator</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.redisson</groupId>
+                        
+                        <artifactId>redisson-spring-data-41</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>org.redisson</groupId>
+                <artifactId>redisson-spring-data-35</artifactId>
+                <version>${redisson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.dameng</groupId>
+                <artifactId>DmJdbcDriver18</artifactId>
+                <version>${dm8.jdbc.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.opengauss</groupId>
+                <artifactId>opengauss-jdbc</artifactId>
+                <version>${opengauss.jdbc.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>cn.com.kingbase</groupId>
+                <artifactId>kingbase8</artifactId>
+                <version>${kingbase.jdbc.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.taosdata.jdbc</groupId>
+                <artifactId>taos-jdbcdriver</artifactId>
+                <version>${taos.version}</version>
+            </dependency>
+
+            
+            
+
+            
+            
+            
+
+            
+            
+
+            
+
+            
+            
+
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-api</artifactId>
+                <version>${opentelemetry.version}</version>
+            </dependency>
+            
+            
+            
+
+            
+            
+
+            
+            <dependency>
+                <groupId>cn.iocoder.boot</groupId>
+                <artifactId>yudao-spring-boot-starter-test</artifactId>
+                <version>${revision}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.mockito</groupId>
+                <artifactId>mockito-inline</artifactId>
+                <version>${mockito-inline.version}</version> 
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-test</artifactId>
+                <version>${spring.boot.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <artifactId>asm</artifactId>
+                        <groupId>org.ow2.asm</groupId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.mockito</groupId>
+                        <artifactId>mockito-core</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>com.h2database</groupId>
+                <artifactId>h2</artifactId>
+                <version>${h2.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.github.fppt</groupId> 
+                <artifactId>jedis-mock</artifactId>
+                <version>${jedis-mock.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>uk.co.jemos.podam</groupId> 
+                <artifactId>podam</artifactId>
+                <version>${podam.version}</version>
+            </dependency>
+
+            
+            
+            
+            
+
+            
+            <dependency>
+                <groupId>cn.iocoder.boot</groupId>
+                <artifactId>yudao-common</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>cn.iocoder.boot</groupId>
+                <artifactId>yudao-spring-boot-starter-excel</artifactId>
+                <version>${revision}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct</artifactId> 
+                <version>${mapstruct.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct-jdk8</artifactId>
+                <version>${mapstruct.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct-processor</artifactId>
+                <version>${mapstruct.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${hutool-5.version}</version>
+            </dependency>
+            
+
+            <dependency>
+                <groupId>cn.idev.excel</groupId>
+                <artifactId>fastexcel</artifactId>
+                <version>${fastexcel.version}</version>
+            </dependency>
+
+            
+
+            <dependency>
+                <groupId>org.apache.tika</groupId>
+                <artifactId>tika-core</artifactId> 
+                <version>${tika-core.version}</version>
+            </dependency>
+
+            
+
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>fastjson</artifactId>
+                <version>${fastjson2.version}</version> 
+            </dependency>
+            
+
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>transmittable-thread-local</artifactId> 
+                <version>${transmittable-thread-local.version}</version>
+            </dependency>
+
+            
+            
+
+            
+
+            
+
+            <dependency>
+                <groupId>org.lionsoul</groupId>
+                <artifactId>ip2region</artifactId>
+                <version>${ip2region.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jsoup</groupId>
+                <artifactId>jsoup</artifactId>
+                <version>${jsoup.version}</version>
+            </dependency>
+
+            
+
+            
+
+            
+            
+            
+            
+
+            
+            
+
+            
+            
+            
+
+            
+            
+
+            
+            
+
+            
+            
+
+            
+            
+
+            
+
+            
+            
+            
+            
+
+            
+            
+            
+
+            
+            
+            
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <plugins>
+            
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>${flatten-maven-plugin.version}</version>
+                <configuration>
+                    <flattenMode>bom</flattenMode>
+                    <updatePomFile>true</updatePomFile>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                    </execution>
+                    <execution>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

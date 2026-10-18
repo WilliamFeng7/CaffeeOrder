@@ -13,7 +13,7 @@
 import AppIcon from '@/components/AppIcon.vue';
 import { computed, ref, onActivated } from 'vue';
 import { TRANSLATIONS, PRODUCTS } from '../data';
-import type { Product, Language, Order, TabState } from '../types';
+import type { Product, Language, Order, TabState, ShopStatus } from '../types';
 import { useKeepScroll } from '../composables/useKeepScroll';
 import { vImgFade } from '../directives/imgFade';
 import { orderStage } from '../utils/orderStage';
@@ -23,7 +23,8 @@ import PriceTag from '../components/PriceTag.vue';
 const props = defineProps<{
   lang: Language;
   userName?: string;  // 问候用
-  shopOpen?: boolean; // 来自 /shop/status
+  shopStatus: ShopStatus;
+  queueCount: number;
   orders: Order[];
   /** The cart bar floats over the bottom of the screen: keep it off the shelf. */
   reserveCartBar?: boolean;
@@ -38,7 +39,7 @@ const t = computed(() => TRANSLATIONS[props.lang]);
 const name = (p: Product) => (props.lang === 'cn' ? p.nameCN : p.name);
 
 // 主推: 第一款推荐且有货的商品；没有推荐就取第一款有货的
-const inStock = (p: Product) => p.inventoryCount !== 0;
+const inStock = (p: Product) => !p.soldOut;
 const featured = computed(() =>
   PRODUCTS.find(p => p.isPopular && inStock(p)) ?? PRODUCTS.find(inStock) ?? null);
 
@@ -66,7 +67,8 @@ const greeting = computed(() => {
 });
 const displayName = computed(() => props.userName || 'Otiaer');
 
-const isOpen = computed(() => props.shopOpen !== false);
+const isOpen = computed(() => props.shopStatus.open);
+const businessHours = computed(() => props.shopStatus.businessHours.map((hours) => `${hours.start}–${hours.end}`).join(' · '));
 
 const { scroller, onScroll } = useKeepScroll();
 
@@ -90,11 +92,13 @@ const openCard = (p: Product, event: MouseEvent) => {
       <!-- Wordmark & status -->
       <header class="shrink-0 flex items-center justify-between h-10 animate-fade-in">
         <span class="font-serif text-[19px] font-semibold tracking-tight text-text-main">{{ t.downtownCafe }}</span>
-        <!-- Open is the normal state and needs no badge; only a closed shop says so -->
-        <span v-if="!isOpen" class="chip chip-quiet h-7 px-3 text-[12px]">
-          <span class="dot" aria-hidden="true"></span>
-          {{ t.closed }}
-        </span>
+        <div class="flex items-center gap-3">
+          <span class="text-[12px] text-text-sub tabular-nums">{{ t.queueNow }} {{ queueCount }} {{ lang === 'cn' ? '单' : (queueCount === 1 ? 'order' : 'orders') }}</span>
+          <span v-if="!isOpen" class="chip chip-quiet h-7 px-3 text-[12px]">
+            <span class="dot" aria-hidden="true"></span>
+            {{ t.closed }}
+          </span>
+        </div>
       </header>
 
       <!-- Greeting, and beside it in landscape the order in progress -->
@@ -102,6 +106,8 @@ const openCard = (p: Product, event: MouseEvent) => {
         <section class="min-w-0 animate-slide-up-content" style="animation-delay: 40ms">
           <p class="eyebrow">{{ greeting }} {{ displayName }}</p>
           <h1 class="mt-1.5 font-serif text-[32px] md:text-[clamp(30px,5vh,44px)] font-normal leading-[1.06] tracking-[-0.02em] text-text-main text-balance">{{ t.homeSubtitle }}</h1>
+          <p v-if="shopStatus.banner" class="mt-2 text-[13px] text-text-sub line-clamp-1">{{ shopStatus.banner }}</p>
+          <p v-if="!isOpen" class="mt-1 text-[13px] text-text-sub">{{ t.businessHours }} · {{ businessHours }}</p>
         </section>
 
         <!-- The order in progress: number, stage, and a bar that grows with it -->
@@ -115,11 +121,11 @@ const openCard = (p: Product, event: MouseEvent) => {
         >
           <span class="shrink-0">
             <span class="block text-[12px] font-medium text-white/70">{{ t.pickupNum }}</span>
-            <span class="mt-1 block font-serif text-[30px] font-normal leading-none tabular-nums">{{ activeOrder.dailyNumber }}</span>
+            <span class="mt-1 block font-serif text-[24px] font-normal leading-none tabular-nums break-all">{{ activeOrder.posOrderNo || t.waitingEntry }}</span>
           </span>
           <span class="flex-1 min-w-0">
             <span class="flex items-baseline justify-between gap-3 text-[15px] font-medium">
-              <span class="grid overflow-hidden">
+              <span v-if="activeOrder.posOrderNo" class="grid overflow-hidden">
                 <Transition name="roll-up">
                   <span :key="stage.label" class="col-start-1 row-start-1">{{ stage.label }}</span>
                 </Transition>

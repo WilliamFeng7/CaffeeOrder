@@ -156,4 +156,10 @@ const sizeClass = computed(() => {
 .is-settling {
   transition: none;
 }
+
+@media (pointer: coarse) {
+  button {
+    min-block-size: var(--touch-target, 44px);
+  }
+}
 </style>

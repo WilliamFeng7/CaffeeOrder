@@ -1,0 +1,15 @@
+# 只能在本地显式激活 dev。基础配置和 local 配置不启用学号直登。
+cafe:
+  auth:
+    dev-login-enabled: true
+  card:
+    mock-enabled: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+knife4j:
+  enable: true

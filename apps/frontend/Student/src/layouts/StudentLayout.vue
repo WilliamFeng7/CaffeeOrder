@@ -6,7 +6,7 @@
 import AppIcon from '@/components/AppIcon.vue';
 import AnimatedNumber from '@shared/components/AnimatedNumber.vue';
 import RollingNumber from '@shared/components/RollingNumber.vue';
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
 import MenuView from '../views/MenuView.vue';
@@ -15,15 +15,18 @@ import CheckoutView from '../views/CheckoutView.vue';
 import PickupView from '../views/PickupView.vue';
 import SettingsView from '../views/SettingsView.vue';
 import { api } from '../api';
-import { PRODUCTS, TRANSLATIONS } from '../data';
-import { formatCents, sumCents } from '../utils/money';
+import { CATEGORIES, PRODUCTS, TRANSLATIONS } from '../data';
+import { formatCents, sumCents, toCents } from '../utils/money';
+import { optionsText } from '../utils/options';
 import { useToastStore } from '../stores/toast';
-import { type CartItem, type Product, type Order, type Language, type TabState, type UserProfile, type SheetCloseReason } from '../types';
-import { auth } from '@shared/auth';
+import { type CartItem, type Product, type Order, type Language, type TabState, type UserProfile, type SheetCloseReason, type ProductSelection, type ShopStatus } from '../types';
+import { YudaoError } from '@shared/yudao-client';
+import { vImgFade } from '../directives/imgFade';
 import type { IconName } from '@/icons';
 import { motionMs, prefersReducedMotion } from '@shared/motion';
 import { useKeyboardInset } from '../composables/useKeyboardInset';
 import { dropDot } from '../composables/cartDot';
+import { clearPendingCheckout, hasUnscopedPendingCheckout, isDefinitiveNoCharge, loadPendingCheckout, savePendingCheckout } from '../utils/pendingCheckout.js';
 
 const router = useRouter();
 const appKeyboardInset = useKeyboardInset(ref(true));
@@ -31,19 +34,23 @@ const appKeyboardInset = useKeyboardInset(ref(true));
 // --- State ---
 const currentTab = ref<TabState>('home');
 const isCheckoutOpen = ref(false);
+const isCartOpen = ref(false);
 const cart = ref<CartItem[]>([]);
+const pendingCheckout = ref<{ studentNo: string; key: string; items: CartItem[] } | null>(null);
+const paymentPending = computed(() => pendingCheckout.value !== null);
 const selectedProduct = ref<Product | null>(null);
 const language = ref<Language>('en');
 const orders = ref<Order[]>([]);
-const shopOpen = ref(true);
+const shopStatus = ref<ShopStatus>({ open: true, banner: '', businessHours: [] });
+const shopOpen = computed(() => shopStatus.value.open);
+const queueCount = ref(0);
 const placing = ref(false);
 const toastStore = useToastStore();
-const userProfile = ref<UserProfile>({
-  name: '',
-  phone: '',
-  email: '',
-  uuid: ''
-});
+const userProfile = ref<UserProfile>({ name: '', studentNo: '', balance: 0 });
+let idempotencyKey: string | null = null;
+const newIdempotencyKey = () => typeof crypto !== 'undefined' && 'randomUUID' in crypto
+  ? crypto.randomUUID()
+  : `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
 
 const t = computed(() => TRANSLATIONS[language.value]);
 
@@ -65,11 +72,12 @@ const activeOrderCount = computed(() => orders.value.filter(o => o.status === 'a
 const tabDir = ref<'fwd' | 'back'>('fwd');
 watch(currentTab, (next, prev) => {
   tabDir.value = tabOrder(next) >= tabOrder(prev) ? 'fwd' : 'back';
+  isCartOpen.value = false;
 });
 
 // --- Lifecycle ---
 onMounted(() => {
-  if (!auth.isLoggedIn()) {
+  if (!api.hasToken()) {
     router.push('/login');
     return;
   }
@@ -85,33 +93,40 @@ onMounted(() => {
 const loadProfile = async () => {
   try {
     const profile = await api.getProfile();
-    userProfile.value = {
-      name: profile.name,
-      phone: profile.phone,
-      email: profile.email,
-      uuid: profile.uuid,
-      balance: profile.balance,
-      username: profile.username
-    };
+    userProfile.value = profile;
+    if (pendingCheckout.value && pendingCheckout.value.studentNo !== profile.studentNo) {
+      pendingCheckout.value = null;
+      idempotencyKey = null;
+      cart.value = [];
+    }
+    if (!pendingCheckout.value) {
+      const saved = loadPendingCheckout(profile.studentNo);
+      if (saved) {
+        pendingCheckout.value = saved;
+        idempotencyKey = saved.key;
+        cart.value = saved.items;
+        isCheckoutOpen.value = true;
+      }
+    }
   } catch (e) {
     console.error("Failed to load profile", e);
   }
 };
 
 const checkShopStatus = async () => {
-    const status = await api.getShopStatus();
-    shopOpen.value = !(status && status.is_open === false);
-    if (!shopOpen.value) {
-        addToast(language.value === 'cn' ? '店铺已打烊' : 'Shop is currently closed', 'info');
-    }
+  try {
+    shopStatus.value = await api.getShopStatus();
+    if (!shopOpen.value) addToast(language.value === 'cn' ? '店铺已打烊' : 'Shop is currently closed', 'info');
+  } catch (e) {
+    console.error('Failed to load shop status', e);
+  }
 };
 
 const loadMenuData = async () => {
   try {
-    const items = await api.getMenu();
-    if (items && items.length > 0) {
-      PRODUCTS.splice(0, PRODUCTS.length, ...items);
-    }
+    const menu = await api.getMenu();
+    PRODUCTS.splice(0, PRODUCTS.length, ...menu.products);
+    CATEGORIES.splice(0, CATEGORIES.length, ...menu.categories);
   } catch (e) {
     console.error("Failed to load menu", e);
   }
@@ -131,6 +146,8 @@ const addToast = (message: string, type: 'success' | 'info' | 'error' | 'warning
 const productSheet = ref<InstanceType<typeof ProductModal> | null>(null);
 const cartBagEl = ref<HTMLElement | null>(null);
 const cartBadgeEl = ref<HTMLElement | null>(null);
+const cartPillEl = ref<HTMLElement | null>(null);
+const cartToggleEl = ref<HTMLButtonElement | null>(null);
 let productClosing = false;
 // The item counts once the dot has landed in the bag, so the number rolls
 // over as it lands. (Held here so a drag-dismiss during "Added" still adds
@@ -141,6 +158,11 @@ const pendingAdd = ref<CartItem | null>(null);
 // The bag gives a small nod as the dot lands; its badge pops with the count.
 const catchInBag = () => {
   if (prefersReducedMotion()) return;
+  cartPillEl.value?.animate([
+    { transform: 'translate3d(0, 0, 0) scale(1)' },
+    { transform: 'translate3d(0, -1px, 0) scale(1.018)', offset: 0.42 },
+    { transform: 'translate3d(0, 0, 0) scale(1)' },
+  ], { duration: 320, easing: 'cubic-bezier(0.23, 1, 0.32, 1)' });
   cartBagEl.value?.animate([
     { transform: 'scale(1)', easing: 'cubic-bezier(0.23, 1, 0.32, 1)' },
     { transform: 'scale(1.14)', offset: 0.4, easing: 'cubic-bezier(0.45, 0, 0.25, 1)' },
@@ -154,6 +176,10 @@ const catchInBag = () => {
 };
 
 const handleSelectProduct = (product: Product) => {
+  if (paymentPending.value) {
+    addToast(t.value.paymentPending, 'warning');
+    return;
+  }
   if (selectedProduct.value) return;
   productClosing = false;
   selectedProduct.value = product;
@@ -210,9 +236,14 @@ const setLanguage = (target: Language) => {
 };
 const handleToggleLang = () => setLanguage((pendingLang ?? language.value) === 'en' ? 'cn' : 'en');
 
-const handleAddToCart = (options: { size: string; temp: string; sugar: string }) => {
+const handleAddToCart = (selection: ProductSelection) => {
+  if (paymentPending.value || placing.value) {
+    addToast(t.value.paymentPending, 'warning');
+    return;
+  }
   if (selectedProduct.value) {
-    const finalPrice = selectedProduct.value.price;
+    const finalPrice = selection.price;
+    idempotencyKey = null;
 
     const newItem: CartItem = {
       ...selectedProduct.value,
@@ -224,9 +255,8 @@ const handleAddToCart = (options: { size: string; temp: string; sugar: string })
           : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
       quantity: 1,
       price: finalPrice,
-      size: 'Regular', // Fixed
-      temperature: options.temp as any,
-      sugar: options.sugar,
+      optionIds: selection.optionIds,
+      selectedOptions: selection.selectedOptions,
     };
     // The student stays where they are: the sheet shows "Added" and closes as
     // a dot drops into the cart bar (on Home and Order), which takes the item
@@ -237,10 +267,43 @@ const handleAddToCart = (options: { size: string; temp: string; sugar: string })
 };
 
 const updateCartItemQuantity = (cartId: string, delta: number) => {
+  if (paymentPending.value || placing.value) {
+    addToast(t.value.paymentPending, 'warning');
+    return;
+  }
+  idempotencyKey = null;
   cart.value = cart.value.map(item => {
     if (item.cartId === cartId) return { ...item, quantity: Math.max(0, item.quantity + delta) };
     return item;
   }).filter(item => item.quantity > 0);
+};
+
+const removeCartItem = (cartId: string) => {
+  if (paymentPending.value || placing.value) {
+    addToast(t.value.paymentPending, 'warning');
+    return;
+  }
+  idempotencyKey = null;
+  cart.value = cart.value.filter(item => item.cartId !== cartId);
+};
+
+const cartLineTotal = (item: CartItem) => toCents(item.price) * item.quantity;
+const cartItemOptions = (item: CartItem) => optionsText(item.selectedOptions, language.value);
+
+const toggleCart = () => {
+  if (!cartCount.value) return;
+  isCartOpen.value = !isCartOpen.value;
+};
+
+const closeCart = (returnFocus = false) => {
+  isCartOpen.value = false;
+  if (returnFocus) void nextTick(() => cartToggleEl.value?.focus());
+};
+
+const openCheckout = () => {
+  if (!cartCount.value) return;
+  isCartOpen.value = false;
+  isCheckoutOpen.value = true;
 };
 
 let pollInterval: ReturnType<typeof setInterval> | null = null;
@@ -257,18 +320,19 @@ const stopPolling = () => {
 // Never leak the polling interval when the layout unmounts
 // (e.g. router-guard redirect on expired token)
 onUnmounted(stopPolling);
-const orderSignature = (list: Order[]) => list.map(o => `${o.id}:${o.stage}`).join('|');
+const orderSignature = (list: Order[]) => list.map(o => `${o.id}:${o.stage}:${o.posOrderNo ?? ''}:${o.aheadCount ?? ''}`).join('|');
 // Stage of each order at the previous poll, so an order that turns "ready"
 // raises one notice instead of relying on the student watching the card.
 let lastStages: Map<string, string> | null = null;
 const fetchOrders = async () => {
   try {
      const fetchedOrders = await api.getMyOrders();
+     if (currentTab.value === 'home') queueCount.value = await api.getQueue();
      if (lastStages) {
        for (const o of fetchedOrders) {
          const before = lastStages.get(o.id);
          if (o.stage === 'ready' && before && before !== 'ready') {
-           addToast(`${t.value.orderReady} ${o.dailyNumber}`, 'success');
+           addToast(`${t.value.orderReady}${o.posOrderNo ? `：${o.posOrderNo}` : ''}`, 'success');
          }
        }
      }
@@ -284,7 +348,7 @@ const fetchOrders = async () => {
 // Poll while the orders are on screen: Pickup, Me, and Home while an order is
 // open (its strip follows the order to "ready").
 const shouldPoll = (tab: TabState) =>
-  tab === 'pickup' || tab === 'profile' || (tab === 'home' && activeOrderCount.value > 0);
+  tab === 'home' || tab === 'pickup' || tab === 'profile';
 watch([currentTab, () => activeOrderCount.value > 0], ([tab], [prevTab]) => {
   if (!shouldPoll(tab)) stopPolling();
   else if (tab !== prevTab || !pollInterval) startPolling();
@@ -293,41 +357,77 @@ watch([currentTab, () => activeOrderCount.value > 0], ([tab], [prevTab]) => {
 // 下单成功的一瞬 (the order went through): the pay button draws a check
 // and holds it for a beat before the sheet slides away to Pickup.
 const orderDone = ref(false);
-watch(isCheckoutOpen, (open) => { if (open) orderDone.value = false; });
+watch(isCheckoutOpen, (open) => {
+  if (open) {
+    isCartOpen.value = false;
+    orderDone.value = false;
+  }
+});
 
 const handlePlaceOrder = async () => {
   // A second tap while the first request is in flight used to place (and
   // charge) the same cart twice.
   if (placing.value || cart.value.length === 0) return;
+  if (!shopOpen.value) {
+    addToast(language.value === 'cn' ? '当前不在营业时段，暂不能下单' : 'Ordering is unavailable outside business hours', 'info');
+    return;
+  }
+  if (!userProfile.value.studentNo) {
+    addToast(t.value.profileLoading, 'info');
+    return;
+  }
+  if (hasUnscopedPendingCheckout()) {
+    addToast(t.value.checkoutRecoveryError, 'error');
+    return;
+  }
+  let attempt = pendingCheckout.value;
+  if (!attempt) {
+    attempt = {
+      studentNo: userProfile.value.studentNo,
+      key: idempotencyKey ?? newIdempotencyKey(),
+      items: JSON.parse(JSON.stringify(cart.value)) as CartItem[],
+    };
+    if (!savePendingCheckout(attempt)) {
+      idempotencyKey = null;
+      addToast(t.value.checkoutStorageError, 'error');
+      return;
+    }
+    pendingCheckout.value = attempt;
+  }
+  if (attempt.studentNo !== userProfile.value.studentNo) {
+    addToast(t.value.paymentPending, 'warning');
+    return;
+  }
+  idempotencyKey = attempt.key;
   placing.value = true;
   try {
-    await api.createOrder(cart.value);
+    await api.createOrder(attempt.items, attempt.key);
+    clearPendingCheckout(attempt.studentNo);
+    pendingCheckout.value = null;
+    idempotencyKey = null;
+    cart.value = [];
     orderDone.value = true;
     const shownAt = performance.now();
     await fetchOrders();
     await loadProfile(); // Refresh balance
     const hold = motionMs('--dur-enter', 560) + 180 - (performance.now() - shownAt);
     if (hold > 0) await new Promise((resolve) => window.setTimeout(resolve, hold));
-    cart.value = [];
     isCheckoutOpen.value = false;
     currentTab.value = 'pickup';
     addToast(language.value === 'cn' ? '下单成功!' : 'Order placed successfully!', 'success');
-  } catch (e: any) {
-    const errorMsg = e.response?.data?.detail || e.message || 'Order failed';
-    const displayMsg = language.value === 'cn' && errorMsg === 'Insufficient funds' ? '余额不足 (Insufficient Funds)' : errorMsg;
-    addToast(displayMsg, 'info');
+  } catch (e) {
+    if (e instanceof YudaoError && isDefinitiveNoCharge(e.code)) {
+      clearPendingCheckout(attempt.studentNo);
+      pendingCheckout.value = null;
+      idempotencyKey = null;
+      addToast(e.code === 1080003007 ? t.value.paymentRefunded : e.message, 'info');
+    } else {
+      idempotencyKey = attempt.key;
+      pendingCheckout.value = attempt;
+      addToast(e instanceof Error ? e.message : (language.value === 'cn' ? '下单失败，请稍后重试' : 'Order failed'), 'info');
+    }
   } finally {
     placing.value = false;
-  }
-};
-
-const handleUpdateProfile = async (p: UserProfile) => {
-  try {
-    const updated = await api.updateProfile(p);
-    userProfile.value = updated;
-    addToast(language.value === 'cn' ? "个人信息已更新" : "Profile updated", "success");
-  } catch {
-    addToast(language.value === 'cn' ? "更新失败" : "Update failed", "info");
   }
 };
 
@@ -336,6 +436,9 @@ const handleUpdateProfile = async (p: UserProfile) => {
 const cartTotalCents = computed(() => sumCents(cart.value));
 const cartCount = computed(() => cart.value.reduce((sum, item) => sum + item.quantity, 0));
 const formatTotal = (cents: number) => `¥${formatCents(Math.round(cents))}`;
+watch(cartCount, (count) => {
+  if (!count) isCartOpen.value = false;
+});
 </script>
 
 <template>
@@ -351,10 +454,10 @@ const formatTotal = (cents: number) => `¥${formatCents(Math.round(cents))}`;
       <div class="relative h-full">
         <Transition :name="`tab-${tabDir}`">
           <KeepAlive>
-            <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleSelectProduct" :lang="language" :user-name="userProfile.name" :shop-open="shopOpen" :orders="orders" :reserve-cart-bar="cartCount > 0 || !!pendingAdd" />
+            <HomeView v-if="currentTab === 'home'" @navigate="(tab) => currentTab = tab" @quick-add="handleSelectProduct" :lang="language" :user-name="userProfile.name" :shop-status="shopStatus" :queue-count="queueCount" :orders="orders" :reserve-cart-bar="cartCount > 0 || !!pendingAdd" />
             <MenuView v-else-if="currentTab === 'order'" :cart="cart" @select-product="handleSelectProduct" :lang="language" @toggle-lang="handleToggleLang" />
             <PickupView v-else-if="currentTab === 'pickup'" :orders="orders" :lang="language" :refresh="fetchOrders" @browse="currentTab = 'order'" />
-            <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @set-lang="setLanguage" :user-profile="userProfile" :orders="orders" @update-profile="handleUpdateProfile" />
+            <SettingsView v-else-if="currentTab === 'profile'" :lang="language" @set-lang="setLanguage" :user-profile="userProfile" :orders="orders" />
           </KeepAlive>
         </Transition>
       </div>
@@ -363,21 +466,147 @@ const formatTotal = (cents: number) => `¥${formatCents(Math.round(cents))}`;
     <!-- Cart bar: floats above the tab bar on Home and the menu -->
     <Transition name="cartbar">
       <div v-if="cartCount > 0 && (currentTab === 'order' || currentTab === 'home')" class="student-cart absolute inset-x-0 z-40 flex justify-center px-4 pointer-events-none">
-         <button
-           type="button"
-           @click="isCheckoutOpen = true"
-           data-testid="checkout-bar"
-           class="group pointer-events-auto w-full max-w-md h-14 rounded-full bg-primary text-white shadow-float flex items-center gap-4 pl-5 pr-6"
-         >
-            <span ref="cartBagEl" class="relative flex items-center">
-               <AppIcon name="bag" weight="light" class="text-[24px]" />
-               <span ref="cartBadgeEl" class="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-primary text-[11px] font-semibold flex items-center justify-center leading-none">
-                  <RollingNumber :value="cartCount" />
-               </span>
-            </span>
-            <AnimatedNumber class="text-[17px] font-medium" :value="cartTotalCents" :format="formatTotal" :from-zero="false" />
-            <span class="ml-auto text-[15px] font-medium">{{ t.checkout }}</span>
-         </button>
+         <div
+           v-if="isCartOpen"
+           aria-hidden="true"
+           class="fixed inset-0 bg-transparent pointer-events-auto"
+           @click="closeCart()"
+         ></div>
+
+         <div class="relative pointer-events-auto w-full max-w-md">
+            <Transition name="cart-panel">
+               <section
+                  v-if="isCartOpen"
+                  id="cart-preview"
+                  role="region"
+                  :aria-label="t.cart"
+                  class="cart-panel absolute bottom-full left-0 right-0 mb-3 rounded-[26px] bg-surface-light border border-line shadow-float overflow-hidden"
+                  @keydown.esc.stop="closeCart(true)"
+               >
+                  <header class="flex items-center gap-3 px-5 pt-4 pb-3 border-b border-line">
+                     <div class="min-w-0">
+                        <p class="font-serif text-[22px] leading-tight text-text-main">{{ t.cart }}</p>
+                        <p class="mt-0.5 text-[12px] text-text-sub tabular-nums">
+                           <RollingNumber :value="cartCount" />
+                           {{ language === 'cn' ? '件' : (cartCount === 1 ? 'item' : 'items') }}
+                        </p>
+                     </div>
+                     <button
+                        type="button"
+                        :aria-label="t.closeCart"
+                        class="ml-auto size-11 rounded-full flex items-center justify-center text-text-sub active:bg-cream"
+                        @click="closeCart(true)"
+                     >
+                        <AppIcon name="x" class="text-[18px]" />
+                     </button>
+                  </header>
+
+                  <TransitionGroup tag="div" name="list" class="cart-preview-list relative max-h-[min(42vh,320px)] overflow-y-auto no-scrollbar px-5">
+                     <article
+                        v-for="item in cart"
+                        :key="item.cartId"
+                        class="cart-preview-item flex items-center gap-3 py-3 border-b border-line last:border-b-0"
+                     >
+                        <img
+                           v-img-fade
+                           :src="item.thumb || item.image"
+                           :data-full="item.image"
+                           :alt="language === 'cn' ? item.nameCN : item.name"
+                           class="size-11 rounded-[12px] object-cover bg-cream shrink-0"
+                           decoding="async"
+                        />
+                        <div class="min-w-0 flex-1">
+                           <p class="text-[14px] font-medium text-text-main truncate">{{ language === 'cn' ? item.nameCN : item.name }}</p>
+                           <p v-if="cartItemOptions(item)" class="mt-0.5 text-[12px] text-text-sub truncate">{{ cartItemOptions(item) }}</p>
+                           <p class="mt-0.5 text-[12px] tabular-nums text-text-sub">
+                              <AnimatedNumber :value="cartLineTotal(item)" :format="formatTotal" :from-zero="false" />
+                           </p>
+                        </div>
+                        <div class="cart-preview-actions flex items-center shrink-0">
+                           <button
+                              type="button"
+                              :aria-label="t.decrease"
+                              :disabled="paymentPending || placing"
+                              class="size-11 rounded-full flex items-center justify-center text-text-main active:bg-cream disabled:opacity-35"
+                              @click="updateCartItemQuantity(item.cartId, -1)"
+                           >
+                              <AppIcon name="minus" class="text-[15px]" />
+                           </button>
+                           <span class="w-7 text-center text-[15px] font-medium tabular-nums text-text-main">
+                              <RollingNumber :value="item.quantity" />
+                           </span>
+                           <button
+                              type="button"
+                              :aria-label="t.increase"
+                              :disabled="paymentPending || placing"
+                              class="size-11 rounded-full flex items-center justify-center text-text-main active:bg-cream disabled:opacity-35"
+                              @click="updateCartItemQuantity(item.cartId, 1)"
+                           >
+                              <AppIcon name="plus" class="text-[15px]" />
+                           </button>
+                           <button
+                              type="button"
+                              :aria-label="t.removeItem"
+                              :disabled="paymentPending || placing"
+                              class="size-11 rounded-full flex items-center justify-center text-text-sub active:bg-danger-soft active:text-danger disabled:opacity-35"
+                              @click="removeCartItem(item.cartId)"
+                           >
+                              <AppIcon name="trash" class="text-[16px]" />
+                           </button>
+                        </div>
+                     </article>
+                  </TransitionGroup>
+
+                  <footer class="flex items-center gap-4 px-5 py-4 border-t border-line bg-cream/55">
+                     <div class="min-w-0">
+                        <p class="eyebrow">{{ t.total }}</p>
+                        <AnimatedNumber class="mt-0.5 block font-serif text-[26px] leading-none text-text-main" :value="cartTotalCents" :format="formatTotal" :from-zero="false" />
+                     </div>
+                     <button type="button" class="ml-auto btn btn-primary btn-lg min-w-[150px]" @click="openCheckout">
+                        {{ t.checkout }}
+                        <AppIcon name="caret-right" class="text-[16px]" />
+                     </button>
+                  </footer>
+               </section>
+            </Transition>
+
+            <div
+               ref="cartPillEl"
+               class="cart-pill group h-14 rounded-full bg-primary text-white shadow-float flex items-stretch overflow-hidden"
+            >
+               <button
+                  ref="cartToggleEl"
+                  type="button"
+                  data-testid="cart-toggle"
+                  class="flex flex-1 min-w-0 items-center gap-4 pl-5 pr-4 text-left"
+                  :aria-expanded="isCartOpen"
+                  aria-controls="cart-preview"
+                  @click="toggleCart"
+               >
+                  <span ref="cartBagEl" class="relative flex items-center">
+                     <AppIcon name="bag" weight="light" class="text-[24px]" />
+                     <span ref="cartBadgeEl" class="absolute -top-1 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-white text-primary text-[11px] font-semibold flex items-center justify-center leading-none">
+                        <RollingNumber :value="cartCount" />
+                     </span>
+                  </span>
+                  <AnimatedNumber class="text-[17px] font-medium" :value="cartTotalCents" :format="formatTotal" :from-zero="false" />
+                  <AppIcon
+                     name="caret-down"
+                     class="cart-chevron ml-auto text-[15px] text-white/70"
+                     :class="{ 'is-open': isCartOpen }"
+                  />
+               </button>
+               <span class="w-px my-3 bg-white/20" aria-hidden="true"></span>
+               <button
+                  type="button"
+                  data-testid="checkout-bar"
+                  class="px-5 text-[15px] font-medium whitespace-nowrap"
+                  @click="openCheckout"
+               >
+                  {{ t.checkout }}
+               </button>
+            </div>
+         </div>
       </div>
     </Transition>
 
@@ -401,13 +630,15 @@ const formatTotal = (cents: number) => `¥${formatCents(Math.round(cents))}`;
           :class="currentTab === tab.id ? 'text-text-main' : 'text-text-sub'"
         >
           <span class="relative">
-            <!-- Switching tabs happens all the time: the icon only changes
-                 weight and colour, the line under the bar does the moving -->
-            <AppIcon
-              :name="tab.icon"
-              :weight="currentTab === tab.id ? 'fill' : 'light'"
-              class="text-[24px]"
-            />
+            <!-- Frequent navigation stays quiet: a one-pixel lift and weight
+                 change acknowledge the tap; the line carries the distance. -->
+            <span class="nav-icon-shell inline-flex" :class="{ 'is-active': currentTab === tab.id }">
+              <AppIcon
+                :name="tab.icon"
+                :weight="currentTab === tab.id ? 'fill' : 'light'"
+                class="text-[24px]"
+              />
+            </span>
             <span v-if="tab.id === 'pickup' && activeOrderCount > 0" class="absolute -top-1 -right-2.5 min-w-4 h-4 px-1 rounded-full bg-primary text-white text-[10px] font-semibold leading-none flex items-center justify-center ring-2 ring-white pop-in">
               <RollingNumber :value="activeOrderCount" />
             </span>
@@ -420,7 +651,7 @@ const formatTotal = (cents: number) => `¥${formatCents(Math.round(cents))}`;
 
     <Transition name="sheet">
       <div v-if="isCheckoutOpen" class="absolute inset-0 z-[100]">
-         <CheckoutView @navigate="isCheckoutOpen = false" :cart="cart" :placing="placing" :done="orderDone" @place-order="handlePlaceOrder" @update-quantity="updateCartItemQuantity" :lang="language" />
+         <CheckoutView @navigate="isCheckoutOpen = false" :cart="cart" :balance="userProfile.balance" :placing="placing" :payment-pending="paymentPending" :done="orderDone" @place-order="handlePlaceOrder" @update-quantity="updateCartItemQuantity" @remove-item="removeCartItem" :lang="language" />
       </div>
     </Transition>
 
