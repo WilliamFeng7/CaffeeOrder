@@ -442,7 +442,7 @@ watch(cartCount, (count) => {
 </script>
 
 <template>
-  <div class="student-shell fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans text-text-main select-none z-0" :class="{ 'keyboard-open': appKeyboardInset > 0 }" :style="{ '--app-keyboard-inset': `${appKeyboardInset}px` }">
+  <div class="student-shell fixed inset-0 w-full h-full bg-background-light overflow-hidden font-sans text-text-main select-none z-0" :class="{ 'has-cart': cartCount > 0 || !!pendingAdd, 'keyboard-open': appKeyboardInset > 0 }" :style="{ '--app-keyboard-inset': `${appKeyboardInset}px` }">
     <!-- Toasts are rendered once, globally, by <ToastContainer /> in App.vue. -->
 
     <div class="absolute inset-0 flex flex-col bg-background-light">
