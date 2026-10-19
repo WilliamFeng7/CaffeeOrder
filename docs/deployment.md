@@ -87,7 +87,7 @@ The suite creates temporary employee accounts, changes shop settings temporarily
 
 Before considering a production release healthy, verify that passwords shorter than eight characters, letters-only passwords and digits-only passwords are rejected; a URL query token is rejected; a refresh token cannot act as a bearer token; refresh rotation invalidates the previous pair; and an unknown `Origin` receives no `Access-Control-Allow-Origin` header. Request the three frontend pages and confirm the Caddy security headers before opening access.
 
-The latest password-policy release from 2026-10-19 uses JAR SHA-256 `cfb664d47338952c6cc42de9022c3ee45587e67d84298788f4139b5acaa11ff6`. Its backend rollback JAR is `/home/ubuntu/otia-cafe-demo/stage/release/app/yudao-server.previous-20261019T113427Z.jar`; the previous admin bundle is retained as `admin.previous-20261019T113427Z`. The broader full-system rollback snapshot remains `/home/ubuntu/otia-cafe-demo/stage/release/backup-full-20261018T122659Z`. The release passed all 43 API acceptance checks plus password-policy boundary tests.
+The latest password-policy release from 2026-10-19 uses JAR SHA-256 `cfb664d47338952c6cc42de9022c3ee45587e67d84298788f4139b5acaa11ff6`. Its complete rollback snapshot is `/home/ubuntu/otia-cafe-demo/stage/release/backup-full-20261019T113753Z`; the previous backend and frontend bundles are also retained beside their current directories with `.previous-20261019T113753Z` suffixes. The release passed all 43 API acceptance checks plus password-policy boundary tests.
 
 ## Rollback
 
