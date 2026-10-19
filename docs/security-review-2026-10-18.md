@@ -20,7 +20,7 @@ The initial security review reported five issues. They were fixed and regression
 
 | Original severity | Finding | Current control |
 | --- | --- | --- |
-| High | Public fixed administrator password | Flyway `V6` clears the old hash; startup requires a private `OTIA_ADMIN_INITIAL_PASSWORD`; non-dev builds reject `admin123`, while the explicitly configured dev integration stack may use the requested short admin test credential |
+| High | Public fixed administrator password | Flyway `V6` clears the old hash and startup requires an explicitly configured administrator password. All staff passwords now require at least eight characters with both letters and digits |
 | Medium | Alternate upload routes lacked permission checks | Backend upload, presigned upload and direct-upload registration all require `infra:file:upload` |
 | Medium | Password changes did not revoke sessions | Both password-change paths delete access tokens and refresh tokens in the same transaction |
 | Medium | Admin login had no brute-force throttling | Atomic Redis limits cover account and source IP dimensions |
@@ -45,7 +45,7 @@ Additional hardening in the final build:
 - JDK 21 `mvn clean verify`: all 16 backend modules passed.
 - Remote acceptance: all 43 `scripts/smoke-cafe.py` checks passed against the deployed test stack.
 - Frontend: Student and Barista production builds passed; Student checkout tests passed 5/5; Student and admin type checks passed.
-- Authentication: password login, query-token rejection, refresh-token bearer rejection, one-time refresh rotation, old-refresh rejection, non-dev `admin123` rejection and password-change session revocation passed.
+- Authentication: password login, the shared eight-character letter-and-digit policy, query-token rejection, refresh-token bearer rejection, one-time refresh rotation, old-refresh rejection and password-change session revocation passed.
 - Edge: unknown CORS origins received no allow header; all three frontends returned the required security headers and successful static assets.
 - Logs: backend logs contained no configured passwords/secrets, bearer tokens, access tokens or refresh tokens.
 - Migrations: Flyway versions 1–6 are successful; the administrator password is a nonempty BCrypt hash and not the legacy `$2a$04$` value.

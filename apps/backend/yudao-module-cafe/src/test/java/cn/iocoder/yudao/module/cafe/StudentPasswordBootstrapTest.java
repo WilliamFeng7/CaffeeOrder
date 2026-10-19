@@ -11,7 +11,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Clock;
@@ -31,7 +30,6 @@ class StudentPasswordBootstrapTest {
 
     @Mock private StudentMapper students;
     @Mock private PasswordEncoder passwordEncoder;
-    @Mock private Environment environment;
     @InjectMocks private StudentPasswordBootstrap bootstrap;
 
     @BeforeEach
@@ -42,8 +40,8 @@ class StudentPasswordBootstrapTest {
 
     @Test
     void explicitBootstrapCreatesHashedStudentPassword() {
-        CafeProperties properties = properties("S2026001", "strong-test-password");
-        when(passwordEncoder.encode("strong-test-password")).thenReturn("bcrypt-hash");
+        CafeProperties properties = properties("S2026001", "strong-test-pass1");
+        when(passwordEncoder.encode("strong-test-pass1")).thenReturn("bcrypt-hash");
 
         org.springframework.test.util.ReflectionTestUtils.setField(bootstrap, "properties", properties);
         when(students.insert(any(StudentDO.class))).thenReturn(1);
@@ -54,12 +52,12 @@ class StudentPasswordBootstrapTest {
         assertEquals("S2026001", captured.getValue().getStudentNo());
         assertEquals("测试学生", captured.getValue().getName());
         assertEquals("bcrypt-hash", captured.getValue().getPasswordHash());
-        assertNotEquals("strong-test-password", captured.getValue().getPasswordHash());
+        assertNotEquals("strong-test-pass1", captured.getValue().getPasswordHash());
     }
 
     @Test
     void existingPasswordIsNotResetOnRestart() {
-        CafeProperties properties = properties("S2026001", "strong-test-password");
+        CafeProperties properties = properties("S2026001", "strong-test-pass1");
         org.springframework.test.util.ReflectionTestUtils.setField(bootstrap, "properties", properties);
         when(students.selectOne(any())).thenReturn(
                 new StudentDO().setId(1L).setPasswordHash("existing-hash"));
@@ -80,9 +78,8 @@ class StudentPasswordBootstrapTest {
     }
 
     @Test
-    void shortBootstrapPasswordIsAllowedForExplicitDevTests() {
+    void simpleLetterAndDigitBootstrapPasswordIsAccepted() {
         CafeProperties properties = properties("student", "student123");
-        when(environment.getProperty("otia.test-credentials-enabled", Boolean.class)).thenReturn(true);
         when(passwordEncoder.encode("student123")).thenReturn("dev-hash");
         when(students.insert(any(StudentDO.class))).thenReturn(1);
         org.springframework.test.util.ReflectionTestUtils.setField(bootstrap, "properties", properties);

@@ -12,6 +12,7 @@ import cn.iocoder.yudao.framework.common.pojo.PageResult;
 import cn.iocoder.yudao.framework.common.util.collection.CollectionUtils;
 import cn.iocoder.yudao.framework.common.util.object.BeanUtils;
 import cn.iocoder.yudao.framework.common.util.object.ObjectUtils;
+import cn.iocoder.yudao.framework.common.util.validation.PasswordPolicyUtils;
 import cn.iocoder.yudao.framework.common.util.validation.ValidationUtils;
 import cn.iocoder.yudao.framework.datapermission.core.util.DataPermissionUtils;
 import cn.iocoder.yudao.module.infra.api.config.ConfigApi;
@@ -30,7 +31,6 @@ import cn.iocoder.yudao.module.system.dal.mysql.user.AdminUserMapper;
 import cn.iocoder.yudao.module.system.enums.permission.RoleCodeEnum;
 import cn.iocoder.yudao.module.system.service.dept.DeptService;
 import cn.iocoder.yudao.module.system.service.dept.PostService;
-import cn.iocoder.yudao.module.system.service.auth.LegacyPasswordPolicy;
 import cn.iocoder.yudao.module.system.service.oauth2.OAuth2TokenService;
 import cn.iocoder.yudao.module.system.service.permission.PermissionService;
 import cn.iocoder.yudao.module.system.service.permission.RoleService;
@@ -99,6 +99,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     public Long createUser(UserSaveReqVO createReqVO) {
         // 1.1 校验账户配合
         // 1.2 校验正确性
+        validatePasswordPolicy(createReqVO.getPassword());
         validateUserForCreateOrUpdate(null, createReqVO.getUsername(),
                 createReqVO.getMobile(), createReqVO.getEmail(), createReqVO.getDeptId(), createReqVO.getPostIds());
         // 2.1 插入用户
@@ -182,6 +183,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     public void updateUserPassword(Long id, UserProfileUpdatePasswordReqVO reqVO) {
         // 校验旧密码密码
         validateOldPassword(id, reqVO.getOldPassword());
+        validatePasswordPolicy(reqVO.getNewPassword());
         // 执行更新
         AdminUserDO updateObj = new AdminUserDO().setId(id);
         updateObj.setPassword(encodePassword(reqVO.getNewPassword())); // 加密密码
@@ -197,6 +199,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     public void updateUserPassword(Long id, String password) {
         // 1. 校验用户存在
         AdminUserDO user = validateUserExists(id);
+        validatePasswordPolicy(password);
 
         // 2. 更新密码
         AdminUserDO updateObj = new AdminUserDO();
@@ -439,6 +442,13 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @VisibleForTesting
+    void validatePasswordPolicy(String password) {
+        if (!PasswordPolicyUtils.isValid(password)) {
+            throw exception(USER_PASSWORD_POLICY);
+        }
+    }
+
+    @VisibleForTesting
     void validateUsernameUnique(Long id, String username) {
         if (StrUtil.isBlank(username)) {
             return;
@@ -517,9 +527,10 @@ public class AdminUserServiceImpl implements AdminUserService {
         }
         // 1.2 初始化密码不能为空
         String initPassword = configApi.getConfigValueByKey(USER_INIT_PASSWORD_KEY);
-        if (StrUtil.isEmpty(initPassword) || LegacyPasswordPolicy.isLegacySharedImportPassword(initPassword)) {
+        if (StrUtil.isEmpty(initPassword)) {
             throw exception(USER_IMPORT_INIT_PASSWORD);
         }
+        validatePasswordPolicy(initPassword);
 
         // 2. 遍历，逐个创建 or 更新
         UserImportRespVO respVO = UserImportRespVO.builder().createUsernames(new ArrayList<>())

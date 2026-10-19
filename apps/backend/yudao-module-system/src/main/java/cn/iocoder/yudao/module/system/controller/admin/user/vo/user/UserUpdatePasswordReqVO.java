@@ -17,7 +17,7 @@ public class UserUpdatePasswordReqVO {
 
     @Schema(description = "密码", requiredMode = Schema.RequiredMode.REQUIRED, example = "123456")
     @NotEmpty(message = "密码不能为空")
-    @Length(min = 12, max = 16, message = "密码长度为 12-16 位")
+    @Length(max = 72, message = "密码不能超过 72 字节")
     private String password;
 
 }

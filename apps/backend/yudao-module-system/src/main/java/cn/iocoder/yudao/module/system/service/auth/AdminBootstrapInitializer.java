@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.system.service.auth;
 
+import cn.iocoder.yudao.framework.common.util.validation.PasswordPolicyUtils;
 import cn.iocoder.yudao.module.system.service.user.AdminUserService;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -23,15 +24,13 @@ public class AdminBootstrapInitializer implements ApplicationRunner {
         var admin = users.getUser(1L);
         if (admin == null || (admin.getPassword() != null && !admin.getPassword().isBlank())) return;
 
-        int minimumLength = Boolean.TRUE.equals(
-                environment.getProperty("otia.test-credentials-enabled", Boolean.class)) ? 6 : 12;
-        if (configured != null && (configured.length() < minimumLength || configured.length() > 16)) {
-            throw new IllegalStateException("OTIA_ADMIN_INITIAL_PASSWORD 必须为 "
-                    + minimumLength + "–16 个字符");
+        if (configured != null && !PasswordPolicyUtils.isValid(configured)) {
+            throw new IllegalStateException("OTIA_ADMIN_INITIAL_PASSWORD 必须满足："
+                    + PasswordPolicyUtils.MESSAGE);
         }
         if (configured == null || configured.isBlank()) {
-            throw new IllegalStateException("首次启动前必须配置 OTIA_ADMIN_INITIAL_PASSWORD（"
-                    + minimumLength + "–16 位）");
+            throw new IllegalStateException("首次启动前必须配置 OTIA_ADMIN_INITIAL_PASSWORD（至少 8 位，"
+                    + "且同时包含字母和数字）");
         }
         users.updateUserPassword(admin.getId(), configured);
     }

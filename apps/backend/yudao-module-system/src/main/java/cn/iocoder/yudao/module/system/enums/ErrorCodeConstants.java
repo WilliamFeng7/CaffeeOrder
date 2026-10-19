@@ -49,6 +49,7 @@ public interface ErrorCodeConstants {
     ErrorCode USER_REGISTER_DISABLED = new ErrorCode(1_002_003_011, "注册功能已关闭");
     ErrorCode USER_ADMIN_NOT_ALLOW_DISABLE = new ErrorCode(1_002_003_012, "超级管理员或租户管理员账号不能禁用");
     ErrorCode USER_ADMIN_NOT_ALLOW_DELETE = new ErrorCode(1_002_003_013, "超级管理员或租户管理员账号不能删除");
+    ErrorCode USER_PASSWORD_POLICY = new ErrorCode(1_002_003_014, "密码至少 8 位，且必须同时包含字母和数字");
 
     // ========== 部门模块 1-002-004-000 ==========
     ErrorCode DEPT_NAME_DUPLICATE = new ErrorCode(1_002_004_000, "已经存在该名字的部门");

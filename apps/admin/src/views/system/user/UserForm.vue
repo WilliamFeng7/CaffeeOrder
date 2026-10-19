@@ -103,6 +103,7 @@ import * as PostApi from '@/api/system/post'
 import * as DeptApi from '@/api/system/dept'
 import * as UserApi from '@/api/system/user'
 import { FormRules } from 'element-plus'
+import { validatePassword } from '@/utils/password'
 
 defineOptions({ name: 'SystemUserForm' })
 
@@ -132,7 +133,13 @@ const formRules = reactive<FormRules>({
   nickname: [{ required: true, message: '用户昵称不能为空', trigger: 'blur' }],
   password: [
     { required: true, message: '用户密码不能为空', trigger: 'blur' },
-    { min: 12, max: 16, message: '密码长度为 12–16 位', trigger: 'blur' }
+    {
+      validator: (_rule, value, callback) => {
+        const result = validatePassword(value)
+        result === true ? callback() : callback(new Error(result))
+      },
+      trigger: 'blur'
+    }
   ],
   email: [
     {

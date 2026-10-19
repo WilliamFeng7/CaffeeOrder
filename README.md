@@ -21,13 +21,13 @@
 
 需要 JDK 17 或 21、Maven 3.9+、Node.js 20.19+、pnpm 10+ 和 Docker Compose。推荐 JDK 21，并确保 `mvn -v` 与 `JAVA_HOME` 指向同一版本。
 
-首次启动前必须设置 12–16 位管理员初始密码。数据库里不会保留公开默认密码：
+首次启动前必须设置至少 8 位、同时包含字母和数字的管理员初始密码。数据库里不会保留公开默认密码：
 
 ```bash
-export OTIA_ADMIN_INITIAL_PASSWORD='replace-with-12-16-random-chars'
-export OTIA_STUDENT_INITIAL_NO='S2026001'
+export OTIA_ADMIN_INITIAL_PASSWORD='replace-with-8-plus-letters-and-digits'
+export OTIA_STUDENT_INITIAL_NO='student'
 export OTIA_STUDENT_INITIAL_NAME='测试学生'
-export OTIA_STUDENT_INITIAL_PASSWORD='replace-with-12-72-byte-password'
+export OTIA_STUDENT_INITIAL_PASSWORD='replace-with-8-plus-letters-and-digits'
 
 docker compose up -d
 docker compose ps
@@ -58,7 +58,7 @@ pnpm --dir apps/admin dev   # http://127.0.0.1:8080
 | `MYSQL_HOST` / `MYSQL_PORT` / `MYSQL_DATABASE` | 默认 `127.0.0.1` / `3306` / `otia_cafe` |
 | `MYSQL_USER` / `MYSQL_PASSWORD` | 本地 Compose 默认 `otia` / `otia_local` |
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_PASSWORD` | Redis 连接参数 |
-| `OTIA_ADMIN_INITIAL_PASSWORD` | 首次管理员密码，12–16 位，必填 |
+| `OTIA_ADMIN_INITIAL_PASSWORD` | 首次管理员密码，至少 8 位且同时包含字母和数字，必填 |
 | `OTIA_STUDENT_INITIAL_*` | 可选一次性测试学生账号 |
 | `OTIA_DEV_LOGIN_SECRET` | 远程测试栈开发直登密钥，至少 32 个随机字符 |
 | `DINGTALK_CORP_ID` | 学校钉钉企业 corpId |

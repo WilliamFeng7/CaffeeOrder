@@ -10,7 +10,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.env.Environment;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -22,36 +21,23 @@ class AdminAuthServiceImplSecurityTest {
     @Mock OAuth2TokenService tokens;
     @Mock LoginLogService logs;
     @Mock LoginRateLimiter limiter;
-    @Mock Environment environment;
     @InjectMocks AdminAuthServiceImpl service;
 
-    @Test void publicImportPasswordIsRejectedForImportedStaff() {
-        var imported = new AdminUserDO().setId(2L).setUsername("barista1").setPassword("hash").setStatus(0);
-        when(users.getUserByUsername("barista1")).thenReturn(imported);
-        assertThrows(ServiceException.class, () -> service.authenticate("barista1", "admin123"));
-
-        verify(limiter).check("barista1");
-        verify(users, never()).isPasswordMatch(anyString(), anyString());
-        verify(logs).createLoginLog(any());
-        verify(limiter, never()).reset(anyString());
-    }
-
-    @Test void legacySharedPasswordIsRejectedForEveryAccount() {
+    @Test void simpleLetterAndDigitPasswordCanAuthenticate() {
         var admin = new AdminUserDO().setId(1L).setUsername("admin").setPassword("hash").setStatus(0);
-        when(users.getUserByUsername("admin")).thenReturn(admin);
-
-        assertThrows(ServiceException.class, () -> service.authenticate("admin", "admin123"));
-        verify(users, never()).isPasswordMatch(anyString(), anyString());
-        verify(limiter, never()).reset(anyString());
-    }
-
-    @Test void devTestCredentialsAllowAdmin123ForConfiguredAdminAccount() {
-        var admin = new AdminUserDO().setId(1L).setUsername("admin").setPassword("hash").setStatus(0);
-        when(environment.getProperty("otia.test-credentials-enabled", Boolean.class)).thenReturn(true);
         when(users.getUserByUsername("admin")).thenReturn(admin);
         when(users.isPasswordMatch("admin123", "hash")).thenReturn(true);
 
         assertSame(admin, service.authenticate("admin", "admin123"));
         verify(limiter).reset("admin");
+    }
+
+    @Test void wrongPasswordIsStillRejected() {
+        var admin = new AdminUserDO().setId(1L).setUsername("admin").setPassword("hash").setStatus(0);
+        when(users.getUserByUsername("admin")).thenReturn(admin);
+        when(users.isPasswordMatch("wrong123", "hash")).thenReturn(false);
+
+        assertThrows(ServiceException.class, () -> service.authenticate("admin", "wrong123"));
+        verify(limiter, never()).reset(anyString());
     }
 }

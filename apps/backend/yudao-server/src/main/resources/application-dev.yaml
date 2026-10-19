@@ -5,10 +5,6 @@ cafe:
   card:
     mock-enabled: true
 
-# The public integration environment uses short, user-requested test
-# credentials. Production profiles keep rejecting the legacy admin password.
-otia:
-  test-credentials-enabled: true
 
 springdoc:
   api-docs:

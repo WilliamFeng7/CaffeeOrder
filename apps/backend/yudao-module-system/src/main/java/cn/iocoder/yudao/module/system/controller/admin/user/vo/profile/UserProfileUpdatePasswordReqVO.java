@@ -12,12 +12,12 @@ public class UserProfileUpdatePasswordReqVO {
 
     @Schema(description = "旧密码", requiredMode = Schema.RequiredMode.REQUIRED, example = "123456")
     @NotEmpty(message = "旧密码不能为空")
-    @Length(min = 12, max = 16, message = "密码长度为 12-16 位")
+    @Length(max = 72, message = "密码不能超过 72 字节")
     private String oldPassword;
 
     @Schema(description = "新密码", requiredMode = Schema.RequiredMode.REQUIRED, example = "654321")
     @NotEmpty(message = "新密码不能为空")
-    @Length(min = 12, max = 16, message = "密码长度为 12-16 位")
+    @Length(max = 72, message = "密码不能超过 72 字节")
     private String newPassword;
 
 }

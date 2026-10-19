@@ -32,11 +32,10 @@ class AdminBootstrapInitializerSecurityTest {
         verify(users).updateUserPassword(1L, "DemoPass123456");
     }
 
-    @Test void explicitDevTestPasswordMayBeShort() {
+    @Test void simpleLetterAndDigitBootstrapPasswordIsAccepted() {
         AdminUserService users = mock(AdminUserService.class);
         Environment environment = mock(Environment.class);
         when(environment.getProperty("OTIA_ADMIN_INITIAL_PASSWORD")).thenReturn("admin123");
-        when(environment.getProperty("otia.test-credentials-enabled", Boolean.class)).thenReturn(true);
         when(users.getUser(1L)).thenReturn(new AdminUserDO().setId(1L).setPassword(""));
 
         new AdminBootstrapInitializer(users, environment).run(new DefaultApplicationArguments());

@@ -13,7 +13,6 @@ import cn.iocoder.yudao.module.system.service.logger.LoginLogService;
 import cn.iocoder.yudao.module.system.service.oauth2.OAuth2TokenService;
 import cn.iocoder.yudao.module.system.service.user.AdminUserService;
 import jakarta.annotation.Resource;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 import static cn.iocoder.yudao.framework.common.exception.util.ServiceExceptionUtil.exception;
 import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.*;
@@ -23,16 +22,10 @@ import static cn.iocoder.yudao.module.system.enums.ErrorCodeConstants.*;
     @Resource private OAuth2TokenService tokens;
     @Resource private LoginLogService logs;
     @Resource private LoginRateLimiter rateLimiter;
-    @Resource private Environment environment;
     public AdminUserDO authenticate(String username,String password){
         rateLimiter.check(username);
         var user=userService.getUserByUsername(username);
-        // Preserve the seeded local super-admin flow, but never accept the
-        // published import credential outside the explicit dev-only test account.
-        boolean allowDevAdminPassword = user != null && "admin".equals(user.getUsername())
-                && Boolean.TRUE.equals(environment.getProperty("otia.test-credentials-enabled", Boolean.class));
-        if(user==null||(LegacyPasswordPolicy.isLegacySharedImportPassword(password) && !allowDevAdminPassword)
-                ||!userService.isPasswordMatch(password,user.getPassword())){
+        if(user==null||!userService.isPasswordMatch(password,user.getPassword())){
             log(user==null?null:user.getId(),username,LoginLogTypeEnum.LOGIN_USERNAME.getType(),LoginResultEnum.BAD_CREDENTIALS);
             throw exception(AUTH_LOGIN_BAD_CREDENTIALS);
         }

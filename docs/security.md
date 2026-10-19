@@ -2,7 +2,7 @@
 
 ## Implemented controls
 
-- Student passwords use BCrypt and require 12–72 bytes during bootstrap. Staff password creation/reset requires 12–16 characters.
+- Student and staff passwords use BCrypt and require at least 8 characters and no more than 72 UTF-8 bytes. Each password must include both letters and digits.
 - Student and staff login attempts are throttled by account and source IP in Redis.
 - Access and refresh tokens use separate user types and API prefixes. Refresh tokens are atomically consumed and rotated once, and are never accepted as bearer access tokens.
 - Administrator refresh locks the user row and re-reads the refresh token, so password changes and token renewal cannot race. Session revocation deletes refresh rows by user, including orphaned refresh records.
@@ -43,7 +43,7 @@ Then run `scripts/smoke-cafe.py` only against the dev/mock test stack.
 
 - Backend: all 16 Maven modules passed `clean verify` under JDK 21.
 - Deployed API: all 43 `scripts/smoke-cafe.py` checks passed against the remote test stack, including server-side pricing, 5,000 yuan mock balance, idempotent debit, order transitions, queue counts, reporting, export, role separation and session revocation.
-- Authentication: non-dev builds reject the legacy `admin123` password; URL query tokens, refresh tokens used as bearer tokens and replayed refresh tokens were rejected; refresh rotation and password-change revocation were verified. The dev integration stack enables short test credentials only for its designated `admin` account.
+- Authentication: the shared password policy accepts simple letter-and-digit credentials from eight characters upward and rejects short, letters-only and digits-only passwords. URL query tokens, refresh tokens used as bearer tokens and replayed refresh tokens were rejected; refresh rotation and password-change revocation were verified.
 - Concurrency: the refresh token is consumed by an atomic database delete; losing concurrent refreshes cannot mint a second token pair. Password change and refresh serialization use the administrator user row lock.
 - Edge and initialization: unknown CORS origins were rejected; CSP, frame, MIME, referrer, CORP and browser-permission headers were present; empty bootstrap admin state recovered from the private password and wrote a system audit row.
 - Logging: the remote log scan found zero bearer/refresh-token/password values and zero startup data-integrity failures after the final deployment.

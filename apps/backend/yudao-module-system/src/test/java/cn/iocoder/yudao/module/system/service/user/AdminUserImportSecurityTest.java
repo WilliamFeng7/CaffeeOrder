@@ -52,8 +52,8 @@ class AdminUserImportSecurityTest {
         verify(oauth2TokenService).removeAccessToken(7L, cn.iocoder.yudao.framework.common.enums.UserTypeEnum.ADMIN.getValue());
     }
 
-    @Test void knownPublicImportPasswordCannotBeConfiguredAgain() {
-        when(configApi.getConfigValueByKey(AdminUserServiceImpl.USER_INIT_PASSWORD_KEY)).thenReturn("admin123");
+    @Test void importPasswordMustContainLettersAndDigits() {
+        when(configApi.getConfigValueByKey(AdminUserServiceImpl.USER_INIT_PASSWORD_KEY)).thenReturn("12345678");
 
         org.junit.jupiter.api.Assertions.assertThrows(cn.iocoder.yudao.framework.common.exception.ServiceException.class,
                 () -> service.importUserList(List.of(new UserImportExcelVO()), false));

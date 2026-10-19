@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getUserProfile, updateUserPassword } from '@/api/system/user/profile'
+import { validatePassword } from '@/utils/password'
 import { ElMessage } from 'element-plus'
 import type { FormInstance } from 'element-plus'
 
@@ -45,7 +46,15 @@ const save = async () => {
       <ElFormItem
         label="新密码"
         prop="newPassword"
-        :rules="[{ required: true, min: 12, max: 16, message: '新密码长度为 12–16 位' }]"
+        :rules="[
+          { required: true, message: '请输入新密码' },
+          {
+            validator: (_rule, value, callback) => {
+              const result = validatePassword(value)
+              result === true ? callback() : callback(new Error(result))
+            }
+          }
+        ]"
       >
         <ElInput v-model="form.newPassword" type="password" autocomplete="new-password" show-password />
       </ElFormItem>

@@ -34,7 +34,7 @@ class AdminUserPasswordSecurityTest {
 
     @Test
     void resetPasswordRevokesExistingSessions() {
-        service.updateUserPassword(1L, "new-password");
+        service.updateUserPassword(1L, "new-pass1");
 
         ArgumentCaptor<AdminUserDO> update = ArgumentCaptor.forClass(AdminUserDO.class);
         verify(userMapper).updateById(update.capture());
@@ -48,7 +48,7 @@ class AdminUserPasswordSecurityTest {
         when(passwordEncoder.matches("old-password", "old-hash")).thenReturn(true);
         UserProfileUpdatePasswordReqVO request = new UserProfileUpdatePasswordReqVO();
         request.setOldPassword("old-password");
-        request.setNewPassword("new-password");
+        request.setNewPassword("new-pass1");
 
         service.updateUserPassword(1L, request);
 

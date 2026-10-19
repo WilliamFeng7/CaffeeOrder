@@ -208,6 +208,7 @@
 import { ElMessageBox } from 'element-plus'
 import { DICT_TYPE, getIntDictOptions } from '@/utils/dict'
 import { checkPermi } from '@/utils/permission'
+import { validatePassword } from '@/utils/password'
 import { dateFormatter } from '@/utils/formatTime'
 import download from '@/utils/download'
 import { CommonStatusEnum } from '@/utils/constants'
@@ -372,7 +373,7 @@ const handleResetPwd = async (row: UserApi.UserVO) => {
         cancelButtonText: t('common.cancel'),
         type: 'warning',
         inputType: 'password',
-        inputValidator: (value) => (value.length >= 12 && value.length <= 16) || '密码长度为 12–16 位'
+        inputValidator: (value) => validatePassword(value)
       }
     )
     const password = result.value

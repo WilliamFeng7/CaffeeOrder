@@ -89,7 +89,7 @@ def run():
 
         def employee(role, nickname):
             username = 'smk' + str(role) + RUN
-            password = 'S' + secrets.token_hex(6)
+            password = 'T1' + secrets.token_hex(6)
             user_id = call('POST', '/admin-api/system/user/create', {'username': username, 'password': password, 'nickname': nickname, 'deptId': 1, 'postIds': [], 'sex': 0, 'email': '', 'mobile': '', 'remark': '本地接口验收'}, token=admin)
             employees.append(user_id)
             call('POST', '/admin-api/system/permission/assign-user-role', {'userId': user_id, 'roleIds': [role]}, token=admin)
@@ -112,12 +112,12 @@ def run():
 
         # 修改密码必须撤销该用户的旧访问和刷新令牌。
         session_username = 'sess' + RUN
-        session_password = 'S' + secrets.token_hex(6)
+        session_password = 'S1' + secrets.token_hex(6)
         session_user_id = call('POST', '/admin-api/system/user/create', {'username': session_username, 'password': session_password, 'nickname': '会话验收', 'deptId': 1, 'postIds': [], 'sex': 0, 'email': '', 'mobile': '', 'remark': '本地接口验收'}, token=admin)
         employees.append(session_user_id)
         call('POST', '/admin-api/system/permission/assign-user-role', {'userId': session_user_id, 'roleIds': [3]}, token=admin)
         old_token = admin_login(session_username, session_password)
-        new_password = 'N' + secrets.token_hex(6)
+        new_password = 'N1' + secrets.token_hex(6)
         call('PUT', '/admin-api/system/user/update-password', {'id': session_user_id, 'password': new_password}, token=admin)
         check(call('GET', '/admin-api/system/auth/get-permission-info', token=old_token, success=False)['code'] != 0, '修改密码后旧令牌立即失效')
         check(call('GET', '/admin-api/system/auth/get-permission-info', token=admin_login(session_username, new_password)) is not None, '新密码可正常登录')

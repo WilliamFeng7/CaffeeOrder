@@ -1,5 +1,6 @@
 package cn.iocoder.yudao.module.cafe.service.auth;
 
+import cn.iocoder.yudao.framework.common.util.validation.PasswordPolicyUtils;
 import cn.iocoder.yudao.module.cafe.dal.dataobject.StudentDO;
 import cn.iocoder.yudao.module.cafe.dal.mysql.StudentMapper;
 import cn.iocoder.yudao.module.cafe.framework.CafeProperties;
@@ -8,12 +9,10 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.core.env.Environment;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDateTime;
 
@@ -33,8 +32,6 @@ public class StudentPasswordBootstrap implements ApplicationRunner {
     private PasswordEncoder passwordEncoder;
     @Resource
     private Clock cafeClock;
-    @Resource
-    private Environment environment;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -50,12 +47,9 @@ public class StudentPasswordBootstrap implements ApplicationRunner {
         if (!studentNo.matches("[A-Za-z0-9_-]{1,40}")) {
             throw new IllegalStateException("cafe.auth.bootstrap-student-no 格式不正确");
         }
-        int passwordBytes = password == null ? 0 : password.getBytes(StandardCharsets.UTF_8).length;
-        int minimumBytes = Boolean.TRUE.equals(
-                environment.getProperty("otia.test-credentials-enabled", Boolean.class)) ? 6 : 12;
-        if (passwordBytes < minimumBytes || passwordBytes > 72) {
-            throw new IllegalStateException("cafe.auth.bootstrap-student-password 必须为 "
-                    + minimumBytes + "–72 字节");
+        if (!PasswordPolicyUtils.isValid(password)) {
+            throw new IllegalStateException("cafe.auth.bootstrap-student-password 必须满足："
+                    + PasswordPolicyUtils.MESSAGE);
         }
 
         StudentDO student = students.selectOne(new LambdaQueryWrapper<StudentDO>()
