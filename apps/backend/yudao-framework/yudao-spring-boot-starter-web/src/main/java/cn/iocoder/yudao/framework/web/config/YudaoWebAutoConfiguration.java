@@ -5,6 +5,7 @@ import cn.iocoder.yudao.framework.common.biz.infra.logger.ApiErrorLogCommonApi;
 import cn.iocoder.yudao.framework.common.enums.WebFilterOrderEnum;
 import cn.iocoder.yudao.framework.web.core.filter.CacheRequestBodyFilter;
 import cn.iocoder.yudao.framework.web.core.filter.DemoFilter;
+import cn.iocoder.yudao.framework.web.core.filter.SameOriginAwareCorsFilter;
 import cn.iocoder.yudao.framework.web.core.handler.GlobalExceptionHandler;
 import cn.iocoder.yudao.framework.web.core.handler.GlobalResponseBodyHandler;
 import cn.iocoder.yudao.framework.web.core.util.WebFrameworkUtils;
@@ -29,6 +30,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.filter.CorsFilter;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.List;
 import java.util.function.Predicate;
@@ -106,10 +108,16 @@ public class YudaoWebAutoConfiguration {
      */
     @Bean
     @Order(value = WebFilterOrderEnum.CORS_FILTER) // 特殊：修复因执行顺序影响到跨域配置不生效问题
-    public FilterRegistrationBean<CorsFilter> corsFilterBean(WebProperties webProperties) {
+    public FilterRegistrationBean<SameOriginAwareCorsFilter> corsFilterBean(WebProperties webProperties) {
         // 创建 CorsConfiguration 对象
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(webProperties.getCors().getAllowedOrigins());
+        config.setAllowedOrigins(webProperties.getCors().getAllowedOrigins().stream()
+                .filter(StrUtil::isNotBlank)
+                .flatMap(origin -> Arrays.stream(origin.split(",")))
+                .map(String::trim)
+                .filter(StrUtil::isNotBlank)
+                .distinct()
+                .toList());
         config.setAllowCredentials(false);
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key"));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
@@ -117,7 +125,8 @@ public class YudaoWebAutoConfiguration {
         // 创建 UrlBasedCorsConfigurationSource 对象
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config); // 对接口配置跨域设置
-        return createFilterBean(new CorsFilter(source), WebFilterOrderEnum.CORS_FILTER);
+        return createFilterBean(new SameOriginAwareCorsFilter(new CorsFilter(source)),
+                WebFilterOrderEnum.CORS_FILTER);
     }
 
     /**

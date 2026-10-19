@@ -61,6 +61,7 @@ pnpm --dir apps/admin dev   # http://127.0.0.1:8080
 | `OTIA_ADMIN_INITIAL_PASSWORD` | 首次管理员密码，至少 8 位且同时包含字母和数字，必填 |
 | `OTIA_STUDENT_INITIAL_*` | 可选一次性测试学生账号 |
 | `OTIA_DEV_LOGIN_SECRET` | 远程测试栈开发直登密钥，至少 32 个随机字符 |
+| `YUDUO_WEB_CORS_ALLOWED_ORIGINS` | 允许访问 API 的三个前端来源，使用逗号分隔的完整 Origin |
 | `DINGTALK_CORP_ID` | 学校钉钉企业 corpId |
 | `DINGTALK_APP_KEY` / `DINGTALK_APP_SECRET` | 钉钉 H5 应用服务端凭证 |
 | `DINGTALK_STUDENT_NO_FIELD` | 学号所在用户字段，默认 `job_number` |

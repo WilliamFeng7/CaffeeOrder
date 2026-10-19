@@ -5,6 +5,14 @@ cafe:
   card:
     mock-enabled: true
 
+yudao:
+  web:
+    cors:
+      allowed-origins:
+        - http://150.158.121.81:5001
+        - http://150.158.121.81:5002
+        - http://150.158.121.81:5003
+
 
 springdoc:
   api-docs:

@@ -23,6 +23,7 @@ Create a server-side `.env` with fresh random values:
 - `OTIA_DEV_LOGIN_SECRET` (at least 32 random characters)
 - `OTIA_STUDENT_INITIAL_NO`, `OTIA_STUDENT_INITIAL_NAME`, `OTIA_STUDENT_INITIAL_PASSWORD`
 - `BIND_ADDR`, `STUDENT_PORT`, `BARISTA_PORT`, `ADMIN_PORT`
+- `YUDUO_WEB_CORS_ALLOWED_ORIGINS` — comma-separated exact browser origins for the three frontends
 
 Keep `.env` mode `600`. Never commit it.
 
@@ -87,7 +88,7 @@ The suite creates temporary employee accounts, changes shop settings temporarily
 
 Before considering a production release healthy, verify that passwords shorter than eight characters, letters-only passwords and digits-only passwords are rejected; a URL query token is rejected; a refresh token cannot act as a bearer token; refresh rotation invalidates the previous pair; and an unknown `Origin` receives no `Access-Control-Allow-Origin` header. Request the three frontend pages and confirm the Caddy security headers before opening access.
 
-The latest password-policy release from 2026-10-19 uses JAR SHA-256 `cfb664d47338952c6cc42de9022c3ee45587e67d84298788f4139b5acaa11ff6`. Its complete rollback snapshot is `/home/ubuntu/otia-cafe-demo/stage/release/backup-full-20261019T113753Z`; the previous backend and frontend bundles are also retained beside their current directories with `.previous-20261019T113753Z` suffixes. The release passed all 43 API acceptance checks plus password-policy boundary tests.
+The latest browser-origin fix from 2026-10-19 uses JAR SHA-256 `09145f65adc0712672d7f07869582271dfe445c67c3198d9cfbc085f57c1d64e`. Its backend rollback JAR is `/home/ubuntu/otia-cafe-demo/stage/release/app/yudao-server.previous-20261019T122324Z.jar`, and the preceding Compose file is `compose.previous-20261019T121020Z.yaml`. The broader full-system rollback snapshot remains `backup-full-20261019T113753Z`. The release passed all 43 API acceptance checks with browser-style Origin headers, plus same-origin and unknown-origin boundary tests.
 
 ## Rollback
 

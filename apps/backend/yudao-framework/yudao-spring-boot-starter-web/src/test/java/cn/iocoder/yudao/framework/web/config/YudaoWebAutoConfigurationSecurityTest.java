@@ -43,6 +43,41 @@ class YudaoWebAutoConfigurationSecurityTest {
                 response.getHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN));
     }
 
+    @Test
+    void commaSeparatedEnvironmentOriginsAreSplit() throws Exception {
+        WebProperties properties = new WebProperties();
+        properties.setAdminUi(new WebProperties.Ui());
+        properties.getCors().setAllowedOrigins(List.of(
+                "https://student.example, https://admin.example"));
+        MockHttpServletRequest request = preflight("https://admin.example");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        new YudaoWebAutoConfiguration().corsFilterBean(properties).getFilter()
+                .doFilter(request, response, new MockFilterChain());
+
+        assertEquals(200, response.getStatus());
+        assertEquals("https://admin.example",
+                response.getHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN));
+    }
+
+    @Test
+    void exactSameOriginRequestIsNotRejectedByEmptyAllowlist() throws Exception {
+        WebProperties properties = new WebProperties();
+        properties.setAdminUi(new WebProperties.Ui());
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/admin-api/system/auth/login");
+        request.setScheme("http");
+        request.setServerName("150.158.121.81");
+        request.setServerPort(5003);
+        request.addHeader(HttpHeaders.ORIGIN, "http://150.158.121.81:5003");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        new YudaoWebAutoConfiguration().corsFilterBean(properties).getFilter()
+                .doFilter(request, response, new MockFilterChain());
+
+        assertEquals(200, response.getStatus());
+        assertNull(response.getHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN));
+    }
+
     private MockHttpServletRequest preflight(String origin) {
         MockHttpServletRequest request = new MockHttpServletRequest("OPTIONS", "/admin-api/system/auth/login");
         request.addHeader(HttpHeaders.ORIGIN, origin);

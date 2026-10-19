@@ -14,6 +14,8 @@ import zipfile
 BASE = os.environ.get('CAFE_API_URL', 'http://127.0.0.1:48080').rstrip('/')
 APP_BASE = os.environ.get('CAFE_APP_API_URL', BASE).rstrip('/')
 ADMIN_BASE = os.environ.get('CAFE_ADMIN_API_URL', BASE).rstrip('/')
+APP_ORIGIN = os.environ.get('CAFE_APP_ORIGIN', APP_BASE).rstrip('/')
+ADMIN_ORIGIN = os.environ.get('CAFE_ADMIN_ORIGIN', ADMIN_BASE).rstrip('/')
 MOCK_INITIAL_BALANCE = int(os.environ.get('CAFE_MOCK_INITIAL_BALANCE_CENTS', '50000'))
 DEV_LOGIN_SECRET = os.environ.get('CAFE_DEV_LOGIN_SECRET', '')
 RUN = dt.datetime.now(dt.timezone.utc).strftime('%m%d%H%M%S') + secrets.token_hex(3)
@@ -32,6 +34,7 @@ def call(method, path, data=None, token=None, key=None, params=None, success=Tru
     if params:
         path += '?' + urllib.parse.urlencode(params)
     headers = {'Content-Type': 'application/json'}
+    is_admin_api = path.startswith('/admin-api')
     if token:
         headers['Authorization'] = 'Bearer ' + token
     if key:
@@ -39,7 +42,9 @@ def call(method, path, data=None, token=None, key=None, params=None, success=Tru
     if dev_secret:
         headers['X-Cafe-Dev-Secret'] = DEV_LOGIN_SECRET
     payload = None if data is None else json.dumps(data, ensure_ascii=False).encode()
-    origin = ADMIN_BASE if path.startswith('/admin-api') else APP_BASE
+    origin = ADMIN_ORIGIN if is_admin_api else APP_ORIGIN
+    # Browsers send Origin even for same-origin POST requests.
+    headers['Origin'] = origin
     request = urllib.request.Request(origin + path, data=payload, headers=headers, method=method)
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
