@@ -11,6 +11,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.Clock;
@@ -30,6 +31,7 @@ class StudentPasswordBootstrapTest {
 
     @Mock private StudentMapper students;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private Environment environment;
     @InjectMocks private StudentPasswordBootstrap bootstrap;
 
     @BeforeEach
@@ -75,6 +77,22 @@ class StudentPasswordBootstrapTest {
 
         assertThrows(IllegalStateException.class, () -> bootstrap.run(null));
         verify(students, never()).insert(any(StudentDO.class));
+    }
+
+    @Test
+    void shortBootstrapPasswordIsAllowedForExplicitDevTests() {
+        CafeProperties properties = properties("student", "student123");
+        when(environment.getProperty("otia.test-credentials-enabled", Boolean.class)).thenReturn(true);
+        when(passwordEncoder.encode("student123")).thenReturn("dev-hash");
+        when(students.insert(any(StudentDO.class))).thenReturn(1);
+        org.springframework.test.util.ReflectionTestUtils.setField(bootstrap, "properties", properties);
+
+        bootstrap.run(null);
+
+        ArgumentCaptor<StudentDO> captured = ArgumentCaptor.forClass(StudentDO.class);
+        verify(students).insert(captured.capture());
+        assertEquals("student", captured.getValue().getStudentNo());
+        assertEquals("dev-hash", captured.getValue().getPasswordHash());
     }
 
     private static CafeProperties properties(String studentNo, String password) {

@@ -85,9 +85,9 @@ python3 scripts/smoke-cafe.py
 
 The suite creates temporary employee accounts, changes shop settings temporarily and restores them. It does not submit a card debit outside the dev/mock boundary.
 
-Before considering a release healthy, also verify that `admin123` is rejected, a URL query token is rejected, a refresh token cannot act as a bearer token, refresh rotation invalidates the previous pair, and an unknown `Origin` receives no `Access-Control-Allow-Origin` header. Request the three frontend pages and confirm the Caddy security headers before opening access.
+Before considering a production release healthy, verify that `admin123` is rejected by a non-dev profile, a URL query token is rejected, a refresh token cannot act as a bearer token, refresh rotation invalidates the previous pair, and an unknown `Origin` receives no `Access-Control-Allow-Origin` header. Request the three frontend pages and confirm the Caddy security headers before opening access.
 
-The verified full release from 2026-10-18 uses JAR SHA-256 `e4b26d10f50967ca25fa16f42465d8e0f775fb472b48261397f9c4de3a02c359`. The matching rollback snapshot is `/home/ubuntu/otia-cafe-demo/stage/release/backup-full-20261018T122659Z`; the previous frontend bundles, JAR and configuration are also retained beside their current directories with `.previous-20261018T122659Z` suffixes. The deployment passed all 43 API acceptance checks.
+The latest dev credential release from 2026-10-19 uses JAR SHA-256 `433f5d45ab7718558ff42566418f841683f5c1f4d165188d48bd7933d4b2f4d9`. Its backend rollback JAR is `/home/ubuntu/otia-cafe-demo/stage/release/app/yudao-server.previous-20261019T112137Z.jar`. The broader full-system rollback snapshot remains `/home/ubuntu/otia-cafe-demo/stage/release/backup-full-20261018T122659Z`; frontend rollback bundles are retained beside their current directories with `.previous-20261018T122659Z` suffixes. The release passed all 43 API acceptance checks.
 
 ## Rollback
 

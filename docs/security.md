@@ -43,7 +43,7 @@ Then run `scripts/smoke-cafe.py` only against the dev/mock test stack.
 
 - Backend: all 16 Maven modules passed `clean verify` under JDK 21.
 - Deployed API: all 43 `scripts/smoke-cafe.py` checks passed against the remote test stack, including server-side pricing, 5,000 yuan mock balance, idempotent debit, order transitions, queue counts, reporting, export, role separation and session revocation.
-- Authentication: legacy `admin123`, URL query tokens, refresh tokens used as bearer tokens and replayed refresh tokens were rejected; refresh rotation and password-change revocation were verified.
+- Authentication: non-dev builds reject the legacy `admin123` password; URL query tokens, refresh tokens used as bearer tokens and replayed refresh tokens were rejected; refresh rotation and password-change revocation were verified. The dev integration stack enables short test credentials only for its designated `admin` account.
 - Concurrency: the refresh token is consumed by an atomic database delete; losing concurrent refreshes cannot mint a second token pair. Password change and refresh serialization use the administrator user row lock.
 - Edge and initialization: unknown CORS origins were rejected; CSP, frame, MIME, referrer, CORP and browser-permission headers were present; empty bootstrap admin state recovered from the private password and wrote a system audit row.
 - Logging: the remote log scan found zero bearer/refresh-token/password values and zero startup data-integrity failures after the final deployment.

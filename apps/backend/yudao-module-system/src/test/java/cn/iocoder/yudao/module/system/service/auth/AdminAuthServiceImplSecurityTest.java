@@ -10,6 +10,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.env.Environment;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -21,6 +22,7 @@ class AdminAuthServiceImplSecurityTest {
     @Mock OAuth2TokenService tokens;
     @Mock LoginLogService logs;
     @Mock LoginRateLimiter limiter;
+    @Mock Environment environment;
     @InjectMocks AdminAuthServiceImpl service;
 
     @Test void publicImportPasswordIsRejectedForImportedStaff() {
@@ -41,5 +43,15 @@ class AdminAuthServiceImplSecurityTest {
         assertThrows(ServiceException.class, () -> service.authenticate("admin", "admin123"));
         verify(users, never()).isPasswordMatch(anyString(), anyString());
         verify(limiter, never()).reset(anyString());
+    }
+
+    @Test void devTestCredentialsAllowAdmin123ForConfiguredAdminAccount() {
+        var admin = new AdminUserDO().setId(1L).setUsername("admin").setPassword("hash").setStatus(0);
+        when(environment.getProperty("otia.test-credentials-enabled", Boolean.class)).thenReturn(true);
+        when(users.getUserByUsername("admin")).thenReturn(admin);
+        when(users.isPasswordMatch("admin123", "hash")).thenReturn(true);
+
+        assertSame(admin, service.authenticate("admin", "admin123"));
+        verify(limiter).reset("admin");
     }
 }

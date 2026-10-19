@@ -8,6 +8,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.env.Environment;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -32,6 +33,8 @@ public class StudentPasswordBootstrap implements ApplicationRunner {
     private PasswordEncoder passwordEncoder;
     @Resource
     private Clock cafeClock;
+    @Resource
+    private Environment environment;
 
     @Override
     public void run(ApplicationArguments args) {
@@ -48,8 +51,11 @@ public class StudentPasswordBootstrap implements ApplicationRunner {
             throw new IllegalStateException("cafe.auth.bootstrap-student-no 格式不正确");
         }
         int passwordBytes = password == null ? 0 : password.getBytes(StandardCharsets.UTF_8).length;
-        if (passwordBytes < 12 || passwordBytes > 72) {
-            throw new IllegalStateException("cafe.auth.bootstrap-student-password 必须为 12–72 字节");
+        int minimumBytes = Boolean.TRUE.equals(
+                environment.getProperty("otia.test-credentials-enabled", Boolean.class)) ? 6 : 12;
+        if (passwordBytes < minimumBytes || passwordBytes > 72) {
+            throw new IllegalStateException("cafe.auth.bootstrap-student-password 必须为 "
+                    + minimumBytes + "–72 字节");
         }
 
         StudentDO student = students.selectOne(new LambdaQueryWrapper<StudentDO>()

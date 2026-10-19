@@ -23,11 +23,15 @@ public class AdminBootstrapInitializer implements ApplicationRunner {
         var admin = users.getUser(1L);
         if (admin == null || (admin.getPassword() != null && !admin.getPassword().isBlank())) return;
 
-        if (configured != null && (configured.length() < 12 || configured.length() > 16)) {
-            throw new IllegalStateException("OTIA_ADMIN_INITIAL_PASSWORD 必须为 12–16 个字符");
+        int minimumLength = Boolean.TRUE.equals(
+                environment.getProperty("otia.test-credentials-enabled", Boolean.class)) ? 6 : 12;
+        if (configured != null && (configured.length() < minimumLength || configured.length() > 16)) {
+            throw new IllegalStateException("OTIA_ADMIN_INITIAL_PASSWORD 必须为 "
+                    + minimumLength + "–16 个字符");
         }
         if (configured == null || configured.isBlank()) {
-            throw new IllegalStateException("首次启动前必须配置 OTIA_ADMIN_INITIAL_PASSWORD（12–16 位）");
+            throw new IllegalStateException("首次启动前必须配置 OTIA_ADMIN_INITIAL_PASSWORD（"
+                    + minimumLength + "–16 位）");
         }
         users.updateUserPassword(admin.getId(), configured);
     }
